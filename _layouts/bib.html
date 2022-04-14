@@ -88,17 +88,15 @@
           {%- if entry.year -%}
             {%- capture entryyear -%}{{ " " }}{{entry.year}}{%- endcapture -%}
           {%- endif -%}
-          {%- capture periodical -%}{{ entrytype }}{{ entrymonth }}{{ entryyear }}{%- endcapture -%}
-          {%- if entry.is_oral%}
-              <div style="display:inline;" class="col-sm-2 abbr">
-              <abbr style="display:inline;" class="badge">{{"Oral Presentation"}}</abbr>
-              </div>
-          {%- endif %}          
+          {%- capture periodical -%}{{ entrytype }}{{ entrymonth }}{{ entryyear }}{%- endcapture -%}         
           <div class="periodical">
             {{ periodical | strip }}
           </div>
         {%- endif %}
-          
+              
+          {%- if entry.is_oral%}
+              <abbr style="display:inline;" class="badge">{{"Oral Presentation"}}</abbr>
+          {%- endif %} 
         
           <!-- Links/Buttons -->
           <div class="links">
