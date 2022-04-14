@@ -26,23 +26,23 @@
             <ul class="navbar-nav ml-auto flex-nowrap">
 
               <!-- About -->
-              <li class="nav-item {% if page.title == 'about' %}active{% endif %}">
-                <a class="nav-link" href="{{ '/' | relative_url }}">about
-                  {%- if page.title == "about" -%}
+              <li class="nav-item {% if page.title == 'About' %}active{% endif %}">
+                <a class="nav-link" href="{{ '/' | relative_url }}">About
+                  {%- if page.title == "About" -%}
                   <span class="sr-only">(current)</span>
                   {%- endif -%}
                 </a>
               </li>
-              {% if site.blog_name %}
+              <!--{% if site.blog_name %}-->
               <!-- Blog -->
-              <li class="nav-item {% if page.url contains 'blog' %}active{% endif %}">
+              <!--<li class="nav-item {% if page.url contains 'blog' %}active{% endif %}">
                 <a class="nav-link" href="{{ '/blog/' | relative_url }}">blog
                   {%- if page.title == "blog" -%}
                   <span class="sr-only">(current)</span>
                   {%- endif -%}
                 </a>
               </li>
-              {%- endif %}
+              {%- endif %}-->
 
               <!-- Other pages -->
               {%- assign sorted_pages = site.pages | sort: "title" -%}
