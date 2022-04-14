@@ -89,6 +89,10 @@
             {{ periodical | strip }}
           </div>
         {%- endif %}
+          
+          {% if entry.if_oral == true -%}
+          <em>In {{"Oral Presentation"}}</em>
+        {%- endif %}
         
           <!-- Links/Buttons -->
           <div class="links">
