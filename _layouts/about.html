@@ -21,11 +21,6 @@ layout: default
               class="img-fluid z-dept-1 rounded"
               alt=page.profile.image -%}
             {% endif -%}
-            {%- if page.profile.address %}
-            <div class="address">
-              {{ page.profile.address }}
-            </div>
-            {%- endif %}
           </div>
           {%- endif %}
 
@@ -37,7 +32,13 @@ layout: default
             <div class="contact-icons">
             {% include social.html %}
             </div>
-
+                
+            {%- if page.profile.address %}
+            <div class="address">
+              {{ page.profile.address }}
+            </div>
+            {%- endif %}
+                
             <div class="contact-note">
               {{ site.contact_note }}
             </div>
