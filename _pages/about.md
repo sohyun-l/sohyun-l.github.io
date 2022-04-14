@@ -1,6 +1,6 @@
 ---
 layout: about
-title: about
+title: About
 permalink: /
 subtitle: Integrated M.S. & Ph.D student in the <a href='http://cvlab.postech.ac.kr/lab/'>Computer Vision Lab</a> at <a href='https://www.postech.ac.kr'>POSTECH</a>. 
 
