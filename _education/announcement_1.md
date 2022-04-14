@@ -4,5 +4,5 @@ start_end: "Mar, 2015 - Aug, 2020"
 inline: true
 ---
 
-[POSTECH](https://www.postech.ac.kr) \
+[Pohang University of Science and Technology (POSTECH)](https://www.postech.ac.kr), Pohang, S.Korea \
 B.S in Mechanical Engineering
