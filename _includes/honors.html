@@ -6,7 +6,6 @@
               {%- assign honors = site.honors | reverse -%} 
               {% for item in honors limit: site.honors_limit %} 
                 <tr>
-                  <th scope="row">{{ item.category }}</th>
                   <td>
                     {% if item.inline -%} 
                       {{ item.content | remove: '<p>' | remove: '</p>' | emojify }}
