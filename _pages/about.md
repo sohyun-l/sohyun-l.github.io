@@ -13,6 +13,7 @@ profile:
     <p>Pohang-Si, Republic of Korea (Zip: 37673)</p>
 
 news: true  # includes a list of news items
+education: true # includes a list of education items
 selected_papers: true # includes a list of papers marked as "selected={true}"
 social: true  # includes social icons at the bottom of the page
 ---
