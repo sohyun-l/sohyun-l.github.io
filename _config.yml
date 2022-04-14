@@ -208,7 +208,7 @@ scholar:
   last_name: Lee
   first_name: [Sohyun]
 
-  style: chicago-fullnote-bibliography
+  style: ieee
   locale: en
 
   source: /_bibliography/
