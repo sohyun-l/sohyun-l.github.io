@@ -91,7 +91,10 @@
                    <abbr class="badge">{{"Oral Presentation"}}</abbr>
                    </div>
              {%- endif %}
-        
+              
+            {%- if entry.is_equal%}
+                   {{"(*equal contribution)"}}
+             {%- endif %}        
           <!-- Links/Buttons -->
           <div class="links">
           {%- if entry.abstract %}
