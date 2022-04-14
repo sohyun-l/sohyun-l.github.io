@@ -86,11 +86,15 @@
           </div>
         {%- endif %}
               
-            {%- if entry.is_oral%}
+            <!--{%- if entry.is_oral%}
                    <div class="col-sm-2 abbr">
                    <abbr class="badge">{{"Oral Presentation"}}</abbr>
                    </div>
-             {%- endif %}
+             {%- endif %}-->
+           <!-- Additional info -->
+            {% if entry.additional_info -%}
+            <span style="color:darkgreen">{{entry.additional_info}}</span>
+            {%- endif %}
               
             <!-- {%- if entry.is_equal%}
                    {{"(*equal contribution)"}}
