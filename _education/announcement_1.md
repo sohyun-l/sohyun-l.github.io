@@ -5,5 +5,5 @@ end_date: 2020-08
 inline: true
 ---
 
-POSTECH \
+[POSTECH](https://www.postech.ac.kr) \
 B.S in Mechanical Engineering
