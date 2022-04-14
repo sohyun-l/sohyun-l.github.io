@@ -2,21 +2,28 @@
 ---
 
 @string{aps = {American Physical Society,}}
-@string{cvpr = {Proceedings of the {IEEE/CVF} Conference on Computer Vision and Pattern Recogntiion}}
+@string{cvpr = {Proceedings of the {IEEE/CVF} Conference on Computer Vision and Pattern Recogntiion (CVPR),}}
 
 @inproceedings{lee2022fifo,
   author    = {Lee, Sohyun and Son, Taeyoung and Kwak, Suha},
   title     = {FIFO: Learning Fog-invariant Features for Foggy Scene Segmentation},
-  booktitle = {Proceedings of the {IEEE/CVF} Conference on Computer Vision and Pattern Recognition (CVPR)},
+  abstract  = {Robust visual recognition under adverse weather conditions is of great importance in real-world applications. In this context, we propose a new method for learning semantic segmentation models robust against fog. Its key idea is to consider the fog condition of an image as its style and close the gap between images with different fog conditions in neural style spaces of a segmentation model. In particular, since the neural style of an image is in general affected by other factors as well as fog, we introduce a fog-pass filter module that learns to extract a fog-relevant factor from the style. Optimizing the fog-pass filter and the segmentation model alternately gradually closes the style gap between different fog conditions and allows to learn fog-invariant features in consequence. Our method substantially outperforms previous work on three real foggy image datasets. Moreover, it improves performance on both foggy and clear weather images, while existing methods often degrade performance on clear scenes.},
+  booktitle = cvpr,
   year      = {2022},
-  bibtex_show={false},
   abbr={CVPR},
   html={https://arxiv.org/pdf/2204.01587.pdf},
   selected={true}
 }
 
-% @inproceedings{kang2022style,
-%   author  = {Juwon}}
+@inproceedings{kang2022style,
+  author  = {Kang, Juwon and Lee, Sohyun and Kim, Namyup and Kwak, Suha},
+  abstract  = {This paper studies domain generalization via domain-invariant representation learning. Existing methods in this direction suppose that a domain can be characterized by styles of its images, and train a network using style-augmented data so that the network is not biased to particular style distributions. However, these methods are restricted to a finite set of styles since they obtain styles for augmentation from a fixed set of external images or by interpolating those of training data. To address this limitation and maximize the benefit of style augmentation, we propose a new method that synthesizes novel styles constantly during training. Our method manages multiple queues to store styles that have been observed so far, and synthesizes novel styles whose distribution is distinct from the distribution of styles in the queues. The style synthesis process is formulated as a monotone submodular optimization, thus can be conducted efficiently by a greedy algorithm. Extensive experiments on four public benchmarks demonstrate that the proposed method is capable of achieving state-of-the-art domain generalization performance.},
+  title = {Style Neophile: Constantly Seeking Novel Styles for Domain Generalization},
+  booktitle = cvpr,
+  year      = {2022},
+  abbr={CVPR},
+  selected={true}  
+  }
 
 @book{einstein1956investigations,
   bibtex_show={true},
