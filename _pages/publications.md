@@ -1,13 +1,13 @@
 ---
 layout: page
-permalink: /Publications/
+permalink: /publications/
 title: Publications
 description: 
 years: [2022]
 nav: true
 ---
 <!-- _pages/publications.md -->
-<div class="Publications">
+<div class="publications">
 
 {%- for y in page.years %}
   <h2 class="year">{{y}}</h2>
