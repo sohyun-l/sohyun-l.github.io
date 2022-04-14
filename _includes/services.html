@@ -6,7 +6,6 @@
               {%- assign services = site.services | reverse -%} 
               {% for item in services limit: site.services_limit %} 
                 <tr>
-                  <th scope="row">{{ item.category }}</th>
                   <td>
                     {% if item.inline -%} 
                       {{ item.content | remove: '<p>' | remove: '</p>' | emojify }}
