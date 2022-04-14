@@ -105,11 +105,17 @@ collections:
       layout: post
     output: true
     permalink: /news/:path/
+  education:
+    defaults:
+      layout: post
+    output: true
+    permalink: /education/:path/
   projects:
     output: true
     permalink: /projects/:path/
 
 news_limit: 5
+education_limit: 5
 
 # -----------------------------------------------------------------------------
 # Jekyll settings
