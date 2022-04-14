@@ -8,7 +8,7 @@ profile:
   align: right
   image: SohyunLee.png
   address: >
-    <p>Room 302, Engineering Building II</p>
+    <p>Engineering Building II</p>
     <p>Chungam-Ro 77, POSTECH</p>
     <p>Pohang-Si, Republic of Korea (Zip: 37673)</p>
 
