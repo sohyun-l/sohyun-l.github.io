@@ -1,17 +1,7 @@
 ---
 ---
 <!-- _layouts/bib.html -->
-      <div class="row">
-        <div class="col-sm-2 abbr">
-        {%- if entry.abbr -%}
-          {%- if site.data.venues[entry.abbr] -%}
-          <abbr class="badge"><a href="{{site.data.venues[entry.abbr].url}}">{{entry.abbr}}</a></abbr>
-          {%- else -%}
-          <abbr class="badge">{{entry.abbr}}</abbr>
-          {%- endif -%}
-        {%- endif -%}
-        </div>
-            
+      <div class="row">            
       <div class="col-sm mt-3 mt-md-0">
         {% include figure.html path="assets/img/9.jpg" class="img-fluid rounded z-depth-1" %}
       </div>
