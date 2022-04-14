@@ -6,7 +6,7 @@
               {%- assign education = site.education | reverse -%} 
               {% for item in education limit: site.education_limit %} 
                 <tr>
-                  <th scope="row">{{ item.start_end | remove: '<p>' | remove: '</p>' }}</th>
+                  <th scope="row">{{ item.start_end }}</th>
                   <td>
                     {% if item.inline -%} 
                       {{ item.content | remove: '<p>' | remove: '</p>' | emojify }}
