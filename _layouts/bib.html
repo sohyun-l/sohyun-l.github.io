@@ -88,13 +88,13 @@
           <div class="periodical">
             {{ periodical | strip }}
           </div>
+            {%- if entry.is_oral%}
+                  <div class="col-sm-2 abbr">
+                  <abbr class="badge">{{"Oral Presentation"}}</abbr>
+                  </div>
+            {%- endif %}
         {%- endif %}
           
-          {%- if entry.is_oral%}
-            <div class="col-sm-2 abbr">
-            <abbr class="badge">{{"Oral Presentation"}}</abbr>
-            </div>
-        {%- endif %}
         
           <!-- Links/Buttons -->
           <div class="links">
