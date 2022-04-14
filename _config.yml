@@ -206,7 +206,7 @@ jekyll-archives:
 scholar:
 
   last_name: Lee
-  first_name: Sohyun
+  first_name: [Sohyun]
 
   style: apa
   locale: en
