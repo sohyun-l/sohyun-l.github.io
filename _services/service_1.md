@@ -4,4 +4,4 @@ category: "Reviewer"
 inline: true
 ---
 
-CVPR (2022), ECCV (2022)
+Reviewer in CVPR (2022), ECCV (2022).
