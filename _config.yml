@@ -113,9 +113,15 @@ collections:
   projects:
     output: true
     permalink: /projects/:path/
+  services:
+    defaults:
+      layout: post
+    output: true
+    permalink: /services/:path/
 
 news_limit: 5
 education_limit: 5
+services_limit: 5
 
 # -----------------------------------------------------------------------------
 # Jekyll settings
