@@ -2,7 +2,7 @@
 ---
 <!-- _layouts/bib.html -->
       <div class="row">            
-      <div class="col-sm-4">
+      <div class="col-sm-3">
         {% if entry.img_path -%}
             {% include figure.html path=entry.img_path class="img-fluid rounded z-depth-1" zoomable=true %}
         {%- endif %}
@@ -64,6 +64,10 @@
               {%- endunless -%}
             {%- endif -%}
           {%- endfor %}
+          
+          {%- if entry.is_equal%}
+                   {{"(*equal contribution)"}}
+       {%- endif %}  
           </div>
 
           <!-- Journal/Book title and date -->
@@ -86,15 +90,17 @@
           </div>
         {%- endif %}
               
-            {%- if entry.is_oral%}
+            <!--{%- if entry.is_oral%}
                    <div class="col-sm-2 abbr">
                    <abbr class="badge">{{"Oral Presentation"}}</abbr>
                    </div>
-             {%- endif %}
+             {%- endif %}-->
+           <!-- Additional info -->
+            {% if entry.additional_info -%}
+            <span style="color:red"><b>{{entry.additional_info}}</b></span>
+            {%- endif %}
               
-            {%- if entry.is_equal%}
-                   {{"(*equal contribution)"}}
-             {%- endif %}        
+              
           <!-- Links/Buttons -->
           <div class="links">
           {%- if entry.abstract %}
