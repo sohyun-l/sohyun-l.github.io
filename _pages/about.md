@@ -21,7 +21,8 @@ honors: true
 social: true  # includes social icons at the bottom of the page
 ---
 
-I am a graduate student in the Graduate School of Artificial Intelligence integrated M.S. & Ph.D. program at [POSTECH](https://www.postech.ac.kr). I am a member of the [Computer Vision Lab](http://cvlab.postech.ac.kr/lab/) at POSTECH, working with Prof. [Suha Kwak](https://suhakwak.github.io). \
+I am a graduate student in the Graduate School of Artificial Intelligence integrated M.S. & Ph.D. program at [POSTECH](https://www.postech.ac.kr). I am a member of the [Computer Vision Lab](http://cvlab.postech.ac.kr/lab/) at POSTECH, advised by Prof. [Suha Kwak](https://suhakwak.github.io). 
+Previously, I completed my B.S. in Mechanical Engineering at POSTECH.\
 \
 My research interests lie in computer vision and deep learning. I've worked on the robust recognition in adverse visual conditions, domain adaptation, and generalization. 
 If you are interested in my research projects, please feel free to contact me by clicking one of the icons below.
