@@ -8,7 +8,7 @@ profile:
   align: right
   image: SohyunLee.png
   address: >
-    <p>Room 302, B2,</p>
+    <p>Room#302, B2,</p>
     <p>Chungam-Ro 77, POSTECH,</p>
     <p>Pohang, Gyeongbuk,</p>
     <p>South Korea 37673</p>
