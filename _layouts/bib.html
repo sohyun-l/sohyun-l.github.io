@@ -97,7 +97,7 @@
              {%- endif %}-->
            <!-- Additional info -->
             {% if entry.additional_info -%}
-            <span style="color:red"><b>{{entry.additional_info}}</b></span>
+            {{"("}}<span style="color:red"><b>{{entry.additional_info}}</b></span>{{", "}}{{entry.acceptance_rate}}{{"% acceptance rate)"}}
             {%- endif %}
               
               
