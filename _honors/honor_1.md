@@ -4,7 +4,7 @@ inline: true
 ---
 
 **CVPR Best Paper Finalist, 2022**
-- Awarded to 0.4% (Top 33 of 8161 papers)
+- Awarded to Top 0.4% (33 of 8161 papers)
 - Research Topic: Foggy Scene Segmentation
 
 **Gold Prize at IPIU Best Paper Award, 2022** 
