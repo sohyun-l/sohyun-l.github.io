@@ -4,6 +4,7 @@ inline: true
 ---
 
 **Reviewer** 
+- IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2023
 - IEEE/CVF Winter Conference on Applications of Computer Vision (WACV), 2023
 - Asian Conference on Computer Vision (ACCV), 2022
 - European Conference on Computer Vision (ECCV), 2022
