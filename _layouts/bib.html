@@ -95,17 +95,22 @@
                    <abbr class="badge">{{"Oral Presentation"}}</abbr>
                    </div>
              {%- endif %}-->
-           <p>
+           
            <!-- Additional info -->
             {% if entry.additional_info -%}
             <span style="color:red"><b>{{entry.additional_info}}</b></span><br>
+            {%- endif %}
+
+           <!-- Additional info3 -->
+            {% if entry.additional_info3 -%}
+            <span style="color:red">{{entry.additional_info3}}</span><br>
             {%- endif %}
     
            <!-- Additional info2 -->
             {% if entry.additional_info2 -%}
             <span style="color:blue"><i>{{entry.additional_info2}}</i></span>
             {%- endif %}
-            </p>
+            
               
           <!-- Links/Buttons -->
           <div class="links">
