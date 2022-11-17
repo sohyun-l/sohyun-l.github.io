@@ -43,7 +43,12 @@
                 </a>
               </li>
               {%- endif %}-->
-
+                
+              <!-- CV -->
+              <li class="nav-item">
+                <a class="nav-link" href="/assets/Resume.pdf" target="_blank"  rel="noopener noreferrer" class="float-right">Curriculum Vitae</a>
+              </li>
+                
               <!-- Other pages -->
               {%- assign sorted_pages = site.pages | sort: "title" -%}
               {%- for p in sorted_pages -%}
