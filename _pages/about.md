@@ -26,8 +26,6 @@ Previously, I completed my B.S. in Mechanical Engineering at POSTECH.\
 \
 My research interests lie in computer vision and deep learning. I've worked on the robust recognition in adverse visual conditions, domain adaptation, and generalization. 
 
-Curriculum Vitae: [sohyun_cv.pdf](../assets/Resume.pdf)
-
 If you are interested in my research projects, please feel free to contact me by clicking one of the icons below.
 
 <!-- Write your biography here. Tell the world about yourself. Link to your favorite [subreddit](http://reddit.com). You can put a picture in, too. The code is already in, just name your picture `prof_pic.jpg` and put it in the `img/` folder.
