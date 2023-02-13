@@ -3,6 +3,12 @@ layout: post
 inline: true
 ---
 
+**3rd POSTECH Research Performance Contest, 2023**
+- Excellence Award
+
+**BK21 Best Paper Award, POSTECH GSAI, 2023**
+- Grand Prize
+
 **Qualcomm Innovation Fellowship South Korea Winner, 2022**
 - FIFO: Learning Fog-invariant Features for Foggy Scene Segmentation (CVPR 2022, Best Paper Finalist)
 - Style Neophile: Constantly Seeking Novel Styles for Domain Generalization (CVPR 2022)
