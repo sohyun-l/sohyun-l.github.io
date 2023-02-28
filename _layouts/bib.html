@@ -96,6 +96,10 @@
                    </div>
              {%- endif %}-->
            
+            {% if entry.equal_contrib -%}
+                  {{"(*equal contribution)"}}
+            {%- endif %}
+              
            <!-- Additional info -->
             {% if entry.additional_info -%}
             <span style="color:red"><b>{{entry.additional_info}}</b></span><br>
