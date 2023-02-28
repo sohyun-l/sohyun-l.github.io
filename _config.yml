@@ -124,7 +124,7 @@ collections:
     output: true
     permalink: /honors/:path/
 
-news_limit: 5
+news_limit: 10
 education_limit: 5
 services_limit: 5
 honors_limit: 10
