@@ -65,9 +65,9 @@
             {%- endif -%}
           {%- endfor %}
           
-          {%- if entry.is_equal%}
-                   {{"(*equal contribution)"}}
-       {%- endif %}  
+          {%- if entry.equal_contrib%}
+             {{"(*equal contribution)"}}
+          {%- endif %}  
           </div>
 
           <!-- Journal/Book title and date -->
@@ -96,9 +96,7 @@
                    </div>
              {%- endif %}-->
            
-            {% if entry.equal_contrib -%}
-                  {{"(*equal contribution)"}}
-            {%- endif %}
+            
               
            <!-- Additional info -->
             {% if entry.additional_info -%}
