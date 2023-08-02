@@ -3,6 +3,7 @@ layout: post
 inline: true
 ---
 
+- **POSTECHIAN fellowship awards**, POSTECH, 2023
 - **POSTECH Research Performance Contest (Excellence Award)**, POSTECH, 2023
 - **BK21 Best Paper Award (Grand Prize)**, POSTECH GSAI, 2023
 - **Qualcomm Innovation Fellowship Winner (3 times)**, Qualcomm Korea Corp., 2022
