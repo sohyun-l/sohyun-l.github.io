@@ -3,7 +3,10 @@ layout: post
 inline: true
 ---
 
-**Reviewer** 
+**Journal Reviewer**
+- IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)
+
+**Conference Reviewer**
 - International Conference on Learning Representations (**ICLR**), 2024
 - Conference on Neural Information Processing Systems (**NeurIPS**), 2023
 - International Conference on Computer Vision (**ICCV**), 2023
