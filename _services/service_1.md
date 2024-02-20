@@ -4,7 +4,7 @@ inline: true
 ---
 
 **Journal Reviewer**
-- IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)
+- IEEE Transactions on Pattern Analysis and Machine Intelligence (**TPAMI**)
 
 **Conference Reviewer**
 - International Conference on Learning Representations (**ICLR**), 2024
