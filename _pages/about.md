@@ -7,6 +7,7 @@ subtitle:
 profile:
   align: right
   image: SohyunLee.png
+  image_cicular: true # crops the image to make it circular
   address:
 
 news: true  # includes a list of news items
