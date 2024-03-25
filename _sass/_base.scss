@@ -559,6 +559,24 @@ footer.sticky-bottom {
   }
 }
 
+// experience
+.experience {
+  margin-top: 2rem;
+  h1 {
+  color: var(--global-theme-color);
+  font-size: 2rem;
+  text-align: center;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  }
+  h2 {
+  margin-bottom: 1rem;
+  span {
+  font-size: 1.5rem;
+  }
+  }
+  }
+
 // Honors
 
 .honors {
