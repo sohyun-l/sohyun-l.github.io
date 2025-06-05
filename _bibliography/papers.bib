@@ -6,8 +6,9 @@
 @string{neurips = {Conference on Neural Information Processing Systems (<b>NeurIPS</b>),}}
 
 @inproceedings{lee2025garasam,
-author = {Sohyun Lee and Yeho Kwon and Lukas Hoyer and Suha Kwak},
+author = {Sohyun Lee and Yeho Gwon and Lukas Hoyer and Suha Kwak},
 title ={GaRA-SAM: Robustifying Segment Anything Model with Gated-Rank Adaptation},
+abstract  = {Improving robustness of the Segment Anything Model (SAM) to input degradations is critical for its deployment in high-stakes applications such as autonomous driving and robotics. Our approach to this challenge prioritizes three key aspects: first, parameter efficiency to maintain the inherent generalization capability of SAM; second, fine-grained and input-aware robustification to precisely address the input corruption; and third, adherence to standard training protocols for ease of training. To this end, we propose gated-rank adaptation (GaRA). GaRA introduces lightweight adapters into intermediate layers of the frozen SAM, where each adapter dynamically adjusts the effective rank of its weight matrix based on the input by selectively activating (rank-1) components of the matrix using a learned gating module. This adjustment enables fine-grained and input-aware robustification without compromising the generalization capability of SAM. Our model, GaRA-SAM, significantly outperforms prior work on all robust segmentation benchmarks. In particular, it surpasses the previous best IoU score by up to 21.3%p on ACDC, a challenging real corrupted image dataset.},
 booktitle = {arXiv preprint,},
 arxiv={2506.02882},
 year = {2025},
@@ -18,6 +19,7 @@ img_path={assets/img/garasam_teaser.png}
 @inproceedings{lee2025dicotta,
 author = {Sohyun Lee and Nayeong Kim and Juwon Kang and Seongjoon Oh and Suha Kwak},
 title ={TestDG: Test-time Domain Generalization for Continual Test-time Adaptation},
+abstract = {This paper studies continual test-time adaptation (CTTA), the task of adapting a model to constantly changing unseen domains in testing while preserving previously learned knowledge. Existing CTTA methods mostly focus on adaptation to the current test domain only, overlooking generalization to arbitrary test domains a model may face in the future. To tackle this limitation, we present a novel online test-time domain generalization framework for CTTA, dubbed TestDG. TestDG aims to learn features invariant to both current and previous test domains on the fly during testing, improving the potential for effective generalization to future domains. To this end, we propose a new model architecture and a test-time adaptation strategy dedicated to learning domain-invariant features, along with a new data structure and optimization algorithm for effectively managing information from previous test domains. TestDG achieved state of the art on four public CTTA benchmarks. Moreover, it showed superior generalization to unseen test domains.},
 booktitle = {arXiv preprint,},
 arxiv={2504.04981},
 year = {2025},
