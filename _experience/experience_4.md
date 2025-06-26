@@ -6,4 +6,4 @@ inline: true
 
 [ETH Zürich](https://ethz.ch/en.html), Zürich, Switzerland \
 *Visiting Research Student*
-- Host: Prof. [Christos Sakaridis](https://people.ee.ethz.ch/~csakarid/), Prof. [Konrad Schindler](https://prs.igp.ethz.ch/group/people/person-detail.schindler.html)
+- Host: Dr. [Christos Sakaridis](https://people.ee.ethz.ch/~csakarid/), Prof. [Konrad Schindler](https://prs.igp.ethz.ch/group/people/person-detail.schindler.html)
