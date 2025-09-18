@@ -8,6 +8,7 @@
 @inproceedings{lee2025garasam,
 author = {Sohyun Lee and Yeho Gwon and Lukas Hoyer and Suha Kwak},
 title ={GaRA-SAM: Robustifying Segment Anything Model with Gated-Rank Adaptation},
+booktitle = neurips,
 abstract  = {Improving robustness of the Segment Anything Model (SAM) to input degradations is critical for its deployment in high-stakes applications such as autonomous driving and robotics. Our approach to this challenge prioritizes three key aspects: first, parameter efficiency to maintain the inherent generalization capability of SAM; second, fine-grained and input-aware robustification to precisely address the input corruption; and third, adherence to standard training protocols for ease of training. To this end, we propose gated-rank adaptation (GaRA). GaRA introduces lightweight adapters into intermediate layers of the frozen SAM, where each adapter dynamically adjusts the effective rank of its weight matrix based on the input by selectively activating (rank-1) components of the matrix using a learned gating module. This adjustment enables fine-grained and input-aware robustification without compromising the generalization capability of SAM. Our model, GaRA-SAM, significantly outperforms prior work on all robust segmentation benchmarks. In particular, it surpasses the previous best IoU score by up to 21.3%p on ACDC, a challenging real corrupted image dataset.},
 arxiv={2506.02882},
 year = {2025},
