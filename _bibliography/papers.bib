@@ -5,6 +5,16 @@
 @string{eccv = {European Conference on Computer Vision (<b>ECCV</b>),}}
 @string{neurips = {Conference on Neural Information Processing Systems (<b>NeurIPS</b>),}}
 
+
+@inproceedings{lee2026moga,
+author = {Sohyun Lee and Yeho Gwon and Lukas Hoyer and Konrad Schindler and Christos Sakaridis and Suha Kwak},
+title ={Robust Promptable Video Object Segmentation},
+abstract = {The performance of promptable video object segmentation (PVOS) models substantially degrades under input corruptions, which prevents PVOS deployment in safety-critical domains. This paper offers the first comprehensive study on robust PVOS (RobustPVOS). We first construct a new, comprehensive benchmark with two real-world evaluation datasets of 351 video clips and more than 2,500 object masks under real-world adverse conditions. At the same time, we generate synthetic training data by applying diverse and temporally varying corruptions to existing VOS datasets. Moreover, we present a new RobustPVOS method, dubbed Memory-object-conditioned Gated-rank Adaptation (MoGA). The key to successfully performing RobustPVOS is two-fold: effectively handling object-specific degradation and ensuring temporal consistency in predictions. MoGA leverages object-specific representations maintained in memory across frames to condition the robustification process, which allows the model to handle each tracked object differently in a temporally consistent way. Extensive experiments on our benchmark validate MoGA's efficacy, showing consistent and significant improvements across diverse corruption types on both synthetic and real-world datasets, establishing a strong baseline for future RobustPVOS research. Our benchmark will be made publicly available.},
+booktitle = {Under Review},
+year = {2026},
+selected = {true},
+}
+
 @inproceedings{lee2025garasam,
 author = {Sohyun Lee and Yeho Gwon and Lukas Hoyer and Suha Kwak},
 title ={GaRA-SAM: Robustifying Segment Anything Model with Gated-Rank Adaptation},
