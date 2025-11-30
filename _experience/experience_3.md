@@ -6,4 +6,4 @@ inline: true
 
 Google Zürich \
 *Research Collaboration*
-- Working with [Lukas Hoyer](https://lhoyer.github.io/)
+- Working with [Dr. Lukas Hoyer](https://lhoyer.github.io/)
