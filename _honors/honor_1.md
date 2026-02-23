@@ -3,6 +3,9 @@ layout: post
 inline: true
 ---
 
+- **Best Ph.D Dissertation Award**, School of EECS at POSTECH, 2026
+  - Awarded to one Ph.D. graduate across 5 departments (GSAI, CSE, EE, CITE, SEMI)
+- Excellence Prize at BK21 Best Paper Award, POSTECH GSAI, 2024
 - POSTECHIAN fellowship awards, POSTECH, 2023
 - POSTECH Research Performance Contest (Excellence Award), POSTECH, 2023
 - BK21 Best Paper Award (Grand Prize), POSTECH GSAI, 2023
