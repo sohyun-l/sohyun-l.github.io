@@ -8,6 +8,7 @@ inline: true
   
 **Journal Reviewer**
 - IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)
+- International Journal of Computer Vision (IJCV)
 
 **Conference Reviewer**
 - ICLR, NeurIPS, ICCV, CVPR, ECCV, AAAI, WACV, ACCV
