@@ -19,7 +19,7 @@ honors: true
 social: true  # includes social icons at the bottom of the page
 ---
 
-I am a postdoctoral researcher at [POSTECH CSE](https://cse.postech.ac.kr/csepostech/index.do), working with Prof. [Suha Kwak](https://suhakwak.github.io), who also advised my Ph.D. in Artificial Intelligence at POSTECH GSAI.\
+I am a postdoctoral researcher in the [Computer Vision Lab](https://cvlab.postech.ac.kr) at [POSTECH CSE](https://cse.postech.ac.kr/csepostech/index.do), working with Prof. [Suha Kwak](https://suhakwak.github.io), who also advised my Ph.D. in Artificial Intelligence at POSTECH GSAI.\
 \
 My research focuses on building robust recognition and vision-language-action systems that perform reliably under adverse conditions, encompassing domain adaptation, generalization, and test-time adaptation.
 
