@@ -5,5 +5,5 @@ inline: true
 ---
 
 [Tübingen AI Center, University of Tübingen](https://tuebingen.ai/), Tübingen, Germany \
-*Visiting Research Student*
+*Visiting Researcher*
 - Host: Prof. [Seong Joon Oh](https://coallaoh.github.io/)
