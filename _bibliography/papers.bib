@@ -6,6 +6,29 @@
 @string{neurips = {Conference on Neural Information Processing Systems (<b>NeurIPS</b>),}}
 
 
+@inproceedings{lee2026selfcompensatingvla,
+author = {Sohyun Lee* and Yoonjae Baek* and Jaesang Won and Jinnyeong Kim and Seung-Hwan Baek and Ivan Laptev and Suha Kwak},
+title ={Robustness to Robot Hardware Imperfections: A Benchmark and a Self-Compensating VLA},
+abstract = {In this paper, we investigate the robustness of vision-language-action (VLA) models against hardware imperfections. To circumvent the high costs of physical testing, we first introduce a new simulated benchmark, termed Simulated Hardware IMperfections (SHIM), for rigorous evaluation of VLA robustness under precisely controlled hardware imperfections. SHIM models physical hardware realities by incorporating state-dependent, non-Markovian, and joint-level noises, and offers deployment scenarios that combine these noises to approximate real-world composite imperfections. We further present Self-Compensating VLA, a deployment-time adaptation framework that enables a VLA policy to adapt to hardware imperfections on the fly. Our framework adapts online from the residual between its commanded and executed motion, compensating for them without labels. Experiments on SHIM show that our framework broadly improves upon the base policy across diverse settings and successfully adapts to two physical robots with distinct imperfections.},
+booktitle = {Under Review},
+year = {2026},
+selected = {true},
+img_path={assets/img/selfcompvla_teaser.png}
+equal_contrib={true}
+}
+
+@inproceedings{lee2025dicotta,
+author = {Sohyun Lee and Nayeong Kim and Juwon Kang and Seongjoon Oh and Suha Kwak},
+title ={TestDG: Test-time Domain Generalization for Continual Test-time Adaptation},
+abstract = {This paper studies continual test-time adaptation (CTTA), the task of adapting a model to constantly changing unseen domains in testing while preserving previously learned knowledge. Existing CTTA methods mostly focus on adaptation to the current test domain only, overlooking generalization to arbitrary test domains a model may face in the future. To tackle this limitation, we present a novel online test-time domain generalization framework for CTTA, dubbed TestDG. TestDG aims to learn features invariant to both current and previous test domains on the fly during testing, improving the potential for effective generalization to future domains. To this end, we propose a new model architecture and a test-time adaptation strategy dedicated to learning domain-invariant features, along with a new data structure and optimization algorithm for effectively managing information from previous test domains. TestDG achieved state of the art on four public CTTA benchmarks. Moreover, it showed superior generalization to unseen test domains.},
+booktitle = {Under Review},
+arxiv={2504.04981},
+year = {2026},
+selected = {true},
+code= {https://github.com/sohyun-l/TestDG},
+img_path={assets/img/testdg_teaser.png}
+}
+
 @inproceedings{lee2026moga,
 author = {Sohyun Lee and Yeho Gwon and Lukas Hoyer and Konrad Schindler and Christos Sakaridis and Suha Kwak},
 title ={Robust Promptable Video Object Segmentation},
@@ -33,17 +56,6 @@ website={https://sohyun-l.github.io/garasam_project_page/},
 img_path={assets/img/garasam_teaser.png}
 }
 
-@inproceedings{lee2025dicotta,
-author = {Sohyun Lee and Nayeong Kim and Juwon Kang and Seongjoon Oh and Suha Kwak},
-title ={TestDG: Test-time Domain Generalization for Continual Test-time Adaptation},
-abstract = {This paper studies continual test-time adaptation (CTTA), the task of adapting a model to constantly changing unseen domains in testing while preserving previously learned knowledge. Existing CTTA methods mostly focus on adaptation to the current test domain only, overlooking generalization to arbitrary test domains a model may face in the future. To tackle this limitation, we present a novel online test-time domain generalization framework for CTTA, dubbed TestDG. TestDG aims to learn features invariant to both current and previous test domains on the fly during testing, improving the potential for effective generalization to future domains. To this end, we propose a new model architecture and a test-time adaptation strategy dedicated to learning domain-invariant features, along with a new data structure and optimization algorithm for effectively managing information from previous test domains. TestDG achieved state of the art on four public CTTA benchmarks. Moreover, it showed superior generalization to unseen test domains.},
-booktitle = {arXiv preprint,},
-arxiv={2504.04981},
-year = {2025},
-selected = {true},
-code= {https://github.com/sohyun-l/TestDG},
-img_path={assets/img/testdg_teaser.png}
-}
 
 @inproceedings{lee2024frest,
   author  = {Sohyun Lee and Namyup Kim and Sungyeon Kim and Suha Kwak},
