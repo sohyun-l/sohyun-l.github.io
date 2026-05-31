@@ -11,5 +11,5 @@ inline: true
 - International Journal of Computer Vision (IJCV)
 
 **Conference Reviewer**
-- ICLR, NeurIPS, ICCV, CVPR, ECCV, AAAI, WACV, ACCV
+- CoRL, ICLR, NeurIPS, ICCV, CVPR, ECCV, AAAI, WACV, ACCV
 
