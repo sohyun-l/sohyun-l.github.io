@@ -1,14 +1,18 @@
 # Gallery items. Add your photos to assets/img/gallery/ and list them here.
-# Each item: image (path under assets/img/gallery/) and an optional caption.
-- image: photo1.png
-  caption: Add your caption here
-- image: photo2.png
-  caption: Add your caption here
-- image: photo3.png
-  caption: Add your caption here
-- image: photo4.png
-  caption: Add your caption here
-- image: photo5.png
-  caption: Add your caption here
-- image: photo6.png
-  caption: Add your caption here
+# Each item: image (filename under assets/img/gallery/) and an optional caption.
+- image: cvpr22_workshop.jpg
+  caption: Invited talk, V4AS Workshop @ CVPR 2022
+- image: cvpr22_fifo.jpg
+  caption: FIFO @ CVPR 2022
+- image: cvpr23.jpg
+  caption: CVPR 2023
+- image: tubingen.jpg
+  caption: Tübingen AI Center, 2024
+- image: tubingen2.jpg
+  caption: Tübingen AI Center, 2024
+- image: swiss.jpg
+  caption: ETH Zürich, Switzerland, 2025
+- image: graduation.jpg
+  caption: Ph.D. Graduation, 2026
+- image: cvpr26.jpg
+  caption: CVPR 2026
