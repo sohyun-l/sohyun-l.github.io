@@ -693,6 +693,24 @@ html.transition *:after {
 }
 
 /*******************************************************************************
+ * Visitor map widget
+ ******************************************************************************/
+
+.mapmyvisitors-widget {
+  margin: 2.5rem auto 1rem;
+  text-align: center;
+
+  // Keep the visitor map small so it doesn't dominate the page
+  img,
+  iframe,
+  canvas,
+  embed {
+    max-width: 200px;
+    height: auto;
+  }
+}
+
+/*******************************************************************************
  * Gallery
  ******************************************************************************/
 
