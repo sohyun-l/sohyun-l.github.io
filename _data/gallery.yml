@@ -30,10 +30,10 @@
 - image: eccv22.jpg
   caption: ECCV 2022
 - image: eccv22_presentation.jpg
-  caption: ECCV 2022 presentation
+  caption: ECCV 2022
 - image: cvpr22.jpg
   caption: CVPR 2022
 - image: cvpr22_fifo.jpg
-  caption: FIFO @ CVPR 2022
+  caption: CVPR 2022
 - image: cvpr22_workshop.jpg
   caption: Invited paper talk, V4AS Workshop @ CVPR 2022
