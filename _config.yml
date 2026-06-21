@@ -78,6 +78,7 @@ google_analytics:  # your google-analytics ID (format: UA-XXXXXXXXX)
 google_site_verification:  # your google-site-verification ID (Google Search Console)
 bing_site_verification:  # out your bing-site-verification ID (Bing Webmaster)
 panelbear_analytics:  # panelbear analytics site ID (format: XXXXXXXXX)
+mapmyvisitors_id: eqmeXayAbKjPDkBB2FKVj3afISBnWFI1my0w529iYi4  # MapMyVisitors widget id (the d= value)
 
 # -----------------------------------------------------------------------------
 # Blog
@@ -286,6 +287,7 @@ jekyll-diagrams:
 
 enable_google_analytics:    false  # enables google analytics
 enable_panelbear_analytics: false  # enables panelbear analytics
+enable_mapmyvisitors:       true   # enables MapMyVisitors visitor map widget
 enable_google_verification: false  # enables google site verification
 enable_bing_verification:   false  # enables bing site verification
 enable_masonry:             true   # enables automatic project cards arangement

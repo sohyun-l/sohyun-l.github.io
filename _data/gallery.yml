@@ -1,0 +1,14 @@
+# Gallery items. Add your photos to assets/img/gallery/ and list them here.
+# Each item: image (path under assets/img/gallery/) and an optional caption.
+- image: photo1.png
+  caption: Add your caption here
+- image: photo2.png
+  caption: Add your caption here
+- image: photo3.png
+  caption: Add your caption here
+- image: photo4.png
+  caption: Add your caption here
+- image: photo5.png
+  caption: Add your caption here
+- image: photo6.png
+  caption: Add your caption here
