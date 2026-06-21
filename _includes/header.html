@@ -46,7 +46,7 @@
                 
               <!-- CV -->
               <li class="nav-item">
-                <a class="nav-link" href="/assets/Resume.pdf" target="_blank"  rel="noopener noreferrer" class="float-right">Curriculum Vitae</a>
+                <a class="nav-link" href="/assets/Resume.pdf" target="_blank"  rel="noopener noreferrer" class="float-right">Curriculum Vitae{% if site.cv_last_updated %}<span class="cv-updated">Updated {{ site.cv_last_updated }}</span>{% endif %}</a>
               </li>
                 
               <!-- Other pages -->

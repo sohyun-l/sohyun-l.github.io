@@ -692,6 +692,15 @@ html.transition *:after {
   padding-top: 0.25rem;
 }
 
+// Small "Updated <date>" note under the Curriculum Vitae nav link
+.cv-updated {
+  display: block;
+  font-size: 0.65rem;
+  line-height: 1;
+  color: var(--global-text-color-light);
+  margin-top: 1px;
+}
+
 /*******************************************************************************
  * Visitor map widget
  ******************************************************************************/
