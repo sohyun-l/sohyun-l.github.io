@@ -1,8 +1,8 @@
 ---
 layout: page
 permalink: /gallery/
-title: gallery
-description: A collection of photos and moments.
+title: Gallery
+description: Last updated June 21, 2026
 nav: true
 ---
 
