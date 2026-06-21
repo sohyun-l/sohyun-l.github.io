@@ -4,16 +4,18 @@
 
 // Typography
 
-body {
+body,
+h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Lora', Georgia, 'Times New Roman', serif;
+p, h1, h2, h3, h4, h5, h6, em, div, li, span {
+  color: var(--global-text-color);
 }
 
-p, h1, h2, h3, h4, h5, h6, em, div, li, span, strong {
-  color: var(--global-text-color);
+// Bold-emphasized highlights use the theme color
+strong, b {
+  color: var(--global-theme-color);
 }
 
 hr {
