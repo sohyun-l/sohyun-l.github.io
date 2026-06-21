@@ -2,17 +2,37 @@
 # Each item: image (filename under assets/img/gallery/) and an optional caption.
 - image: cvpr22_workshop.jpg
   caption: Invited talk, V4AS Workshop @ CVPR 2022
+- image: cvpr22.jpg
+  caption: CVPR 2022
 - image: cvpr22_fifo.jpg
   caption: FIFO @ CVPR 2022
+- image: eccv22.jpg
+  caption: ECCV 2022
+- image: eccv22_presentation.jpg
+  caption: ECCV 2022 presentation
 - image: cvpr23.jpg
   caption: CVPR 2023
+- image: neurips23.jpg
+  caption: NeurIPS 2023
 - image: tubingen.jpg
   caption: Tübingen AI Center, 2024
 - image: tubingen2.jpg
   caption: Tübingen AI Center, 2024
+- image: accv_wicv.jpg
+  caption: WiCV @ ACCV 2024
+- image: eccv24.jpg
+  caption: ECCV 2024
 - image: swiss.jpg
   caption: ETH Zürich, Switzerland, 2025
+- image: neurips25.jpg
+  caption: NeurIPS 2025
+- image: neurips25_2.jpg
+  caption: NeurIPS 2025
+- image: dissertation_award.jpg
+  caption: Best Ph.D. Dissertation Award, 2026
 - image: graduation.jpg
   caption: Ph.D. Graduation, 2026
 - image: cvpr26.jpg
   caption: CVPR 2026
+- image: cvpr26_dc.jpg
+  caption: Doctoral Consortium @ CVPR 2026
