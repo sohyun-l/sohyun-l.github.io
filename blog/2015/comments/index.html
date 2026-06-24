@@ -9,10 +9,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Sohyun  Lee | blog</title>
+    <title>Sohyun  Lee | a post with comments</title>
     <meta name="author" content="Sohyun  Lee" />
-    <meta name="description" content="A simple, whitespace theme for academics. Based on [*folio](https://github.com/bogoli/-folio) design.
-" />
+    <meta name="description" content="an example of a blog post with comments" />
     <meta name="keywords" content="jekyll, jekyll-theme, academic-website, portfolio-website" />
 
 
@@ -36,7 +35,7 @@
     <link rel="shortcut icon" href="/assets/img/smile-o"/>
     
     <link rel="stylesheet" href="/assets/css/main.css">
-    <link rel="canonical" href="https://sohyun-l.github.io/blog/">
+    <link rel="canonical" href="https://sohyun-l.github.io/blog/2015/comments/">
     
     <!-- Dark Mode -->
     
@@ -76,7 +75,7 @@
               <!---->
               <!-- Blog -->
               <!--<li class="nav-item active">
-                <a class="nav-link" href="/blog/">blog<span class="sr-only">(current)</span></a>
+                <a class="nav-link" href="/blog/">blog</a>
               </li>-->
                 
               <!-- CV -->
@@ -108,19 +107,41 @@
 
     <!-- Content -->
     <div class="container mt-5">
-      <div class="post">
+      <!-- _layouts/post.html -->
 
-  <div class="header-bar">
-    <h1>al-folio</h1>
-    <h2>a simple whitespace theme for academics</h2>
-  </div>
+<div class="post">
 
+  <header class="post-header">
+    <h1 class="post-title">a post with comments</h1>
+    <p class="post-meta">October 20, 2015</p>
+    <p class="post-tags">
+      <a href="/blog/2015"> <i class="fas fa-calendar fa-sm"></i> 2015 </a>
+        ·  
+        <a href="/blog/category/sample-posts">
+          <i class="fas fa-tag fa-sm"></i> sample-posts</a>  
+          <a href="/blog/category/external-services">
+          <i class="fas fa-tag fa-sm"></i> external-services</a>  
+          
 
-  <ul class="post-list">
-    
-  </ul>
+    </p>
+  </header>
 
-  
+  <article class="post-content">
+    <p>This post shows how to add DISQUS comments.</p>
+
+  </article><div id="disqus_thread"></div>
+    <script type="text/javascript">
+      var disqus_shortname  = 'al-folio';
+      var disqus_identifier = '/blog/2015/comments';
+      var disqus_title      = "a post with comments";
+      (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript" target="_blank" rel="noopener noreferrer">comments powered by Disqus.</a>
+</noscript>
 
 </div>
 
