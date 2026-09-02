@@ -1,24 +1,90 @@
 # Coauthor URLs — looked up by last name, then filtered by first name match
 # in _layouts/bib.html. Personal homepage > Google Scholar > (omit).
-# NOTE: the template does a `contains` match on firstname, so a firstname
-# entry "Seongjoon" matches any bib-entry firstname containing "Seongjoon".
-# Include enough variants (initials, full first name) if you use them
-# inconsistently in the .bib file.
+# NOTE: the template does a `contains` match on firstname, so include
+# reasonable variants (initials, alt romanizations) if the .bib file spells
+# the name differently across entries.
 
-# ---------------------------------------------------------------------------
-# Sohyun's advisors, collaborators, and hosts (from about.md)
-# ---------------------------------------------------------------------------
-"Kwak":
-  - firstname: ["Suha"]
-    url: https://suhakwak.github.io/
+"Baek":
+  - firstname: ["Seung-Hwan"]
+    url: https://www.shbaek.com/
 
-"Oh":
-  - firstname: ["Seong Joon", "Seong-Joon", "Seongjoon", "S. J."]
-    url: https://seongjoonoh.com/
+"Cho":
+  - firstname: ["Sunghyun"]
+    url: https://www.scho.pe.kr/
+
+"Choi":
+  - firstname: ["Eunsue"]
+    url: https://eschoi.com/
+  - firstname: ["Minho"]
+    url: https://www.mchoilab.com/
+
+"Gwon":
+  - firstname: ["Yeho"]
+    url: https://yehogwon.github.io/
 
 "Hoyer":
   - firstname: ["Lukas"]
     url: https://lhoyer.github.io/
+
+"Hwang":
+  - firstname: ["Sehyun"]
+    url: https://sehyun03.github.io/
+
+"Jeong":
+  - firstname: ["Boseung"]
+    url: https://boseungjeong.github.io/
+
+"Kang":
+  - firstname: ["Dohyun"]
+    url: https://scholar.google.com/citations?user=pPKLdM0AAAAJ
+  - firstname: ["Juwon"]
+    url: https://scholar.google.com/citations?user=nwN9X2UAAAAJ&hl=en
+
+"Kim":
+  - firstname: ["Seoyeon"]
+    url: https://yeon07.github.io/
+  - firstname: ["Jinnyeong"]
+    url: https://divisonofficer.github.io/
+  - firstname: ["Nayeong"]
+    url: https://nayeong-v-kim.github.io/
+  - firstname: ["Namyup"]
+    url: https://southflame.github.io/
+  - firstname: ["Sungyeon"]
+    url: https://sung-yeon-kim.github.io/
+  - firstname: ["Hoyoung"]
+    url: https://cskhy16.github.io/
+  - firstname: ["Geonu", "GeonU"]
+    url: https://kim-geonu.github.io/
+
+"Kwak":
+  - firstname: ["Suha"]
+    url: https://suhakwak.github.io/
+
+"Laptev":
+  - firstname: ["Ivan"]
+    url: https://scholar.google.com/citations?user=-9ifK0cAAAAJ&hl=en
+
+"Majumdar":
+  - firstname: ["Arka"]
+    url: https://people.ece.uw.edu/majumdar_arka/
+
+"Oh":
+  - firstname: ["Seong Joon", "Seong-Joon", "Seongjoon", "S. J."]
+    url: https://seongjoonoh.com/
+  - firstname: ["Minhyeon"]
+    url: https://minhyeonoh.github.io/
+
+"Ok":
+  - firstname: ["Jungseul"]
+    url: https://sites.google.com/view/jungseulok
+
+"Rho":
+  - firstname: ["Junsuk"]
+    url: https://photonics.postech.ac.kr/
+
+"Rim":
+  - firstname: ["Jaesung"]
+    url: https://rimchang.github.io/
 
 "Sakaridis":
   - firstname: ["Christos"]
@@ -28,6 +94,21 @@
   - firstname: ["Konrad"]
     url: https://prs.igp.ethz.ch/group/people/person-detail.schindler.html
 
-"Laptev":
-  - firstname: ["Ivan"]
-    url: https://scholar.google.com/citations?user=-9ifK0cAAAAJ&hl=en
+"Son":
+  - firstname: ["Taeyoung"]
+    url: https://taeyoungson.github.io/
+
+"Woo":
+  - firstname: ["ByungJu", "Byungju", "Byeongju"]
+    url: https://byeongju.me/
+
+"Yoon":
+  - firstname: ["Seungwoo"]
+    url: https://sites.google.com/view/seungwoo-yoon/
+
+# ---------------------------------------------------------------------------
+# Deliberately omitted (no confirmable homepage / Scholar found):
+#   Hyeonsu Heo, Dong-Ha Shin, Yoonjae Baek, Jaesang Won, Jinnyeong Kim
+#   (already linked above), Haechan Lee.
+# Add here if pages appear later.
+# ---------------------------------------------------------------------------
