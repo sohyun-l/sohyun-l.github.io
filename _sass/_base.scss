@@ -768,17 +768,9 @@ footer.sticky-bottom {
   }
 }
 
-.publications h2.year {
-  font-weight: 600;
-  color: var(--global-text-color-light);
-  border-top: 1px solid var(--global-divider-color);
-  padding-top: 1rem;
-  margin-top: 2rem;
-  margin-bottom: -1.5rem;
-  text-align: right;
-  font-size: 1.1rem;
-  letter-spacing: 0.02em;
-}
+// (Publications h2.year keeps the original al-folio treatment defined
+// inside the `.publications` block above — large default h2 size, in
+// the divider color, right-aligned as a watermark separator.)
 
 // Rouge Color Customization
 figure.highlight {
