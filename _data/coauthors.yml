@@ -55,8 +55,6 @@
     url: https://sung-yeon-kim.github.io/
   - firstname: ["Hoyoung"]
     url: https://cskhy16.github.io/
-  - firstname: ["Geonu", "GeonU"]
-    url: https://kim-geonu.github.io/
 
 "Kwak":
   - firstname: ["Suha"]
@@ -113,7 +111,9 @@
     url: https://sites.google.com/view/seungwoo-yoon/
 
 # ---------------------------------------------------------------------------
-# Deliberately omitted (no confirmable homepage / Scholar found):
-#   Hyeonsu Heo, Dong-Ha Shin, Haechan Lee.
+# Deliberately omitted:
+#   Hyeonsu Heo, Dong-Ha Shin, Haechan Lee — no confirmable page/Scholar.
+#   Geonu Kim — the candidate homepage (kim-geonu.github.io) is a
+#     different person; leave unlinked until the correct URL is known.
 # Add here if pages appear later.
 # ---------------------------------------------------------------------------

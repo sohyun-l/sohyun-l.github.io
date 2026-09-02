@@ -25,25 +25,8 @@ p, h1, h2, h3, h4, h5, h6, em, div, li, span {
   color: var(--global-text-color);
 }
 
-// Post title (name at top of about page) — Newsreader upright, rounded
-// book serif with soft terminals; warmer/rounder than Fraunces.
-.post-title {
-  font-family: 'Newsreader', 'Iowan Old Style', 'Georgia', serif;
-  font-style: normal;
-  font-weight: 500;
-  font-size: 3rem;
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
-  font-variation-settings: "opsz" 72;
-  .font-weight-bold { font-weight: 600; }
-}
-.post-header .desc {
-  color: var(--global-text-color-light);
-  font-size: 0.95rem;
-  margin-top: 0.2rem;
-}
+// (Big "Sohyun Lee" hero header removed from _layouts/about.html —
+// the navbar-brand already carries the name.)
 
 // Bold-emphasized highlights use the theme color
 strong, b {
@@ -208,16 +191,13 @@ blockquote {
   .navbar-brand {
     color: var(--global-text-color);
   }
-  // Small "Sohyun Lee" in the top-left — match the hero name's Newsreader.
+  // Small "Sohyun Lee" in the top-left — body font (Inter) in bold.
   .navbar-brand.title {
-    font-family: 'Newsreader', 'Iowan Old Style', 'Georgia', serif;
-    font-weight: 500;
-    font-style: normal;
+    font-weight: 700;
     font-size: 1.15rem;
-    letter-spacing: -0.008em;
-    font-variation-settings: "opsz" 20;
-    .font-weight-bold { font-weight: 600; }
-    .font-weight-lighter { font-weight: 400; }
+    letter-spacing: -0.015em;
+    .font-weight-bold { font-weight: 700; }
+    .font-weight-lighter { font-weight: 700; }
   }
   .navbar-nav .nav-item .nav-link {
     color: var(--global-text-color);
@@ -649,22 +629,21 @@ footer.sticky-bottom {
 }
 
 // Shared: section headings on the about page (News, Experience, Education,
-// Services, Honors, Publications) — editorial serif italic with a subtle
-// underline. Left-aligned, generous space above.
+// Services, Honors, Publications) — body font (Inter) in bold with a
+// subtle underline.
 .news > h2,
 .experience > h2,
 .education > h2,
 .services > h2,
 .honors > h2,
 .publications > h2:first-of-type {
-  font-family: 'Instrument Serif', 'Iowan Old Style', 'Georgia', serif;
-  font-style: italic;
-  font-weight: 400;
-  font-size: 1.9rem;
-  letter-spacing: 0;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.015em;
   color: var(--global-text-color);
   border-bottom: 1px solid var(--global-divider-color);
-  padding-bottom: 0.35rem;
+  padding-bottom: 0.4rem;
   margin-top: 2.4rem;
   margin-bottom: 1rem;
 }
@@ -790,16 +769,15 @@ footer.sticky-bottom {
 }
 
 .publications h2.year {
-  font-family: 'Instrument Serif', 'Iowan Old Style', 'Georgia', serif;
-  font-style: italic;
-  font-weight: 400;
+  font-weight: 600;
   color: var(--global-text-color-light);
   border-top: 1px solid var(--global-divider-color);
   padding-top: 1rem;
   margin-top: 2rem;
   margin-bottom: -1.5rem;
   text-align: right;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
 }
 
 // Rouge Color Customization
