@@ -25,17 +25,19 @@ p, h1, h2, h3, h4, h5, h6, em, div, li, span {
   color: var(--global-text-color);
 }
 
-// Post title (name at top of about page) — editorial serif identity.
+// Post title (name at top of about page) — editorial serif identity
+// using Fraunces upright (warm, book-like, less flourish than italic).
 .post-title {
-  font-family: 'Instrument Serif', 'Iowan Old Style', 'Georgia', serif;
-  font-style: italic;
-  font-weight: 400;
-  font-size: 3.4rem;
-  line-height: 1.05;
-  letter-spacing: -0.01em;
+  font-family: 'Fraunces', 'Iowan Old Style', 'Georgia', serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 3rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   margin-top: 0.5rem;
   margin-bottom: 0.75rem;
-  .font-weight-bold { font-weight: 400; } // Serif italic doesn't need extra weight.
+  font-variation-settings: "opsz" 96;
+  .font-weight-bold { font-weight: 600; }
 }
 .post-header .desc {
   color: var(--global-text-color-light);

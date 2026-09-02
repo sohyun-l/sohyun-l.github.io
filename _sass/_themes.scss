@@ -3,19 +3,19 @@
  ******************************************************************************/
  
 :root {
-  // Warm paper light theme — inspired by editorial academic sites.
-  --global-bg-color: #faf8f5;
+  // Soft strawberry-milk-meets-beige light theme — very pale warm pink.
+  --global-bg-color: #faf0eb;
   --global-code-bg-color: #{$code-bg-color-light};
-  --global-text-color: #2a2a2a;
-  --global-text-color-light: #6b6b6b;
+  --global-text-color: #2a2422;
+  --global-text-color-light: #7a6b66;
   --global-theme-color: #{$blue-color};
   --global-hover-color: #{$blue-color-dark};
   --global-footer-bg-color: #{$grey-color-dark};
   --global-footer-text-color: #{$grey-color-light};
   --global-footer-link-color: #{$white-color};
   --global-distill-app-color: #{$grey-color};
-  --global-divider-color: #e0d9cf;
-  --global-card-bg-color: #f4efe6;
+  --global-divider-color: #ead9d0;
+  --global-card-bg-color: #f5e6dc;
 
   .fa-sun {
     display : none;
