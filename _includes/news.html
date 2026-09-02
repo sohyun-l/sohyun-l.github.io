@@ -1,25 +1,51 @@
-          
           <div class="news">
             <h2>News</h2>
-            {% if site.news != blank -%} 
+            {% if site.news != blank -%}
             <div class="table-responsive">
               <table class="table table-sm table-borderless">
-              {%- assign news = site.news | reverse -%} 
-              {% for item in news limit: site.news_limit %} 
-                <tr>
+              {%- assign news = site.news | reverse -%}
+              {%- assign visible_year = "2026" -%}
+              {%- assign older_count = 0 -%}
+              {% for item in news limit: site.news_limit -%}
+                {%- assign item_year = item.date | date: "%Y" -%}
+                {%- if item_year == visible_year -%}
+                  {%- assign row_class = "news-row" -%}
+                {%- else -%}
+                  {%- assign row_class = "news-row news-old" -%}
+                  {%- assign older_count = older_count | plus: 1 -%}
+                {%- endif -%}
+                <tr class="{{ row_class }}">
                   <th scope="row">{{ item.date | date: "%b %-d, %Y" }}</th>
                   <td>
-                    {% if item.inline -%} 
+                    {% if item.inline -%}
                       {{ item.content | remove: '<p>' | remove: '</p>' | emojify }}
-                    {%- else -%} 
+                    {%- else -%}
                       <a class="news-title" href="{{ item.url | relative_url }}">{{ item.title }}</a>
-                    {%- endif %} 
+                    {%- endif %}
                   </td>
                 </tr>
-              {%- endfor %} 
+              {%- endfor %}
               </table>
             </div>
-          {%- else -%} 
+            {%- if older_count > 0 %}
+            <button type="button" class="news-toggle" id="news-toggle"
+                    data-more-text="Show older news ▾"
+                    data-less-text="Hide older news ▴"
+                    aria-expanded="false">Show older news ▾</button>
+            <script>
+              (function () {
+                var toggle = document.getElementById('news-toggle');
+                if (!toggle) return;
+                var section = toggle.closest('.news');
+                toggle.addEventListener('click', function () {
+                  var expanded = section.classList.toggle('news-expanded');
+                  toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                  toggle.textContent = expanded ? toggle.dataset.lessText : toggle.dataset.moreText;
+                });
+              })();
+            </script>
+            {%- endif %}
+          {%- else -%}
             <p>No news so far...</p>
-          {%- endif %} 
+          {%- endif %}
           </div>

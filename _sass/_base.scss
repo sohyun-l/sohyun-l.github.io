@@ -7,10 +7,28 @@
 body,
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.015em;
 }
 
 p, h1, h2, h3, h4, h5, h6, em, div, li, span {
   color: var(--global-text-color);
+}
+
+// Post title (name at top of about page)
+.post-title {
+  letter-spacing: -0.025em;
+  font-weight: 400;
 }
 
 // Bold-emphasized highlights use the theme color
@@ -573,22 +591,15 @@ footer.sticky-bottom {
 .experience {
   margin-top: 2rem;
   h1 {
-  color: var(--global-theme-color);
-  font-size: 2rem;
-  text-align: center;
-  margin-top: 1em;
-  margin-bottom: 1em;
+    color: var(--global-theme-color);
+    font-size: 2rem;
+    text-align: center;
+    margin-top: 1em;
+    margin-bottom: 1em;
   }
-  h2 {
-  margin-bottom: 1rem;
-  span {
-  font-size: 1.5rem;
-  }
-  }
-  }
+}
 
 // Honors
-
 .honors {
   margin-top: 2rem;
   h1 {
@@ -598,16 +609,9 @@ footer.sticky-bottom {
     margin-top: 1em;
     margin-bottom: 1em;
   }
-  h2 {
-    margin-bottom: 1rem;
-    span {
-      font-size: 1.5rem;
-    }
-  }
 }
 
 // News
-
 .news {
   margin-top: 2rem;
   h1 {
@@ -617,12 +621,64 @@ footer.sticky-bottom {
     margin-top: 1em;
     margin-bottom: 1em;
   }
-  h2 {
-    margin-bottom: 1rem;
-    span {
-      font-size: 1.5rem;
-    }
+}
+
+// Shared: section headings on the about page (News, Experience, Education,
+// Services, Honors, Publications) — subtle underline, left-aligned, tighter.
+.news > h2,
+.experience > h2,
+.education > h2,
+.services > h2,
+.honors > h2,
+.publications > h2:first-of-type {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--global-text-color);
+  border-bottom: 1px solid var(--global-divider-color);
+  padding-bottom: 0.4rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+// Shared: news/experience/honors table typography — muted date column,
+// slightly tighter row padding, better vertical rhythm.
+.news table,
+.experience table,
+.honors table {
+  th[scope="row"] {
+    color: var(--global-text-color-light);
+    font-weight: 500;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    padding-right: 1rem;
+    padding-top: 0.55rem;
+    vertical-align: top;
+    letter-spacing: 0.01em;
   }
+  td {
+    font-size: 0.95rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    line-height: 1.55;
+  }
+}
+
+// News collapsible: hide older rows by default; reveal on .news-expanded.
+.news .news-old { display: none; }
+.news.news-expanded .news-old { display: table-row; }
+
+.news-toggle {
+  background: none;
+  border: none;
+  padding: 0.4rem 0;
+  margin-top: 0.25rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--global-theme-color);
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+  &:focus { outline: none; text-decoration: underline; }
 }
 
 // Rouge Color Customization

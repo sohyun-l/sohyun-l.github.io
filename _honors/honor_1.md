@@ -3,6 +3,7 @@ layout: post
 inline: true
 ---
 
+- **KCCV Doctoral Colloquium**, KCCV, 2026
 - **CVPR Doctoral Consortium**, CVPR, 2026
 - **Best Ph.D Dissertation Award**, College of IT at POSTECH, 2026
   - Awarded to one Ph.D. graduate across 5 departments (GSAI, CSE, EE, CITE, SEMI)
