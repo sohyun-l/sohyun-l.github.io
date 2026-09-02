@@ -7,6 +7,8 @@
 "Baek":
   - firstname: ["Seung-Hwan"]
     url: https://www.shbaek.com/
+  - firstname: ["Yoonjae"]
+    url: https://whyjyj.github.io/
 
 "Cho":
   - firstname: ["Sunghyun"]
@@ -102,13 +104,16 @@
   - firstname: ["ByungJu", "Byungju", "Byeongju"]
     url: https://byeongju.me/
 
+"Won":
+  - firstname: ["Jaesang"]
+    url: https://scholar.google.com/citations?user=xjS9njsAAAAJ&hl=ko
+
 "Yoon":
   - firstname: ["Seungwoo"]
     url: https://sites.google.com/view/seungwoo-yoon/
 
 # ---------------------------------------------------------------------------
 # Deliberately omitted (no confirmable homepage / Scholar found):
-#   Hyeonsu Heo, Dong-Ha Shin, Yoonjae Baek, Jaesang Won, Jinnyeong Kim
-#   (already linked above), Haechan Lee.
+#   Hyeonsu Heo, Dong-Ha Shin, Haechan Lee.
 # Add here if pages appear later.
 # ---------------------------------------------------------------------------

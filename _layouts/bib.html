@@ -25,9 +25,16 @@
               {%- endif -%}
             {%- endif -%}
             {%- assign coauthor_url = nil -%}
-            {%- if site.data.coauthors[author.last] -%}
-              {%- for coauthor in site.data.coauthors[author.last] -%}
-                {%- if coauthor.firstname contains author.first -%}
+            {%- comment -%}
+              Strip equal-contribution / corresponding-author markers
+              ("*", "+") from the parsed last name before lookup, so
+              e.g. "Junsuk Rho+" -> key "Rho", "Yoonjae Baek*" -> "Baek".
+            {%- endcomment -%}
+            {%- assign coauthor_key = author.last | remove: "*" | remove: "+" | strip -%}
+            {%- assign coauthor_first = author.first | remove: "*" | remove: "+" | strip -%}
+            {%- if site.data.coauthors[coauthor_key] -%}
+              {%- for coauthor in site.data.coauthors[coauthor_key] -%}
+                {%- if coauthor.firstname contains coauthor_first -%}
                   {%- assign coauthor_url = coauthor.url -%}
                   {%- break -%}
                 {%- endif -%}
