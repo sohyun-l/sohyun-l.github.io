@@ -25,10 +25,22 @@ p, h1, h2, h3, h4, h5, h6, em, div, li, span {
   color: var(--global-text-color);
 }
 
-// Post title (name at top of about page)
+// Post title (name at top of about page) — editorial serif identity.
 .post-title {
-  letter-spacing: -0.025em;
+  font-family: 'Instrument Serif', 'Iowan Old Style', 'Georgia', serif;
+  font-style: italic;
   font-weight: 400;
+  font-size: 3.4rem;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  .font-weight-bold { font-weight: 400; } // Serif italic doesn't need extra weight.
+}
+.post-header .desc {
+  color: var(--global-text-color-light);
+  font-size: 0.95rem;
+  margin-top: 0.2rem;
 }
 
 // Bold-emphasized highlights use the theme color
@@ -624,20 +636,23 @@ footer.sticky-bottom {
 }
 
 // Shared: section headings on the about page (News, Experience, Education,
-// Services, Honors, Publications) — subtle underline, left-aligned, tighter.
+// Services, Honors, Publications) — editorial serif italic with a subtle
+// underline. Left-aligned, generous space above.
 .news > h2,
 .experience > h2,
 .education > h2,
 .services > h2,
 .honors > h2,
 .publications > h2:first-of-type {
-  font-size: 1.35rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-family: 'Instrument Serif', 'Iowan Old Style', 'Georgia', serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.9rem;
+  letter-spacing: 0;
   color: var(--global-text-color);
   border-bottom: 1px solid var(--global-divider-color);
-  padding-bottom: 0.4rem;
-  margin-top: 2rem;
+  padding-bottom: 0.35rem;
+  margin-top: 2.4rem;
   margin-bottom: 1rem;
 }
 
@@ -679,6 +694,99 @@ footer.sticky-bottom {
   cursor: pointer;
   &:hover { text-decoration: underline; }
   &:focus { outline: none; text-decoration: underline; }
+}
+
+// Selected publications — card polish (thumbnail + info side-by-side is
+// already in _layouts/bib.html; this styles the visual rhythm).
+.publications ol.bibliography > li {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--global-divider-color);
+  &:last-child { border-bottom: none; }
+
+  // Thumbnail treatment.
+  .col-sm-3 {
+    img {
+      border-radius: 6px;
+      background-color: #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    &:hover img {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+    }
+  }
+
+  // Title, authors, venue — tighter and more editorial.
+  .title {
+    font-size: 1.02rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.35;
+    margin-bottom: 0.25rem;
+  }
+  .author {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--global-text-color);
+    margin-bottom: 0.15rem;
+    // The author's own name is wrapped in <em>; render it as an
+    // underlined non-italic highlight to match modern academic sites.
+    > em {
+      font-style: normal;
+      font-weight: 600;
+      border-bottom: 1px solid var(--global-text-color);
+    }
+  }
+  .periodical {
+    font-size: 0.88rem;
+    color: var(--global-text-color-light);
+    font-style: italic;
+    margin-bottom: 0.4rem;
+    em { font-style: italic; }
+  }
+
+  // Compact, softer link buttons.
+  .links {
+    margin-top: 0.35rem;
+    a.btn {
+      font-size: 0.78rem;
+      padding: 0.15rem 0.6rem;
+      border-radius: 4px;
+      border: 1px solid var(--global-divider-color);
+      color: var(--global-text-color-light);
+      margin-right: 0.2rem;
+      margin-bottom: 0.25rem;
+      &:hover {
+        color: var(--global-theme-color);
+        border-color: var(--global-theme-color);
+        background: transparent;
+      }
+    }
+  }
+
+  // Venue badge (.abbr) — cleaner pill.
+  .abbr abbr {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border-radius: 4px;
+    padding: 0.1rem 0.55rem;
+  }
+}
+
+.publications h2.year {
+  font-family: 'Instrument Serif', 'Iowan Old Style', 'Georgia', serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--global-text-color-light);
+  border-top: 1px solid var(--global-divider-color);
+  padding-top: 1rem;
+  margin-top: 2rem;
+  margin-bottom: -1.5rem;
+  text-align: right;
+  font-size: 1.5rem;
 }
 
 // Rouge Color Customization
