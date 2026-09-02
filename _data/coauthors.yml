@@ -1,18 +1,33 @@
-"Adams":
-  - firstname: ["Edwin", "E.", "E. P.", "Edwin Plimpton"]
-    url: https://en.wikipedia.org/wiki/Edwin_Plimpton_Adams
+# Coauthor URLs — looked up by last name, then filtered by first name match
+# in _layouts/bib.html. Personal homepage > Google Scholar > (omit).
+# NOTE: the template does a `contains` match on firstname, so a firstname
+# entry "Seongjoon" matches any bib-entry firstname containing "Seongjoon".
+# Include enough variants (initials, full first name) if you use them
+# inconsistently in the .bib file.
 
-"Podolsky":
-  - firstname: ["Boris", "B.", "B. Y.", "Boris Yakovlevich"]
-    url: https://en.wikipedia.org/wiki/Boris_Podolsky
+# ---------------------------------------------------------------------------
+# Sohyun's advisors, collaborators, and hosts (from about.md)
+# ---------------------------------------------------------------------------
+"Kwak":
+  - firstname: ["Suha"]
+    url: https://suhakwak.github.io/
 
-"Rosen":
-  - firstname: ["Nathan", "N."]
-    url: https://en.wikipedia.org/wiki/Nathan_Rosen
+"Oh":
+  - firstname: ["Seong Joon", "Seong-Joon", "Seongjoon", "S. J."]
+    url: https://seongjoonoh.com/
 
-"Bach": 
-  - firstname: ["Johann Sebastian", "J. S."]
-    url: https://en.wikipedia.org/wiki/Johann_Sebastian_Bach
+"Hoyer":
+  - firstname: ["Lukas"]
+    url: https://lhoyer.github.io/
 
-  - firstname: ["Carl Philipp Emanuel", "C. P. E."]
-    url: https://en.wikipedia.org/wiki/Carl_Philipp_Emanuel_Bach
+"Sakaridis":
+  - firstname: ["Christos"]
+    url: https://people.ee.ethz.ch/~csakarid/
+
+"Schindler":
+  - firstname: ["Konrad"]
+    url: https://prs.igp.ethz.ch/group/people/person-detail.schindler.html
+
+"Laptev":
+  - firstname: ["Ivan"]
+    url: https://scholar.google.com/citations?user=-9ifK0cAAAAJ&hl=en
