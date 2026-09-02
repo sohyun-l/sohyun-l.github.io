@@ -633,7 +633,7 @@ footer.sticky-bottom {
 .education > h2,
 .services > h2,
 .honors > h2,
-.publications > h2:first-of-type {
+.publications > h2:not(.year) {
   border-bottom: 1px solid var(--global-divider-color);
   padding-bottom: 0.4rem;
   margin-top: 2.4rem;
