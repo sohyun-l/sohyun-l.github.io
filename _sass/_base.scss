@@ -7,7 +7,6 @@
 body,
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
 }
 
 body {
@@ -15,10 +14,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.65;
   text-rendering: optimizeLegibility;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  letter-spacing: -0.015em;
 }
 
 p, h1, h2, h3, h4, h5, h6, em, div, li, span {
@@ -628,20 +623,17 @@ footer.sticky-bottom {
   }
 }
 
-// Shared: section headings on the about page (News, Experience, Education,
-// Services, Honors, Publications) — body font (Inter) in bold with a
-// subtle underline.
+// Section headings on the about page (News, Experience, Education,
+// Services, Honors, Publications) — no font overrides so they render
+// identically to the Visitors widget h2 (default Inter, default weight
+// and size from mdbootstrap/base). Only spacing + a subtle underline
+// separator are added here.
 .news > h2,
 .experience > h2,
 .education > h2,
 .services > h2,
 .honors > h2,
 .publications > h2:first-of-type {
-  font-style: normal;
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: -0.015em;
-  color: var(--global-text-color);
   border-bottom: 1px solid var(--global-divider-color);
   padding-bottom: 0.4rem;
   margin-top: 2.4rem;
