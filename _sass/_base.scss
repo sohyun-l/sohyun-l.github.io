@@ -633,11 +633,120 @@ footer.sticky-bottom {
 .education > h2,
 .services > h2,
 .honors > h2,
+.research-direction > h2,
 .publications > h2:not(.year) {
   border-bottom: 1px solid var(--global-divider-color);
   padding-bottom: 0.4rem;
   margin-top: 2.4rem;
   margin-bottom: 1rem;
+}
+
+// About page — "Research Direction" section. Three icon cards (See ·
+// Understand · Act) with paper lists that expand on click. Icons are
+// the same ones from Sohyun's slide (assets/img/rd_*.png).
+.research-direction {
+  clear: both;                         // clear the floated profile image
+
+  .rd-tagline {
+    text-align: center;
+    color: var(--global-text-color-light);
+    font-size: 1rem;
+    margin: 0.75rem 0 1.5rem;
+    em { font-style: italic; }
+  }
+
+  .rd-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    align-items: start;
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .rd-card {
+    background: transparent;
+    border: 1px solid var(--global-divider-color);
+    border-radius: 10px;
+    padding: 1.2rem 1rem;
+    transition: transform 0.25s ease, box-shadow 0.25s ease,
+                background-color 0.25s ease;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    }
+    &[open] {
+      background-color: var(--global-card-bg-color);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  summary {
+    list-style: none;
+    cursor: pointer;
+    text-align: center;
+    outline: none;
+    // Hide native disclosure marker (varies across browsers).
+    &::-webkit-details-marker { display: none; }
+    &::marker { content: ""; }
+  }
+
+  .rd-icon {
+    display: block;
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 0.75rem;
+    object-fit: contain;
+    transition: transform 0.25s ease;
+  }
+  .rd-card:hover .rd-icon { transform: scale(1.04); }
+
+  .rd-label {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #d94545;                    // echoes the red labels in the slide
+    letter-spacing: 0.01em;
+    margin-bottom: 0.15rem;
+  }
+  .rd-sub {
+    font-size: 0.85rem;
+    color: var(--global-text-color-light);
+  }
+
+  .rd-papers {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    border-top: 1px dashed var(--global-divider-color);
+    padding-top: 0.75rem;
+
+    li {
+      font-size: 0.85rem;
+      line-height: 1.5;
+      padding: 0.4rem 0;
+      border-bottom: 1px dotted var(--global-divider-color);
+      &:last-child { border-bottom: none; }
+
+      a {
+        color: var(--global-text-color);
+        text-decoration: none;
+        font-weight: 500;
+        &:hover {
+          color: var(--global-theme-color);
+          text-decoration: underline;
+        }
+      }
+
+      .rd-venue {
+        display: inline-block;
+        margin-left: 0.35rem;
+        color: var(--global-text-color-light);
+        font-size: 0.75rem;
+        font-style: italic;
+      }
+    }
+  }
 }
 
 // Shared: news/experience/honors table typography — muted date column,
