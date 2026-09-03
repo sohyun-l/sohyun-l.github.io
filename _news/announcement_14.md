@@ -1,7 +1,7 @@
 ---
 layout: post
-date: 2026-04-29
+date: 2026-06-06
 inline: true
 ---
 
-🎓 Selected to present at Doctoral Consortium in [CVPR 2026](https://cvpr.thecvf.com/).
+🎓 Presented at the Doctoral Consortium at [CVPR 2026](https://cvpr.thecvf.com/).
