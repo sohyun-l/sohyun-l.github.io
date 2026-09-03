@@ -683,10 +683,18 @@ footer.sticky-bottom {
 // Selected publications — card polish (thumbnail + info side-by-side is
 // already in _layouts/bib.html; this styles the visual rhythm).
 .publications ol.bibliography > li {
-  padding-top: 1.25rem;
-  padding-bottom: 1.25rem;
+  padding: 1.25rem 0.75rem;
+  margin: 0 -0.75rem;
   border-bottom: 1px solid var(--global-divider-color);
+  border-radius: 6px;
+  transition: background-color 0.25s ease, transform 0.25s ease,
+              box-shadow 0.25s ease;
   &:last-child { border-bottom: none; }
+  &:hover {
+    background-color: var(--global-card-bg-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  }
 
   // Thumbnail treatment.
   .col-sm-3 {
@@ -695,10 +703,6 @@ footer.sticky-bottom {
       background-color: #ffffff;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
       transition: transform 0.25s ease, box-shadow 0.25s ease;
-    }
-    &:hover img {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
     }
   }
 
@@ -788,6 +792,37 @@ code {
   padding: 3px 3px;
 }
 
+
+// /publications page — sticky year jumper at the top of content.
+.year-jumper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin: 1.5rem 0 0.5rem;
+  border-bottom: 1px solid var(--global-divider-color);
+  font-size: 0.9rem;
+  position: sticky;
+  top: 56px;               // clears the fixed navbar
+  z-index: 5;
+  background-color: var(--global-bg-color);
+  a {
+    color: var(--global-text-color-light);
+    text-decoration: none;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    &:hover {
+      color: var(--global-theme-color);
+      background-color: var(--global-card-bg-color);
+      text-decoration: none;
+    }
+  }
+}
+
+// Give scroll-linked anchors a bit of headroom under the navbar + jumper.
+.publications h2.year { scroll-margin-top: 110px; }
 
 // Transitioning Themes
 html.transition,
