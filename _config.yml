@@ -8,12 +8,11 @@ middle_name:
 last_name: Lee
 email: lshig96@postech.ac.kr
 description: > # the ">" symbol means to ignore newlines until "footer_text:"
-  A simple, whitespace theme for academics. Based on [*folio](https://github.com/bogoli/-folio) design.
+  Sohyun Lee — Postdoctoral researcher at POSTECH Computer Vision Lab. I build physical AI for the real world, spanning robust perception, foundation model finetuning, test-time adaptation, and reliable vision-language-action models.
 footer_text: >
-  Powered by <a href="https://jekyllrb.com/" target="_blank">Jekyll</a> with <a href="https://github.com/alshedivat/al-folio">al-folio</a> theme.
+  Powered by <a href="https://jekyllrb.com/" target="_blank">Jekyll</a> with the <a href="https://github.com/alshedivat/al-folio">al-folio</a> theme.
   Hosted by <a href="https://pages.github.com/" target="_blank">GitHub Pages</a>.
-  Photos from <a href="https://unsplash.com" target="_blank">Unsplash</a>.
-keywords: jekyll, jekyll-theme, academic-website, portfolio-website  # add your own keywords or leave empty
+keywords: sohyun lee, POSTECH, computer vision, physical AI, vision-language-action, VLA, robust perception, domain adaptation, test-time adaptation, foundation models  # add your own keywords or leave empty
 
 lang: en # the language of your site (for example: en, fr, cn, ru, etc.)
 icon: smile-o # the emoji used as the favicon (alternatively, provide image name in /assets/img/)
@@ -86,7 +85,7 @@ mapmyvisitors_id: eqmeXayAbKjPDkBB2FKVj3afISBnWFI1my0w529iYi4  # MapMyVisitors w
 # -----------------------------------------------------------------------------
 
 blog_name: al-folio  # your blog must have a name for it to show up in the nav bar
-blog_description: a simple whitespace theme for academics
+blog_description: Notes on research and life.
 permalink: /blog/:year/:title/
 
 # Pagination
