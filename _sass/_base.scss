@@ -655,13 +655,45 @@ footer.sticky-bottom {
     em { font-style: italic; }
   }
 
+  // V-shaped layout: See top-left, Act top-right, Understand bottom-center.
+  .rd-flow {
+    position: relative;
+    margin-top: 0.5rem;
+  }
+  .rd-arrows {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    color: var(--global-text-color-light);
+    opacity: 0.6;
+    z-index: 0;
+  }
+
   .rd-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: auto auto;
     gap: 1rem;
     align-items: start;
+    position: relative;
+    z-index: 1;
     @media (max-width: 640px) {
       grid-template-columns: 1fr;
+      grid-template-rows: none;
+    }
+  }
+
+  .rd-see       { grid-column: 1; grid-row: 1; }
+  .rd-understand { grid-column: 2; grid-row: 2; }
+  .rd-act       { grid-column: 3; grid-row: 1; }
+
+  @media (max-width: 640px) {
+    .rd-arrows { display: none; }
+    .rd-see, .rd-understand, .rd-act {
+      grid-column: 1;
+      grid-row: auto;
     }
   }
 
