@@ -728,14 +728,14 @@ footer.sticky-bottom {
       border-bottom: 1px dotted var(--global-divider-color);
       &:last-child { border-bottom: none; }
 
-      a {
+      a, .rd-title {
         color: var(--global-text-color);
         text-decoration: none;
         font-weight: 500;
-        &:hover {
-          color: var(--global-theme-color);
-          text-decoration: underline;
-        }
+      }
+      a:hover {
+        color: var(--global-theme-color);
+        text-decoration: underline;
       }
 
       .rd-venue {

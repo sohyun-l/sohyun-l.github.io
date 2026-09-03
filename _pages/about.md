@@ -30,7 +30,7 @@ I build **physical AI for the real world**. Across *seeing*, *understanding*, an
       <summary>
         <img src="{{ '/assets/img/rd_see.png' | relative_url }}" alt="Camera" class="rd-icon">
         <div class="rd-label">See</div>
-        <div class="rd-sub">Novel sensors</div>
+        <div class="rd-sub">Sensing</div>
       </summary>
       <ul class="rd-papers">
         <li><a href="https://arxiv.org/abs/2303.15410">Human Pose Estimation in Extremely Low-Light Conditions</a> <span class="rd-venue">CVPR 2023</span></li>
@@ -41,7 +41,7 @@ I build **physical AI for the real world**. Across *seeing*, *understanding*, an
       <summary>
         <img src="{{ '/assets/img/rd_understand.png' | relative_url }}" alt="Perception" class="rd-icon">
         <div class="rd-label">Understand</div>
-        <div class="rd-sub">Robust perception</div>
+        <div class="rd-sub">Perception</div>
       </summary>
       <ul class="rd-papers">
         <li><a href="https://arxiv.org/abs/2204.01587">FIFO: Learning Fog-invariant Features for Foggy Scene Segmentation</a> <span class="rd-venue">CVPR 2022</span></li>
@@ -59,7 +59,7 @@ I build **physical AI for the real world**. Across *seeing*, *understanding*, an
         <div class="rd-sub">Embodied AI</div>
       </summary>
       <ul class="rd-papers">
-        <li>Robustness to Robot Hardware Imperfections: A Benchmark and a Self-Compensating VLA <span class="rd-venue">Under Review</span></li>
+        <li><span class="rd-title">Robustness to Robot Hardware Imperfections: A Benchmark and a Self-Compensating VLA</span> <span class="rd-venue">Under Review</span></li>
       </ul>
     </details>
   </div>
