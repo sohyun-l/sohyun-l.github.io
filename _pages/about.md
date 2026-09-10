@@ -48,7 +48,7 @@ I build **physical AI for the real world**. Across *seeing*, *understanding*, an
         <li><a href="https://arxiv.org/abs/2407.13437">FREST: Feature RESToration for Semantic Segmentation under Multiple Adverse Conditions</a> <span class="rd-venue">ECCV 2024</span></li>
         <li><a href="https://arxiv.org/abs/2506.02882">GaRA-SAM: Robustifying Segment Anything Model with Gated-Rank Adaptation</a> <span class="rd-venue">NeurIPS 2025</span></li>
         <li><a href="https://arxiv.org/abs/2605.12006">Robust Promptable Video Object Segmentation</a> <span class="rd-venue">CVPR 2026</span></li>
-        <li><a href="https://arxiv.org/abs/2504.04981">TestDG: Test-time Domain Generalization for Continual Test-time Adaptation</a> <span class="rd-venue">TMLR</span></li>
+        <li><a href="https://arxiv.org/abs/2504.04981">TestDG: Test-time Domain Generalization for Continual Test-time Adaptation</a> <span class="rd-venue">TMLR 2026</span></li>
       </ul>
     </details>
 
