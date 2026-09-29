@@ -1084,7 +1084,7 @@ code {
   border-bottom: 1px solid var(--global-divider-color);
   font-size: 0.9rem;
   position: sticky;
-  top: 56px;               // clears the fixed navbar
+  top: var(--nav-height, 56px); // sits flush under the fixed navbar
   z-index: 5;
   background-color: var(--global-bg-color);
   a {
