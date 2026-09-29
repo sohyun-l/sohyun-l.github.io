@@ -1,8 +1,9 @@
-          <!-- Hero header — sticks below the navbar as you scroll and
-               morphs its own contents from a portrait card into a
-               compact one-line strip. Same element, no swap. -->
+          <!-- Hero header — morphs in place on scroll. A placeholder grows
+               to reserve the original hero space so nothing below jumps;
+               the header itself becomes fixed and its inner properties
+               transition from card-form to compact strip. -->
           <div class="hero-shell">
-            <div class="hero-sentinel" data-hero-sentinel aria-hidden="true"></div>
+            <div class="hero-placeholder" data-hero-placeholder aria-hidden="true"></div>
             <header class="hero-header" data-hero-header>
               <div class="hero-photo">
                 <img src="{{ '/assets/img/SohyunLee.png' | relative_url }}" alt="Sohyun Lee" />
@@ -10,7 +11,7 @@
               <div class="hero-id">
                 <h1 class="hero-name">Sohyun Lee</h1>
                 <div class="hero-contact">
-                  <a class="hero-role" href="https://cvlab.postech.ac.kr">Postdoctoral Researcher, POSTECH Computer Vision Lab</a>
+                  <a class="hero-role" href="https://cvlab.postech.ac.kr">Postdoctoral Researcher, POSTECH CVLab</a>
                   <span class="hero-sep" aria-hidden="true">·</span>
                   <a class="hero-email" href="mailto:{{ site.email }}">{{ site.email }}</a>
                 </div>
@@ -24,27 +25,36 @@
 
           <script>
             (function () {
-              var sentinel = document.querySelector('[data-hero-sentinel]');
-              var header   = document.querySelector('[data-hero-header]');
-              if (!sentinel || !header) return;
+              var header      = document.querySelector('[data-hero-header]');
+              var placeholder = document.querySelector('[data-hero-placeholder]');
+              if (!header || !placeholder) return;
+              var natural = 0, pending = false, condensed = false;
 
-              if ('IntersectionObserver' in window) {
-                var io = new IntersectionObserver(function (entries) {
-                  entries.forEach(function (e) {
-                    header.classList.toggle('is-condensed', !e.isIntersecting);
-                  });
-                }, { threshold: 0 });
-                io.observe(sentinel);
-              } else {
-                var pending = false;
-                function onScroll() {
-                  header.classList.toggle('is-condensed', (window.scrollY || 0) > 30);
-                  pending = false;
-                }
-                window.addEventListener('scroll', function () {
-                  if (!pending) { requestAnimationFrame(onScroll); pending = true; }
-                }, { passive: true });
-                onScroll();
+              function measure() {
+                if (!condensed) natural = header.offsetHeight;
               }
+              function apply(on) {
+                if (on === condensed) return;
+                if (on) {
+                  measure();
+                  placeholder.style.height = natural + 'px';
+                }
+                condensed = on;
+                header.classList.toggle('is-condensed', on);
+                if (!on) placeholder.style.height = '';
+              }
+              function onScroll() {
+                apply((window.scrollY || document.documentElement.scrollTop) > 40);
+                pending = false;
+              }
+              window.addEventListener('scroll', function () {
+                if (!pending) { requestAnimationFrame(onScroll); pending = true; }
+              }, { passive: true });
+              window.addEventListener('resize', function () { measure(); }, { passive: true });
+              if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function () { measure(); onScroll(); });
+              }
+              measure();
+              onScroll();
             })();
           </script>
