@@ -1268,29 +1268,6 @@ code {
   color: var(--global-theme-color);
 }
 
-// Publication thumbnails — hover swap. Second image (hover_img_path in
-// the bib entry) sits absolutely over the base image and fades in when
-// the whole publication row is hovered, matching chrockey.github.io.
-.pub-img {
-  position: relative;
-  &.has-hover .pub-hover-img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    border-radius: inherit;
-    transition: opacity 0.25s ease;
-    pointer-events: none;
-    // Match the base image's rounded look (al-folio uses .rounded).
-    border-radius: 4px;
-  }
-}
-.publications ol.bibliography > li:hover .pub-img.has-hover .pub-hover-img {
-  opacity: 1;
-}
-
 // Anchor link on hover for the about-page section headings — a subtle
 // "#" fades in that deep-links to the section.
 .experience > h2[id],

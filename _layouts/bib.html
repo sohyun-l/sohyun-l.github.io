@@ -2,14 +2,9 @@
 ---
 <!-- _layouts/bib.html -->
       <div class="row">            
-      <div class="col-sm-3 pub-img-cell">
+      <div class="col-sm-3">
         {% if entry.img_path -%}
-          <div class="pub-img{% if entry.hover_img_path %} has-hover{% endif %}">
             {% include figure.html path=entry.img_path class="img-fluid rounded z-depth-1" zoomable=true %}
-            {%- if entry.hover_img_path -%}
-              <img class="pub-hover-img" src="{{ entry.hover_img_path | prepend: '/' | relative_url }}" alt="" loading="lazy">
-            {%- endif -%}
-          </div>
         {%- endif %}
       </div>
             
