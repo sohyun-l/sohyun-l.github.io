@@ -5,7 +5,7 @@ permalink: /
 subtitle:
 
 profile:
-  align: right
+  align: left
   image: SohyunLee.png
   image_cicular: true # crops the image to make it circular
   address:

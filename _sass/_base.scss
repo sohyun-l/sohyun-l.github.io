@@ -113,8 +113,12 @@ blockquote {
 // Profile
 
 .profile {
-  margin-left: 1rem;
   width: 100%;
+
+  // Photo can be floated left or right (set via about.md profile.align);
+  // put the margin gutter on whichever side sits next to the body text.
+  &.float-right { margin-left: 1rem;  margin-right: 0; }
+  &.float-left  { margin-right: 1rem; margin-left: 0; }
 
   .address {
     margin-bottom: 5px;
@@ -789,13 +793,6 @@ footer.sticky-bottom {
   background-color: var(--global-card-bg-color);
   font-size: 0.88rem;
 
-  // Break slightly out of the 860px content column on wide screens so
-  // long news lines don't truncate.
-  @media (min-width: 992px) {
-    margin-left:  -90px;
-    margin-right: -90px;
-  }
-
   @media (max-width: 640px) {
     grid-template-columns: auto 1fr auto;
     grid-template-areas:
@@ -868,10 +865,14 @@ footer.sticky-bottom {
   grid-area: screen;
   margin: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   min-width: 0;
-  line-height: 1.6;
+  line-height: 1.45;
+  // Allow up to two lines before truncating with an ellipsis.
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  max-height: 2.9em;
 }
 .news-band-date {
   color: var(--global-text-color-light);
