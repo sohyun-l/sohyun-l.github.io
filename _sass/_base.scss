@@ -885,7 +885,16 @@ footer.sticky-bottom {
 .news-band-text {
   color: var(--global-text-color);
   a  { color: var(--global-theme-color); }
-  em { font-style: italic; }
+  // Venues / awards written as *…* or **…** in news markdown land here
+  // as <em>/<strong>. Render both as non-italic bold in the theme accent
+  // so they "pop" the moment the glitch resolves (JS restores the full
+  // HTML at the end of the transition, revealing the bold text).
+  em, strong {
+    font-style: normal;
+    font-weight: 700;
+    color: var(--global-theme-color);
+  }
+  em a, strong a { font-weight: 700; }
 }
 
 .news-band-all {
@@ -929,8 +938,13 @@ footer.sticky-bottom {
       min-width: 92px;
       letter-spacing: 0.02em;
     }
-    em { font-style: italic; }
-    a  { color: var(--global-theme-color); }
+    em, strong {
+      font-style: normal;
+      font-weight: 700;
+      color: var(--global-theme-color);
+    }
+    em a, strong a { font-weight: 700; }
+    a { color: var(--global-theme-color); }
   }
 }
 
