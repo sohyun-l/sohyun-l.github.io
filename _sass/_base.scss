@@ -1092,10 +1092,10 @@ code {
   padding: 0.5rem 0;
   background-color: var(--global-bg-color);
   border-bottom: 1px solid transparent;
+  // Only transition properties that don't change layout width — this
+  // avoids the "sudden zoom" during the static→fixed switch.
   transition:
     gap 0.28s ease,
-    padding 0.28s ease,
-    margin 0.28s ease,
     border-color 0.28s ease,
     box-shadow 0.28s ease;
 
@@ -1114,6 +1114,7 @@ code {
     transition:
       width 0.28s ease,
       height 0.28s ease,
+      flex-basis 0.28s ease,
       box-shadow 0.28s ease;
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
     @media (max-width: 640px) { width: 130px; height: 130px; }
@@ -1173,28 +1174,32 @@ code {
   }
 }
 
-// Condensed state — header goes fixed under the navbar. Photo folds
-// away, everything else transitions to a compact one-line strip.
+// Condensed state — header goes fixed below the navbar. It keeps the
+// SAME content width as the container (no 100vw → padded transition,
+// which was the source of the "sudden zoom" flash). Photo shrinks to
+// a small avatar but stays visible on the left.
 .hero-header.is-condensed {
   position: fixed;
   top: 56px;                                    // right below the fixed navbar
-  left: 0; right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: #{$max-content-width};             // match the container width
   z-index: 100;
   margin: 0;
-  padding: 0.45rem calc((100vw - #{$max-content-width}) / 2 + 1rem);
-  gap: 0.85rem;
+  padding: 0.4rem 15px;                         // match bootstrap container padding
+  gap: 0.75rem;
   flex-direction: row;
   align-items: center;
   border-bottom-color: var(--global-divider-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 
-  // Photo folds to nothing — no longer visible in condensed strip.
+  // Photo shrinks to a small avatar and stays on the left.
   .hero-photo {
-    width: 0;
-    height: 0;
-    opacity: 0;
+    width: 34px;
+    height: 34px;
     box-shadow: none;
-    overflow: hidden;
+    flex: 0 0 34px;
   }
 
   .hero-id {
@@ -1223,7 +1228,6 @@ code {
     flex: 1 1 auto;
     a { color: var(--global-text-color-light); }
     a:hover { color: var(--global-theme-color); }
-    // Fold onto one line with the inline separator.
     .hero-role  { display: inline; }
     .hero-email { display: inline; }
     .hero-sep   { display: inline; }
@@ -1245,8 +1249,9 @@ code {
   }
 
   @media (max-width: 640px) {
-    padding: 0.4rem 0.9rem;
+    padding: 0.35rem 15px;
     gap: 0.55rem;
+    .hero-photo { width: 28px; height: 28px; flex: 0 0 28px; }
     .hero-contact { display: none; }
   }
 }
