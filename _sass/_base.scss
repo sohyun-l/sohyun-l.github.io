@@ -1078,21 +1078,136 @@ code {
 // Give scroll-linked anchors a bit of headroom under the navbar + jumper.
 .publications h2.year { scroll-margin-top: 110px; }
 
-// Scroll progress indicator (fixed at very top of viewport).
-#scroll-progress {
-  position: fixed;
-  top: 0; left: 0;
-  height: 2px;
-  width: 100%;
-  z-index: 10000;
-  pointer-events: none;
-  background: transparent;
+// Hero header (kdwonn-style) — big photo + name/role/email/tagline/icons.
+.hero-header {
+  display: flex;
+  gap: 1.75rem;
+  align-items: center;
+  margin: 1.5rem 0 2rem;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .hero-photo {
+    flex: 0 0 auto;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    @media (max-width: 640px) {
+      width: 140px; height: 140px;
+    }
+  }
+
+  .hero-id { flex: 1 1 auto; min-width: 0; }
+
+  .hero-name {
+    font-size: 2.4rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 0.4rem;
+    letter-spacing: -0.02em;
+  }
+  .hero-contact {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    a {
+      color: var(--global-text-color);
+      text-decoration: none;
+      &:hover { color: var(--global-theme-color); }
+    }
+  }
+  .hero-tagline {
+    margin: 0.4rem 0 0.6rem;
+    font-size: 0.9rem;
+    color: var(--global-text-color-light);
+    letter-spacing: 0.01em;
+  }
+  .hero-icons {
+    font-size: 1.35rem;
+    display: flex;
+    gap: 0.85rem;
+    a {
+      color: var(--global-text-color);
+      transition: color 0.15s ease;
+      &:hover { color: var(--global-theme-color); }
+    }
+  }
 }
-#scroll-progress-bar {
-  height: 100%;
-  width: 0;
-  background: linear-gradient(90deg, var(--global-theme-color), var(--global-hover-color));
-  transition: width 0.08s ease-out;
+
+.hero-bio {
+  margin-bottom: 1rem;
+  p { margin: 0 0 0.75rem; }
+}
+
+// Condensed strip that slides in from the top once the hero scrolls off.
+.hero-condensed {
+  position: fixed;
+  top: 56px;
+  left: 0; right: 0;
+  z-index: 100;
+  background-color: var(--global-bg-color);
+  border-bottom: 1px solid var(--global-divider-color);
+  padding: 0.5rem 1rem;
+  opacity: 0;
+  transform: translateY(-100%);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+
+  &.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .hero-condensed-inner {
+    max-width: 1040px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    font-size: 0.85rem;
+    color: var(--global-text-color-light);
+
+    .hc-name {
+      font-weight: 700;
+      color: var(--global-text-color);
+    }
+    .hc-role {
+      &::before { content: "·"; margin-right: 0.7rem; opacity: 0.5; }
+    }
+    .hc-email {
+      color: var(--global-text-color-light);
+      text-decoration: none;
+      &:hover { color: var(--global-theme-color); }
+      &::before { content: "·"; margin-right: 0.7rem; opacity: 0.5; }
+    }
+    .hc-icons {
+      margin-left: auto;
+      font-size: 1rem;
+      display: inline-flex;
+      gap: 0.6rem;
+      a {
+        color: var(--global-text-color-light);
+        &:hover { color: var(--global-theme-color); }
+      }
+    }
+    @media (max-width: 640px) {
+      font-size: 0.78rem;
+      gap: 0.5rem;
+      .hc-role, .hc-email { display: none; }
+    }
+  }
 }
 
 // Anchor link on hover for the about-page section headings — a subtle

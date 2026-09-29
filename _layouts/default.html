@@ -15,26 +15,6 @@ layout: parse
   <!-- Body -->
   <body class="{% if site.navbar_fixed %}fixed-top-nav{% endif %} {% unless site.footer_fixed %}sticky-bottom-footer{% endunless %}">
 
-    <!-- Scroll progress indicator -->
-    <div id="scroll-progress" aria-hidden="true"><div id="scroll-progress-bar"></div></div>
-    <script>
-      (function () {
-        var bar = document.getElementById('scroll-progress-bar');
-        if (!bar) return;
-        var pending = false;
-        function update() {
-          var d = document.documentElement;
-          var max = (d.scrollHeight - d.clientHeight) || 1;
-          bar.style.width = Math.min(100, 100 * (d.scrollTop || document.body.scrollTop) / max).toFixed(1) + '%';
-          pending = false;
-        }
-        window.addEventListener('scroll', function () {
-          if (!pending) { requestAnimationFrame(update); pending = true; }
-        }, { passive: true });
-        update();
-      })();
-    </script>
-
     <!-- Header -->
     {%- include header.html %}
 

@@ -1,0 +1,47 @@
+          <!-- Hero header (kdwonn-style): photo + name + role/email + tagline + icons -->
+          <header class="hero-header" data-hero-header>
+            <div class="hero-photo">
+              <img src="{{ '/assets/img/SohyunLee.png' | relative_url }}" alt="Sohyun Lee" />
+            </div>
+            <div class="hero-id">
+              <h1 class="hero-name">Sohyun Lee</h1>
+              <div class="hero-contact">
+                <a href="https://cvlab.postech.ac.kr">Postdoctoral Researcher, POSTECH Computer Vision Lab</a>
+                <br>
+                <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+              </div>
+              <div class="hero-tagline">robust perception / vision-language-action / physical AI</div>
+              <div class="hero-icons contact-icons">
+                {% include social.html %}
+              </div>
+            </div>
+          </header>
+
+          <!-- Condensed strip that appears when the hero header scrolls off -->
+          <div class="hero-condensed" data-hero-condensed aria-hidden="true">
+            <div class="hero-condensed-inner">
+              <span class="hc-name">Sohyun Lee</span>
+              <span class="hc-role">Postdoctoral Researcher, POSTECH CVLab</span>
+              <a class="hc-email" href="mailto:{{ site.email }}">{{ site.email }}</a>
+              <span class="hc-icons">{% include social.html %}</span>
+            </div>
+          </div>
+
+          <script>
+            (function () {
+              var header = document.querySelector('[data-hero-header]');
+              var strip  = document.querySelector('[data-hero-condensed]');
+              if (!header || !strip) return;
+              var pending = false;
+              function update() {
+                var hb = header.getBoundingClientRect().bottom;
+                strip.classList.toggle('is-visible', hb < 56);
+                pending = false;
+              }
+              window.addEventListener('scroll', function () {
+                if (!pending) { requestAnimationFrame(update); pending = true; }
+              }, { passive: true });
+              window.addEventListener('resize', update, { passive: true });
+              update();
+            })();
+          </script>
