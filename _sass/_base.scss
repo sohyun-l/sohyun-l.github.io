@@ -1078,18 +1078,30 @@ code {
 // Give scroll-linked anchors a bit of headroom under the navbar + jumper.
 .publications h2.year { scroll-margin-top: 110px; }
 
-// Hero header — morphs in place on scroll. The same header transitions
-// from a full portrait card into a compact fixed strip below the navbar.
+// Hero header — sticks below the navbar and morphs in place on scroll.
+// A tiny sentinel above the header is observed by IntersectionObserver;
+// when it scrolls out of view (i.e. the header is now stuck), the class
+// `.is-condensed` is applied and CSS transitions handle the morph.
 .hero-shell { position: relative; }
-.hero-placeholder { transition: height 0.28s ease; }
+.hero-sentinel {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1px; height: 1px;
+  pointer-events: none;
+}
 
 .hero-header {
+  position: sticky;
+  top: 56px;                                   // sits right under the navbar
+  z-index: 100;
+  background-color: var(--global-bg-color);
+
   display: flex;
   gap: 1.5rem;
   align-items: center;
   margin: 1.5rem 0 2rem;
-  padding: 0.25rem 0;
-  background-color: var(--global-bg-color);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid transparent;
   transition:
     gap 0.28s ease,
     padding 0.28s ease,
@@ -1127,6 +1139,8 @@ code {
     margin: 0 0 0.4rem;
     transition: font-size 0.28s ease, margin 0.28s ease;
   }
+
+  // Role above email in the tall layout; separator hidden.
   .hero-contact {
     font-size: 0.95rem;
     line-height: 1.55;
@@ -1136,12 +1150,11 @@ code {
       text-decoration: none;
       &:hover { color: var(--global-theme-color); }
     }
-    .hero-role  { display: inline; }
-    .hero-email { display: inline; }
-    .hero-sep   { display: none; margin: 0 0.5rem; color: var(--global-text-color-light); opacity: 0.6; }
-    // In the tall layout, role sits above email on its own line.
-    .hero-role::after { content: "\A"; white-space: pre; }
+    .hero-role  { display: block; }
+    .hero-email { display: block; }
+    .hero-sep   { display: none; margin: 0 0.45rem; color: var(--global-text-color-light); opacity: 0.6; }
   }
+
   .hero-tagline {
     margin: 0.5rem 0 0.7rem;
     font-size: 0.9rem;
@@ -1155,6 +1168,7 @@ code {
       opacity 0.2s ease,
       margin 0.28s ease;
   }
+
   .hero-icons {
     font-size: 1.3rem;
     display: flex;
@@ -1169,33 +1183,44 @@ code {
   }
 }
 
-// Condensed state — same element, fixed at the top, one line only.
+// Condensed state (stuck, one line): the element itself stays sticky —
+// photo folds away entirely; name / role / email / icons animate to a
+// single horizontal row, giving the sense that the original text morphed
+// into a compact strip at the top.
 .hero-header.is-condensed {
-  position: fixed;
-  top: 56px;                                   // sits right under the navbar
-  left: 0; right: 0;
-  z-index: 100;
   margin: 0;
-  padding: 0.4rem calc((100vw - #{$max-content-width}) / 2 + 1rem);
-  border-bottom: 1px solid var(--global-divider-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-  gap: 0.9rem;
-  align-items: center;
+  padding: 0.4rem 0;
+  gap: 0.85rem;
   flex-direction: row;
+  align-items: center;
+  border-bottom-color: var(--global-divider-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 
+  // Photo collapses to zero width and fades — no longer visible.
   .hero-photo {
-    width: 34px; height: 34px;
+    width: 0;
+    height: 0;
+    opacity: 0;
     box-shadow: none;
+    overflow: hidden;
   }
-  .hero-id { display: flex; align-items: center; gap: 0.7rem; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+
+  .hero-id {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
   .hero-name {
-    font-size: 0.95rem;
+    font-size: 1rem;
     margin: 0;
     letter-spacing: -0.01em;
     white-space: nowrap;
   }
   .hero-contact {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     color: var(--global-text-color-light);
     line-height: 1;
     white-space: nowrap;
@@ -1204,9 +1229,10 @@ code {
     min-width: 0;
     a { color: var(--global-text-color-light); }
     a:hover { color: var(--global-theme-color); }
-    // Collapse to one line with an inline separator.
-    .hero-role::after { content: none; }
-    .hero-sep { display: inline; }
+    // Fold onto one line with the inline separator.
+    .hero-role  { display: inline; }
+    .hero-email { display: inline; }
+    .hero-sep   { display: inline; }
   }
   .hero-tagline {
     max-height: 0;
@@ -1214,16 +1240,16 @@ code {
     margin: 0;
   }
   .hero-icons {
-    font-size: 0.95rem;
+    font-size: 1rem;
     gap: 0.55rem;
     margin-left: auto;
+    align-self: center;
     a { color: var(--global-text-color-light); }
     a:hover { color: var(--global-theme-color); }
   }
 
   @media (max-width: 640px) {
-    padding: 0.4rem 0.9rem;
-    gap: 0.6rem;
+    gap: 0.55rem;
     .hero-contact { display: none; }
   }
 }

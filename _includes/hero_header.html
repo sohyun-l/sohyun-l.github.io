@@ -1,7 +1,8 @@
-          <!-- Hero header — morphs in place as you scroll: photo/tagline
-               fade, name/role/email/icons condense into a fixed strip. -->
+          <!-- Hero header — sticks below the navbar as you scroll and
+               morphs its own contents from a portrait card into a
+               compact one-line strip. Same element, no swap. -->
           <div class="hero-shell">
-            <div class="hero-placeholder" data-hero-placeholder></div>
+            <div class="hero-sentinel" data-hero-sentinel aria-hidden="true"></div>
             <header class="hero-header" data-hero-header>
               <div class="hero-photo">
                 <img src="{{ '/assets/img/SohyunLee.png' | relative_url }}" alt="Sohyun Lee" />
@@ -23,38 +24,27 @@
 
           <script>
             (function () {
-              var header      = document.querySelector('[data-hero-header]');
-              var placeholder = document.querySelector('[data-hero-placeholder]');
-              if (!header || !placeholder) return;
-              var natural = 0, pending = false, condensed = false;
+              var sentinel = document.querySelector('[data-hero-sentinel]');
+              var header   = document.querySelector('[data-hero-header]');
+              if (!sentinel || !header) return;
 
-              function measure() { natural = header.offsetHeight; }
-              function apply(on) {
-                if (on === condensed) return;
-                condensed = on;
-                if (on) {
-                  placeholder.style.height = natural + 'px';
-                  header.classList.add('is-condensed');
-                } else {
-                  header.classList.remove('is-condensed');
-                  placeholder.style.height = '';
+              if ('IntersectionObserver' in window) {
+                var io = new IntersectionObserver(function (entries) {
+                  entries.forEach(function (e) {
+                    header.classList.toggle('is-condensed', !e.isIntersecting);
+                  });
+                }, { threshold: 0 });
+                io.observe(sentinel);
+              } else {
+                var pending = false;
+                function onScroll() {
+                  header.classList.toggle('is-condensed', (window.scrollY || 0) > 30);
+                  pending = false;
                 }
+                window.addEventListener('scroll', function () {
+                  if (!pending) { requestAnimationFrame(onScroll); pending = true; }
+                }, { passive: true });
+                onScroll();
               }
-              function onScroll() {
-                var y = window.scrollY || document.documentElement.scrollTop;
-                apply(y > 40);
-                pending = false;
-              }
-              window.addEventListener('scroll', function () {
-                if (!pending) { requestAnimationFrame(onScroll); pending = true; }
-              }, { passive: true });
-              window.addEventListener('resize', function () {
-                if (!condensed) measure();
-              }, { passive: true });
-              if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(function () { measure(); onScroll(); });
-              }
-              measure();
-              onScroll();
             })();
           </script>
