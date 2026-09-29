@@ -1,47 +1,60 @@
-          <!-- Hero header (kdwonn-style): photo + name + role/email + tagline + icons -->
-          <header class="hero-header" data-hero-header>
-            <div class="hero-photo">
-              <img src="{{ '/assets/img/SohyunLee.png' | relative_url }}" alt="Sohyun Lee" />
-            </div>
-            <div class="hero-id">
-              <h1 class="hero-name">Sohyun Lee</h1>
-              <div class="hero-contact">
-                <a href="https://cvlab.postech.ac.kr">Postdoctoral Researcher, POSTECH Computer Vision Lab</a>
-                <br>
-                <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+          <!-- Hero header — morphs in place as you scroll: photo/tagline
+               fade, name/role/email/icons condense into a fixed strip. -->
+          <div class="hero-shell">
+            <div class="hero-placeholder" data-hero-placeholder></div>
+            <header class="hero-header" data-hero-header>
+              <div class="hero-photo">
+                <img src="{{ '/assets/img/SohyunLee.png' | relative_url }}" alt="Sohyun Lee" />
               </div>
-              <div class="hero-tagline">robust perception / vision-language-action / physical AI</div>
-              <div class="hero-icons contact-icons">
-                {% include social.html %}
+              <div class="hero-id">
+                <h1 class="hero-name">Sohyun Lee</h1>
+                <div class="hero-contact">
+                  <a class="hero-role" href="https://cvlab.postech.ac.kr">Postdoctoral Researcher, POSTECH Computer Vision Lab</a>
+                  <span class="hero-sep" aria-hidden="true">·</span>
+                  <a class="hero-email" href="mailto:{{ site.email }}">{{ site.email }}</a>
+                </div>
+                <div class="hero-tagline">robust perception / vision-language-action / physical AI</div>
+                <div class="hero-icons contact-icons">
+                  {% include social.html %}
+                </div>
               </div>
-            </div>
-          </header>
-
-          <!-- Condensed strip that appears when the hero header scrolls off -->
-          <div class="hero-condensed" data-hero-condensed aria-hidden="true">
-            <div class="hero-condensed-inner">
-              <span class="hc-name">Sohyun Lee</span>
-              <span class="hc-role">Postdoctoral Researcher, POSTECH CVLab</span>
-              <a class="hc-email" href="mailto:{{ site.email }}">{{ site.email }}</a>
-              <span class="hc-icons">{% include social.html %}</span>
-            </div>
+            </header>
           </div>
 
           <script>
             (function () {
-              var header = document.querySelector('[data-hero-header]');
-              var strip  = document.querySelector('[data-hero-condensed]');
-              if (!header || !strip) return;
-              var pending = false;
-              function update() {
-                var hb = header.getBoundingClientRect().bottom;
-                strip.classList.toggle('is-visible', hb < 56);
+              var header      = document.querySelector('[data-hero-header]');
+              var placeholder = document.querySelector('[data-hero-placeholder]');
+              if (!header || !placeholder) return;
+              var natural = 0, pending = false, condensed = false;
+
+              function measure() { natural = header.offsetHeight; }
+              function apply(on) {
+                if (on === condensed) return;
+                condensed = on;
+                if (on) {
+                  placeholder.style.height = natural + 'px';
+                  header.classList.add('is-condensed');
+                } else {
+                  header.classList.remove('is-condensed');
+                  placeholder.style.height = '';
+                }
+              }
+              function onScroll() {
+                var y = window.scrollY || document.documentElement.scrollTop;
+                apply(y > 40);
                 pending = false;
               }
               window.addEventListener('scroll', function () {
-                if (!pending) { requestAnimationFrame(update); pending = true; }
+                if (!pending) { requestAnimationFrame(onScroll); pending = true; }
               }, { passive: true });
-              window.addEventListener('resize', update, { passive: true });
-              update();
+              window.addEventListener('resize', function () {
+                if (!condensed) measure();
+              }, { passive: true });
+              if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function () { measure(); onScroll(); });
+              }
+              measure();
+              onScroll();
             })();
           </script>
