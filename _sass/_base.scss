@@ -772,21 +772,158 @@ footer.sticky-bottom {
   }
 }
 
-// News collapsible: hide older rows by default; reveal on .news-expanded.
-.news .news-old { display: none; }
-.news.news-expanded .news-old { display: table-row; }
+// News band — kdwonn-style ticker strip with glitch text transitions.
+.news-band {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  grid-template-areas:
+    "label pos    screen nav"
+    "all   all    all    all";
+  align-items: center;
+  column-gap: 0.9rem;
+  row-gap: 0.2rem;
+  padding: 0.65rem 0.9rem;
+  margin: 2rem 0 1rem;
+  border: 1px solid var(--global-divider-color);
+  border-radius: 8px;
+  background-color: var(--global-card-bg-color);
+  font-size: 0.88rem;
 
-.news-toggle {
+  @media (max-width: 640px) {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "label pos    nav"
+      "screen screen screen"
+      "all   all    all";
+    row-gap: 0.4rem;
+  }
+}
+
+.news-band-label {
+  grid-area: label;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--global-text-color);
+}
+.news-band-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background-color: var(--global-theme-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  animation: news-band-pulse 2.2s ease-in-out infinite;
+}
+@keyframes news-band-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10); }
+  50%      { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.20); }
+}
+
+.news-band-pos {
+  grid-area: pos;
+  color: var(--global-text-color-light);
+  font-size: 0.72rem;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.news-band-nav {
+  grid-area: nav;
+  display: inline-flex;
+  gap: 0.2rem;
+  button {
+    background: transparent;
+    border: 1px solid var(--global-divider-color);
+    color: var(--global-text-color-light);
+    width: 24px; height: 24px;
+    line-height: 20px;
+    padding: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    &:hover {
+      color: var(--global-theme-color);
+      border-color: var(--global-theme-color);
+      background-color: var(--global-bg-color);
+    }
+    &:focus { outline: none; border-color: var(--global-theme-color); }
+  }
+}
+
+.news-band-screen {
+  grid-area: screen;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+  line-height: 1.6;
+}
+.news-band-date {
+  color: var(--global-text-color-light);
+  font-size: 0.75rem;
+  margin-right: 0.7rem;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.news-band-text {
+  color: var(--global-text-color);
+  a  { color: var(--global-theme-color); }
+  em { font-style: italic; }
+}
+
+.news-band-all {
+  grid-area: all;
+  justify-self: end;
   background: none;
   border: none;
-  padding: 0.4rem 0;
-  margin-top: 0.25rem;
+  color: var(--global-text-color-light);
+  font-size: 0.75rem;
   font-family: inherit;
-  font-size: 0.88rem;
-  color: var(--global-theme-color);
   cursor: pointer;
-  &:hover { text-decoration: underline; }
-  &:focus { outline: none; text-decoration: underline; }
+  padding: 0.15rem 0.25rem;
+  margin-top: 0.15rem;
+  letter-spacing: 0.03em;
+  &:hover { color: var(--global-theme-color); }
+}
+
+.news-band-items {
+  grid-column: 1 / -1;
+  list-style: none;
+  padding: 0.75rem 0.25rem 0.25rem;
+  margin: 0.35rem 0 0;
+  border-top: 1px dashed var(--global-divider-color);
+  max-height: 320px;
+  overflow-y: auto;
+
+  li {
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--global-text-color);
+    border-bottom: 1px dotted var(--global-divider-color);
+    &:last-child { border-bottom: none; }
+    &::before {
+      content: attr(data-date);
+      display: inline-block;
+      margin-right: 0.7rem;
+      color: var(--global-text-color-light);
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      min-width: 92px;
+      letter-spacing: 0.02em;
+    }
+    em { font-style: italic; }
+    a  { color: var(--global-theme-color); }
+  }
 }
 
 // Selected publications — card polish (thumbnail + info side-by-side is
