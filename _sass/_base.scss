@@ -455,6 +455,15 @@ footer.sticky-bottom {
     margin-top: 2rem;
     margin-bottom: -2rem;
     text-align: right;
+    // On phones the thumbnail stacks above the text, so the year can't
+    // tuck in beside the entry — give it its own compact row instead.
+    @media (max-width: 575.98px) {
+      font-size: 1.5rem;
+      padding-top: 0.75rem;
+      margin-top: 0.75rem;
+      margin-bottom: 0;
+      & + .bibliography > li:first-child { padding-top: 0.5rem; }
+    }
   }
   ol.bibliography {
     list-style: none;
@@ -958,6 +967,9 @@ footer.sticky-bottom {
   transition: background-color 0.25s ease, transform 0.25s ease,
               box-shadow 0.25s ease;
   &:last-child { border-bottom: none; }
+  @media (max-width: 575.98px) {
+    &:last-child { padding-bottom: 0.5rem; }
+  }
   &:hover {
     background-color: var(--global-card-bg-color);
     transform: translateY(-1px);
@@ -1325,6 +1337,11 @@ code {
     text-decoration: none;
   }
   &:hover::after { opacity: 0.55; }
+  // The "#" sits past the right edge of the heading; on phones that
+  // widens the page and lets it pan sideways. No hover there anyway.
+  @media (hover: none), (max-width: 640px) {
+    &::after { display: none; }
+  }
 }
 
 // Transitioning Themes
