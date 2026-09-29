@@ -1070,6 +1070,46 @@ code {
 // Give scroll-linked anchors a bit of headroom under the navbar + jumper.
 .publications h2.year { scroll-margin-top: 110px; }
 
+// Scroll progress indicator (fixed at very top of viewport).
+#scroll-progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  width: 100%;
+  z-index: 10000;
+  pointer-events: none;
+  background: transparent;
+}
+#scroll-progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--global-theme-color), var(--global-hover-color));
+  transition: width 0.08s ease-out;
+}
+
+// Anchor link on hover for the about-page section headings — a subtle
+// "#" fades in that deep-links to the section.
+.experience > h2[id],
+.education > h2[id],
+.services > h2[id],
+.honors > h2[id],
+.publications > h2[id]:not(.year) {
+  scroll-margin-top: 80px;
+  position: relative;
+  &::after {
+    content: "#";
+    position: absolute;
+    right: -1.2em;
+    top: 0;
+    color: var(--global-text-color-light);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    font-weight: 400;
+    text-decoration: none;
+  }
+  &:hover::after { opacity: 0.55; }
+}
+
 // Transitioning Themes
 html.transition,
 html.transition *,
