@@ -1282,6 +1282,28 @@ code {
   color: var(--global-theme-color);
 }
 
+// Publication media — optional hover video (kdwonn/chrockey style).
+// The MP4 sits absolutely over the teaser image, muted+looped, and
+// fades in + starts playing when the publication row is hovered.
+.pub-media {
+  position: relative;
+
+  &.has-hover-video .pub-hover-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+}
+.publications ol.bibliography > li:hover .pub-media.has-hover-video .pub-hover-video {
+  opacity: 1;
+}
+
 // Anchor link on hover for the about-page section headings — a subtle
 // "#" fades in that deep-links to the section.
 .experience > h2[id],

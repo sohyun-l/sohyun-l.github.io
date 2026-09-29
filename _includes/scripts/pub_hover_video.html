@@ -1,0 +1,20 @@
+<!-- Play the .pub-hover-video muted+looped while its publication row is
+     hovered; pause + rewind on leave. Save network by only loading the
+     src when the row is first hovered. -->
+<script>
+(function () {
+  var rows = document.querySelectorAll('.publications ol.bibliography > li');
+  if (!rows.length) return;
+  rows.forEach(function (row) {
+    var video = row.querySelector('.pub-hover-video');
+    if (!video) return;
+    row.addEventListener('mouseenter', function () {
+      video.play().catch(function () { /* autoplay may be blocked; ignore */ });
+    });
+    row.addEventListener('mouseleave', function () {
+      video.pause();
+      video.currentTime = 0;
+    });
+  });
+})();
+</script>

@@ -21,3 +21,5 @@ nav: true
 {% endfor %}
 
 </div>
+
+{%- include scripts/pub_hover_video.html %}

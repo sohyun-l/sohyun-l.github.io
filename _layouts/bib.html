@@ -4,7 +4,14 @@
       <div class="row">            
       <div class="col-sm-3">
         {% if entry.img_path -%}
+          <div class="pub-media{% if entry.hover_video_path %} has-hover-video{% endif %}">
             {% include figure.html path=entry.img_path class="img-fluid rounded z-depth-1" zoomable=true %}
+            {%- if entry.hover_video_path -%}
+              <video class="pub-hover-video"
+                     src="{{ entry.hover_video_path | prepend: '/' | relative_url }}"
+                     muted loop playsinline preload="metadata"></video>
+            {%- endif -%}
+          </div>
         {%- endif %}
       </div>
             
