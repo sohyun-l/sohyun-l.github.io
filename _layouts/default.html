@@ -18,6 +18,26 @@ layout: parse
     <!-- Header -->
     {%- include header.html %}
 
+    <!-- Expose the real navbar height as --nav-height so the hero
+         condensed strip and body padding line up exactly regardless of
+         whether the CV "Updated" sub-line is showing or the mobile
+         collapse is active. -->
+    <script>
+      (function () {
+        var nav = document.getElementById('navbar');
+        if (!nav) return;
+        var root = document.documentElement;
+        function apply() {
+          root.style.setProperty('--nav-height', nav.offsetHeight + 'px');
+        }
+        apply();
+        window.addEventListener('resize', apply, { passive: true });
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(apply);
+        }
+      })();
+    </script>
+
     <!-- Content -->
     <div class="container mt-5">
       {{ content }}

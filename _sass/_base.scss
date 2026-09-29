@@ -1180,7 +1180,7 @@ code {
 // a small avatar but stays visible on the left.
 .hero-header.is-condensed {
   position: fixed;
-  top: 56px;                                    // right below the fixed navbar
+  top: var(--nav-height, 56px);                 // right below the fixed navbar (dynamic)
   left: 50%;
   transform: translateX(-50%);
   width: 100%;

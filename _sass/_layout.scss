@@ -13,8 +13,9 @@ body {
 }
 
 body.fixed-top-nav {
-  // Add some padding for the nav-bar.
-  padding-top: 56px;
+  // Padding matches the actual navbar height (measured in JS via
+  // --nav-height); falls back to 56px on first paint.
+  padding-top: var(--nav-height, 56px);
 }
 
 body.sticky-bottom-footer {
