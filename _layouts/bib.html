@@ -3,7 +3,16 @@
 <!-- _layouts/bib.html -->
       <div class="row">            
       <div class="col-sm-3">
-        {% if entry.img_path -%}
+        {% if entry.preview_figure -%}
+          {%- comment -%} Interactive figure drawn by assets/js/pub-fig.js; the teaser image is the no-JS fallback. {%- endcomment -%}
+          <div class="pub-media pub-fig">
+            <canvas data-fig-scene="{{ entry.preview_figure }}" role="img" aria-label="{{ entry.title | strip_html | escape }} (interactive figure)"></canvas>
+            {%- if entry.img_path %}
+            <noscript>{% include figure.html path=entry.img_path class="img-fluid rounded z-depth-1" %}</noscript>
+            {%- endif %}
+          </div>
+          <script defer src="{{ '/assets/js/pub-fig.js' | relative_url }}"></script>
+        {% elsif entry.img_path -%}
           <div class="pub-media{% if entry.hover_video_path %} has-hover-video{% endif %}">
             {% include figure.html path=entry.img_path class="img-fluid rounded z-depth-1" zoomable=true %}
             {%- if entry.hover_video_path -%}

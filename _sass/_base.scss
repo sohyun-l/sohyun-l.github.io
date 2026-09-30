@@ -1516,3 +1516,64 @@ html.transition *:after {
     }
   }
 }
+
+// Interactive publication figures (assets/js/pub-fig.js). The canvas sits
+// where the teaser thumbnail would, drawn in the page's own colours.
+.pub-fig canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--global-divider-color);
+  border-radius: 6px;
+  background-color: var(--global-bg-color);
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+@media (hover: hover) {
+  .pub-fig { position: relative; }
+  .pub-fig::after {
+    content: "\2922";               // ⤢ : click to enlarge
+    position: absolute;
+    right: 6px;
+    bottom: 4px;
+    font-size: 0.8rem;
+    color: var(--global-text-color-light);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+  }
+  .pub-fig:hover::after { opacity: 0.7; }
+}
+.pub-fig-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+.pub-fig-modal-box {
+  position: relative;
+  width: min(92vw, 960px);
+  canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    cursor: crosshair;
+    touch-action: none;
+  }
+}
+.pub-fig-close {
+  position: absolute;
+  top: -2.2rem;
+  right: 0;
+  border: none;
+  background: none;
+  color: #fff;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
