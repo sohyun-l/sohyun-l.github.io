@@ -152,15 +152,19 @@
   }
 
   // ---------------------------------------------------------------- selfcomp
-  // Robustness to Robot Hardware Imperfections / Self-Compensating VLA.
-  // The pointer places the target. Joint-level imperfections (friction,
-  // backlash, compliance, gravity, wear) bend the executed arm away from
-  // the commanded one. With self-compensation on, the policy learns the
-  // residual between commanded and executed motion online and pre-shifts
-  // its command, so the action error closes; off, the error stays open.
+  // Taming VLAs under Robot Execution Errors (self-compensating VLA +
+  // RoboStress). The pointer places the target. The policy emits an action
+  // chunk of K delta commands a; the arm executes them through joint-level
+  // noise (Stribeck friction, gravity-compensation error, Tao-Kokotovic
+  // backlash, spring-mass-damper compliance). Each step leaves a residual
+  // eta = executed - commanded. With self-comp on, after every chunk the
+  // LoRA-adapted policy moves toward the pseudo-target a - eta, so the next
+  // chunk is pre-compensated and the residual shrinks. Clicking the
+  // scenario name cycles RoboStress's seven deployment scenarios.
   function selfcompScene() {
     const B = [74, 150], L1 = 62, L2 = 54, TABLE = 160;
     const PX = 214, PW = 96;                    // right-hand readout column
+    const K = 8, STEP = 0.11, PAUSE = 0.4;      // chunk length, s per step, update beat
     const toWorld = (p) => [p[0] - B[0], B[1] - p[1]];
     const toScreen = (p) => [B[0] + p[0], B[1] - p[1]];
     function fk(q) {
@@ -174,198 +178,328 @@
       const q2 = -Math.acos(c2);                  // elbow up
       return [Math.atan2(y, x) - Math.atan2(L2 * Math.sin(q2), L1 + L2 * Math.cos(q2)), q2];
     }
-    // keep the target inside the reachable band, above the table
     function reachable(p) {
       let [x, y] = toWorld(p);
       y = Math.max(y, 6);
       const r = Math.hypot(x, y), a = Math.atan2(y, x);
-      const rr = clamp(r, 44, L1 + L2 - 8);
+      const rr = clamp(r, 46, L1 + L2 - 10);
       const q = toScreen([rr * Math.cos(a), rr * Math.sin(a)]);
-      return [clamp(q[0], 14, PX - 18), clamp(q[1], 14, TABLE - 12)];
+      return [clamp(q[0], 14, PX - 18), clamp(q[1], 16, TABLE - 14)];
     }
-    // idle tour: dwell at a few targets so the traces draw the teaser's arcs
-    const TOUR = [[178, 58], [160, 118], [96, 40], [186, 96], [128, 70]];
+    const TOUR = [[182, 62], [150, 122], [98, 42], [188, 100], [124, 72]];
 
-    const NAMES = ['friction', 'backlash', 'compliance', 'gravity', 'wear'];
+    // RoboStress deployment scenarios (paper Table 1) with their pi0.5
+    // average success, base -> self-compensating (paper Table 2).
+    // w: severity factors for friction, gravity-comp, backlash, compliance.
+    const SCEN = [
+      { name: 'Heavy Payload', w: [1, 5, 1, 2], base: 44.1, ours: 56.8 },
+      { name: 'Thermal Drift-Stribeck', w: [3.5, 1, 1, 1], ramp: 0, base: 54.1, ours: 60.5 },
+      { name: 'Thermal Drift-Backlash', w: [1, 1, 3.5, 1], ramp: 2, base: 83.4, ours: 84.8 },
+      { name: 'Aged Transmission', w: [2.5, 1, 2.5, 1], base: 33.2, ours: 41.8 },
+      { name: 'Aged Joint-Uniform', w: [2.5, 1, 2.5, 2.5], base: 29.5, ours: 38.6 },
+      { name: 'Aged Joint-Shoulder', w: [2.5, 1, 2.5, 2.5], joint: 0, base: 43.9, ours: 51.2 },
+      { name: 'Aged Joint-Elbow', w: [2.5, 1, 2.5, 2.5], joint: 1, base: 55.6, ours: 62.3 },
+    ];
+    const COMP = ['friction', 'gravity comp.', 'backlash', 'compliance'];
+
     const s = {
-      intent: null, cmd: null, raw: null, est: [0, 0], blDir: [1, -1],
-      comp: false, userSet: false, trail: [], hist: [], histAt: 0, trailAt: 0,
-      terms: [0, 0, 0, 0, 0], err: 0,
+      sc: 0, scT: 0, userScen: false, comp: false, userSet: false,
+      qm: null, ql: null, eta: [[0, 0, 0], [0, 0, 0]],   // motor, link, compliance [pos, vel]
+      fit: [[1, 0, 0], [1, 0, 0]],   // per joint: gain, reversal (backlash) term, offset
+      buf: [], dir: [1, -1],         // online buffer of executed steps; last motor direction
+      chunk: null, step: 0, stepT: 0, pause: 0, chunkNo: 0,
+      bars: [], past: [], pill: null, chip: null,
     };
+    // severity factor of component c on joint j right now
+    function sev(c, j) {
+      const S = SCEN[s.sc];
+      if (S.joint !== undefined && S.joint !== j) return 1;
+      const w = S.w[c];
+      return S.ramp === c ? 1 + (w - 1) * clamp(s.scT / 12, 0, 1) : w;
+    }
+    // gravity torque on each joint at link angles q (arbitrary units)
+    const grav = (q) => [Math.cos(q[0]) + 0.55 * Math.cos(q[0] + q[1]), 0.55 * Math.cos(q[0] + q[1])];
+    function linkAngles() {
+      const g = grav(s.ql);
+      // gravity-compensation error leaves a fraction beta*g(q) of the load unbalanced
+      return [0, 1].map((j) => s.ql[j] - 0.04 * sev(1, j) * g[j] + s.eta[j][0]);
+    }
+    const eePos = () => fk(linkAngles()).ee;
+
+    function planChunk(goal) {
+      const p0 = eePos();
+      const d = [goal[0] - p0[0], goal[1] - p0[1]], L = Math.hypot(d[0], d[1]);
+      const k = L > K * 9 ? (K * 9) / L : 1;
+      const nom = [d[0] * k / K, d[1] * k / K];      // the motion the policy intends per step
+      s.chunk = { p0, nom, cmd: [], exec: [p0], eta: [], err: [], goal, rows: [] };
+      s.step = 0; s.stepT = 0;
+      startStep();
+    }
+    // the adapted policy issues, per joint, the command it expects the robot
+    // to turn into the intended motion (conditioned on direction reversals)
+    function compensate(d, j) {
+      if (!s.comp || Math.abs(d) < 1e-6) return d;
+      const [g, b, o] = s.fit[j], rev = Math.sign(d) !== s.dir[j] ? Math.sign(d) : 0;
+      const cmd = (d - o - b * rev) / clamp(g, 0.6, 1.6);
+      return clamp(cmd, -3 * Math.abs(d) - 0.1, 3 * Math.abs(d) + 0.1);
+    }
+    function startStep() {
+      const c = s.chunk, i = s.step;
+      const pa = [c.p0[0] + c.nom[0] * i, c.p0[1] + c.nom[1] * i];
+      const q0 = ik(pa), q1 = ik([pa[0] + c.nom[0], pa[1] + c.nom[1]]);
+      const want = [q1[0] - q0[0], q1[1] - q0[1]];
+      c.dq = want.map((d, j) => compensate(d, j));
+      c.rev = c.dq.map((d, j) => (Math.abs(d) > 1e-6 && Math.sign(d) !== s.dir[j] ? Math.sign(d) : 0));
+      const qx = linkAngles(), p = fk(qx).ee, pc = fk([qx[0] + c.dq[0], qx[1] + c.dq[1]]).ee;
+      c.cmd[i] = [pc[0] - p[0], pc[1] - p[1]];      // the issued command, as an end-effector delta
+      c.stepStart = p; c.qStart = qx;
+    }
+    function endStep() {
+      const c = s.chunk, p = eePos(), a = c.cmd[s.step], p0 = c.stepStart, q = linkAngles();
+      c.exec.push(p);
+      c.eta.push([p[0] - p0[0] - a[0], p[1] - p0[1] - a[1]]);            // residual vs issued command
+      c.err.push([p[0] - p0[0] - c.nom[0], p[1] - p0[1] - c.nom[1]]);   // vs the motion the policy intended
+      c.rows.push([0, 1].map((j) => [c.dq[j], c.rev[j], q[j] - c.qStart[j]]));
+    }
+    function endChunk() {
+      const c = s.chunk;
+      const r = c.err.reduce((m, e) => m + Math.hypot(e[0], e[1]), 0) / c.err.length;
+      s.bars.push([r, s.comp]);
+      if (s.bars.length > 14) s.bars.shift();
+      s.past.push(c);
+      if (s.past.length > 2) s.past.shift();
+      // online update from the command-execution residuals: fit, per joint,
+      // how issued commands turn into executed motion over a recent buffer,
+      // anchored to the unadapted policy (the paper's LoRA anchor term).
+      // With self-comp off the base policy stays frozen.
+      if (s.comp) {
+        s.buf.push(...c.rows);
+        while (s.buf.length > 3 * K) s.buf.shift();
+        // a small step toward the new fit, like a few optimizer steps per chunk
+        s.fit = [0, 1].map((j) => { const w = ridge(s.buf.map((r) => r[j])); return s.fit[j].map((v, i) => lerp(v, w[i], 0.5)); });
+      } else { s.buf = []; s.fit = [[1, 0, 0], [1, 0, 0]]; }
+      s.chunkNo++;
+      s.pause = PAUSE;
+    }
+    // least squares for executed = g*cmd + b*reversal + o, pulled toward (1, 0, 0)
+    function ridge(rows) {
+      const lam = [0.004, 0.2, 2], prior = [1, 0, 0];
+      const M = [[lam[0], 0, 0], [0, lam[1], 0], [0, 0, lam[2]]], R = prior.map((w, i) => w * lam[i]);
+      for (const [cmd, rev, y] of rows) {
+        const f = [cmd, rev, 1];
+        for (let i = 0; i < 3; i++) { R[i] += f[i] * y; for (let k = 0; k < 3; k++) M[i][k] += f[i] * f[k]; }
+      }
+      const inv = inv3(M);
+      return [0, 1, 2].map((i) => inv[i][0] * R[0] + inv[i][1] * R[1] + inv[i][2] * R[2]);
+    }
+    function inv3(m) {
+      const [a, b, c] = m[0], [d, e, f] = m[1], [g, h, i] = m[2];
+      const A = e * i - f * h, Bq = -(d * i - f * g), Cq = d * h - e * g, det = a * A + b * Bq + c * Cq;
+      return [[A / det, -(b * i - c * h) / det, (b * f - c * e) / det],
+        [Bq / det, (a * i - c * g) / det, -(a * f - c * d) / det],
+        [Cq / det, -(a * h - b * g) / det, (a * e - b * d) / det]];
+    }
+    // advance the joints by one frame of the current step
+    function integrate(dt) {
+      const c = s.chunk, frac = dt / STEP;
+      const g = grav(s.ql);
+      for (let j = 0; j < 2; j++) {
+        // Stribeck friction: small (slow) commands stall against static friction
+        const v = Math.abs(c.dq[j]) / STEP, wf = sev(0, j);
+        const loss = wf * (0.12 + 0.12 * Math.exp(-((v / 0.3) ** 2)));
+        const dqm = c.dq[j] * frac * Math.max(0, 1 - loss);
+        s.qm[j] += dqm;
+        if (Math.abs(dqm) > 1e-6) s.dir[j] = Math.sign(dqm);
+        // backlash (Tao-Kokotovic deadband) between motor and link
+        const Bw = 0.01 * sev(2, j);
+        if (s.qm[j] - s.ql[j] > Bw) s.ql[j] = s.qm[j] - Bw;
+        else if (s.qm[j] - s.ql[j] < -Bw) s.ql[j] = s.qm[j] + Bw;
+        // compliance: spring-mass-damper deflection driven by the load torque
+        const Kc = 60 / sev(3, j), acc = (dqm - (s.lastDq ? s.lastDq[j] : 0)) / (dt * dt || 1);
+        const tau = 0.35 * g[j] + 0.001 * acc;
+        const e = s.eta[j];
+        e[1] += (-9 * e[1] - Kc * e[0] - tau) * dt;
+        e[0] += e[1] * dt;
+        s.lastDq = s.lastDq || [0, 0];
+        s.lastDq[j] = dqm;
+      }
+    }
 
     return {
+      state: s,
       init(st) {
         const q = ik(reachable(TOUR[0]));
-        s.cmd = q.slice(); s.raw = q.slice(); s.intent = q.slice();
+        s.qm = q.slice(); s.ql = q.slice();
         st.ptr = TOUR[0].slice(); st.target = TOUR[0].slice();
       },
       idle(t) {
-        const n = TOUR.length, per = 3.4, u = Math.max(0, t) / per, i = Math.floor(u) % n;
-        const f = ease(clamp((u - Math.floor(u)) / 0.35, 0, 1));
-        const a = TOUR[(i + n - 1) % n], b = TOUR[i];
-        return [lerp(a[0], b[0], f), lerp(a[1], b[1], f)];
+        const n = TOUR.length, u = Math.max(0, t) / (3 * (K * STEP + PAUSE)), i = Math.floor(u) % n;
+        return TOUR[i];
       },
-      // the toggle pill; returns true when the click was consumed
-      click(p, st) {
-        const b = s.pill;
-        if (b && p[0] >= b[0] - 3 && p[0] <= b[0] + b[2] + 3 && p[1] >= b[1] - 3 && p[1] <= b[1] + b[3] + 3) {
-          s.comp = !s.comp; s.userSet = true;
-          return true;
-        }
+      click(p) {
+        const hit = (b) => b && p[0] >= b[0] - 3 && p[0] <= b[0] + b[2] + 3 && p[1] >= b[1] - 3 && p[1] <= b[1] + b[3] + 3;
+        if (hit(s.pill)) { s.comp = !s.comp; s.userSet = true; return true; }
+        if (hit(s.chip)) { s.sc = (s.sc + 1) % SCEN.length; s.scT = 0; s.userScen = true; return true; }
         return false;
       },
       draw(P, st) {
         const T = P.T, t = st.t, dt = st.dt || 0.016;
 
-        // ---- auto demo: alternate off/on until the viewer takes the toggle
-        if (!s.userSet) s.comp = (t % 13) > 5;
+        // ---- auto demo until the viewer takes over: 4 chunks off, 6 on,
+        // then the next scenario
+        if (!s.userSet) {
+          const ph = s.chunkNo % 10;
+          if (!s.chunk || s.pause > 0) s.comp = ph >= 4;
+          if (!s.userScen && ph === 0 && s.lastCycle !== s.chunkNo && s.chunkNo > 0) {
+            s.lastCycle = s.chunkNo; s.sc = (s.sc + 1) % SCEN.length; s.scT = 0;
+          }
+        }
+        s.scT += dt;
 
-        // ---- dynamics
+        // ---- chunk loop
         const goal = reachable(st.ptr);
-        const qd = ik(goal);
-        const qGoal = s.comp ? [qd[0] - s.est[0], qd[1] - s.est[1]] : qd;
-        const prev = s.cmd.slice();
-        // intent: where an ideal arm would be right now on its way to the goal
-        for (let j = 0; j < 2; j++) s.intent[j] += (qd[j] - s.intent[j]) * approach(dt, 5);
-        for (let j = 0; j < 2; j++) s.cmd[j] += (qGoal[j] - s.cmd[j]) * approach(dt, 5);
-        const vel = [(s.cmd[0] - prev[0]) / dt, (s.cmd[1] - prev[1]) / dt];
-        // friction: the joints trail the command (first-order lag)
-        for (let j = 0; j < 2; j++) s.raw[j] += (s.cmd[j] - s.raw[j]) * approach(dt, 9);
-        // backlash: an offset that flips with the direction of travel
-        for (let j = 0; j < 2; j++) if (Math.abs(vel[j]) > 0.05) s.blDir[j] = Math.sign(vel[j]);
-        const q12 = s.raw[0] + s.raw[1], load = 1 + 0.35 * Math.sin(t * 0.7);
-        const grav = [-0.12 * Math.cos(s.raw[0]) - 0.06 * Math.cos(q12), -0.09 * Math.cos(q12)];
-        const comp = [-0.04 * load * Math.cos(s.raw[0]), -0.07 * load * Math.cos(q12)];
-        const back = [0.05 * s.blDir[0], -0.07 * s.blDir[1]];
-        const wear = [0.03, 0.08];
-        const exec = [0, 1].map((j) => s.raw[j] + grav[j] + comp[j] + back[j] + wear[j]);
-        const fric = [s.raw[0] - s.cmd[0], s.raw[1] - s.cmd[1]];
-        const mag = (v) => Math.hypot(v[0], v[1]);
-        const tm = [mag(fric), mag(back), mag(comp), mag(grav), mag(wear)];
-        for (let i = 0; i < 5; i++) s.terms[i] += (tm[i] - s.terms[i]) * approach(dt, 6);
-
-        // online self-compensation: learn the steady residual between the
-        // commanded and executed joints (friction lag is transient, left alone)
-        const resid = [exec[0] - s.raw[0], exec[1] - s.raw[1]];
-        for (let j = 0; j < 2; j++) s.est[j] += ((s.comp ? resid[j] : 0) - s.est[j]) * approach(dt, s.comp ? 1.1 : 2.5);
-
-        const C = fk(s.cmd), X = fk(exec), I = fk(s.intent);
-        const err = dist(X.ee, I.ee);
-        s.err += (err - s.err) * approach(dt, 8);
-
-        // traces + error history
-        if (t - s.trailAt > 1 / 30) {
-          s.trailAt = t;
-          s.trail.push([C.ee, X.ee]);
-          if (s.trail.length > 75) s.trail.shift();
+        if (!s.chunk) planChunk(goal);
+        else if (s.pause > 0) {
+          s.pause -= dt;
+          if (s.pause <= 0) planChunk(goal);
+        } else {
+          integrate(dt);
+          s.stepT += dt;
+          if (s.stepT >= STEP) {
+            endStep();
+            s.step++; s.stepT = 0;
+            if (s.step >= K) endChunk(); else startStep();
+          }
         }
-        if (t - s.histAt > 0.1) {
-          s.histAt = t;
-          s.hist.push([s.err, s.comp]);
-          if (s.hist.length > 80) s.hist.shift();
+        // compliance keeps ringing between chunks
+        if (s.pause > 0) for (let j = 0; j < 2; j++) {
+          const e = s.eta[j], g = grav(s.ql);
+          e[1] += (-9 * e[1] - (60 / sev(3, j)) * e[0] - 0.35 * g[j]) * dt;
+          e[0] += e[1] * dt;
         }
+
+        const c = s.chunk, X = fk(linkAngles());
+        // commanded end effector right now (for the ghost arm)
+        const cur = Math.min(s.step, K - 1), a0 = c.cmd[cur] || [0, 0], st0 = c.stepStart;
+        const cf = s.pause > 0 ? 1 : s.stepT / STEP;
+        const C = fk(ik([st0[0] + a0[0] * cf, st0[1] + a0[1] * cf]));
 
         // ---- stage
-        P.dots(12, 12, PX - 12, TABLE - 6, 12);
+        P.dots(12, 22, PX - 12, TABLE - 6, 12);
         P.line([[10, TABLE], [PX - 8, TABLE]], { w: 1, color: T.mute, alpha: 0.6 });
         for (let x = 14; x < PX - 8; x += 7) P.line([[x, TABLE], [x - 4, TABLE + 4]], { w: 0.7, color: T.mute, alpha: 0.35 });
 
-        // traces: commanded (dashed, accent) and executed (solid, magenta)
-        const n = s.trail.length;
-        for (let i = 1; i < n; i++) {
-          const a = i / n;
-          P.line([s.trail[i - 1][0], s.trail[i][0]], { w: 1.2, color: T.acc, alpha: 0.55 * a, dash: [3, 2.5], cap: 'butt' });
-          P.line([s.trail[i - 1][1], s.trail[i][1]], { w: 1.6, color: T.exec, alpha: 0.75 * a });
-        }
+        // earlier chunks, fading
+        s.past.forEach((pc0, k) => P.line(pc0.exec, { w: 1.3, color: T.exec, alpha: 0.18 + 0.14 * k }));
+
+        // this chunk: the intended plan (dotted), each issued command from where
+        // its step started (dashed), the execution, and the error vs intent (red)
+        const nomPts = [c.p0];
+        for (let i = 0; i < K; i++) nomPts.push([c.p0[0] + c.nom[0] * (i + 1), c.p0[1] + c.nom[1] * (i + 1)]);
+        P.line(nomPts, { w: 0.9, color: T.mute, alpha: 0.7, dash: [1.2, 2.2] });
+        c.cmd.forEach((a, i) => {
+          const from = c.exec[i] || st0;
+          P.line([from, [from[0] + a[0], from[1] + a[1]]], { w: 1.3, color: T.acc, dash: [2.5, 1.8], cap: 'butt' });
+          P.circle([from[0] + a[0], from[1] + a[1]], 1.3, { fill: T.acc, w: 0 });
+        });
+        const ex = c.exec.concat(s.pause > 0 ? [] : [X.ee]);
+        P.line(ex, { w: 1.8, color: T.exec });
+        c.exec.slice(1).forEach((p) => P.circle(p, 1.6, { fill: T.exec, w: 0 }));
+        c.err.forEach((e, i) => {
+          const tip = c.exec[i + 1], base = [tip[0] - e[0], tip[1] - e[1]];
+          if (Math.hypot(e[0], e[1]) > 0.8) P.line([base, tip], { w: 1.3, color: T.bad });
+        });
 
         // pedestal
         P.rrect(B[0] - 11, B[1] - 2, 22, TABLE - B[1] + 2, 2.5, { fill: T.ink, fillAlpha: 0.85, w: 0 });
         P.rrect(B[0] - 15, TABLE - 3, 30, 3, 1, { fill: T.ink, w: 0 });
 
-        // commanded arm: ghost in the theme accent
-        const ghost = { w: 9, color: T.acc, alpha: 0.16 };
+        // commanded arm (ghost) and executed arm
+        const ghost = { w: 9, color: T.acc, alpha: 0.14 };
         P.line([B, C.elbow], ghost);
         P.line([C.elbow, C.ee], { ...ghost, w: 7 });
-        P.line([B, C.elbow, C.ee], { w: 1, color: T.acc, alpha: 0.85, dash: [3, 2.5], cap: 'butt' });
-        P.circle(C.elbow, 3, { fill: T.bg, color: T.acc, w: 1, alpha: 0.85 });
-
-        // executed arm
-        const armFill = { w: 9, color: T.exec, alpha: 0.9 };
-        P.line([B, X.elbow], armFill);
-        P.line([X.elbow, X.ee], { ...armFill, w: 7 });
-        // gripper at the executed end effector
+        const arm = { w: 9, color: T.exec, alpha: 0.9 };
+        P.line([B, X.elbow], arm);
+        P.line([X.elbow, X.ee], { ...arm, w: 7 });
         const ga = -X.a, gd = [Math.cos(ga), Math.sin(ga)], gn = [-gd[1], gd[0]];
         const g0 = [X.ee[0] + gd[0] * 2, X.ee[1] + gd[1] * 2];
         for (const sg of [-1, 1]) {
           const b = [g0[0] + gn[0] * 4 * sg, g0[1] + gn[1] * 4 * sg];
           P.line([[g0[0], g0[1]], b, [b[0] + gd[0] * 6, b[1] + gd[1] * 6]], { w: 1.8, color: T.exec });
         }
-        for (const [c, r] of [[B, 5], [X.elbow, 4.2]]) {
-          P.circle(c, r, { fill: T.bg, w: 0 });
-          P.circle(c, r * 0.55, { fill: T.acc, w: 0 });
-        }
+        // joints; the scenario's worn joint is ringed
+        const S = SCEN[s.sc];
+        [[B, 5, 0], [X.elbow, 4.2, 1]].forEach(([p, r, j]) => {
+          P.circle(p, r, { fill: T.bg, w: 0 });
+          P.circle(p, r * 0.55, { fill: T.acc, w: 0 });
+          if (S.joint === j) P.circle(p, r + 3, { w: 1.2, color: T.bad, dash: [2, 2] });
+        });
 
-        // target + action error
-        const hit = err < 4;
         P.star(goal, 7, { fill: T.bg, color: T.ink });
-        if (!hit) {
-          P.line([X.ee, I.ee], { w: 1.4, color: T.bad });
-          P.cross(X.ee, 3, { w: 1.6, color: T.ink });
-        }
-        // labels sit on whichever side of the target has room
         const side = goal[0] > PX - 60 ? -1 : 1;
         P.text('target', goal[0] + side * 10, goal[1] - 9, { align: side > 0 ? 'left' : 'right', size: 8, color: T.ink, detail: true });
-        if (!hit && err > 10) {
-          P.text('action error', goal[0] + side * 10, goal[1] + 9, { align: side > 0 ? 'left' : 'right', size: 7.5, color: T.bad, detail: true });
+
+        // legend + chunk / update status
+        if (!P.small) {
+          P.line([[14, 12], [24, 12]], { w: 1.3, color: T.acc, dash: [3, 2.5], cap: 'butt' });
+          P.text('command a', 27, 12, { size: 7, color: T.ink });
+          P.line([[70, 12], [80, 12]], { w: 1.8, color: T.exec });
+          P.text('executed', 83, 12, { size: 7, color: T.ink });
+          P.line([[122, 12], [130, 12]], { w: 1.3, color: T.bad });
+          P.text('action error', 133, 12, { size: 7, color: T.ink });
         }
+        const status = s.pause > 0 ? (s.comp ? 'LoRA update  a ← a − η' : 'base policy (frozen)') : `chunk ${s.chunkNo + 1} · step ${Math.min(K, s.step + 1)}/${K}`;
+        P.text(status, 14, TABLE + 11, { size: P.small ? 9 : 7, color: s.pause > 0 && s.comp ? T.ok : T.mute, weight: s.pause > 0 && s.comp ? 700 : 500 });
 
         // ---- readout column
         const x0 = PX, x1 = PX + PW;
-        P.line([[PX - 6, 12], [PX - 6, H - 12]], { w: 0.8, color: T.line });
-        P.text('action error', x0, 16, { size: P.small ? 11 : 8, color: T.mute });
-        const mm = Math.round(s.err * 4);
-        const good = mm <= 8;
-        P.text(`${mm} mm`, x0, 34, { size: 19, weight: 700, color: good ? T.ok : T.bad });
+        P.line([[PX - 6, 10], [PX - 6, H - 10]], { w: 0.8, color: T.line });
+        P.text('RoboStress', x0, 12, { size: P.small ? 9 : 7, color: T.mute });
+        const chH = P.small ? 17 : 13;
+        s.chip = [x0, 18, PW, chH];
+        P.rrect(x0, 18, PW, chH, 3, { fill: T.line, fillAlpha: 0.55, color: T.mute, w: 0.8 });
+        let nm = S.name;
+        if (P.small) nm = nm.replace('Thermal Drift-', 'Thermal ').replace('Aged Joint-', 'Aged ');
+        P.text(nm + ' ›', x0 + PW / 2, 18 + chH / 2 + 0.5, { size: P.small ? 9.5 : 7.5, weight: 600, align: 'center', color: T.ink });
 
-        // error history: shaded where compensation was on
-        const sy0 = 48, sh = P.small ? 44 : 26, sy1 = sy0 + sh;
-        const hx = (i) => x0 + (x1 - x0) * i / 79;
-        const hy = (e) => sy1 - clamp(e / 36, 0, 1) * sh;
-        for (let i = 0; i < s.hist.length; i++) {
-          if (s.hist[i][1]) P.rrect(hx(i + 80 - s.hist.length) - 0.6, sy0, (x1 - x0) / 79 + 1.2, sh, 0, { fill: T.ok, fillAlpha: 0.1, w: 0 });
-        }
-        P.line([[x0, sy1], [x1, sy1]], { w: 0.8, color: T.line });
-        const hp = s.hist.map((h, i) => [hx(i + 80 - s.hist.length), hy(h[0])]);
-        P.line(hp, { w: 1.4, color: T.bad });
-
-        // imperfection meters (what the residual is made of)
+        let y = 18 + chH + 6;
         if (!P.small) {
-          P.text('hardware imperfections', x0, 88, { size: 7, color: T.mute });
-          NAMES.forEach((nm, i) => {
-            const y = 99 + i * 9.5, v = clamp(s.terms[i] / 0.15, 0, 1);
-            P.text(nm, x0, y, { size: 7, color: T.ink });
-            P.rrect(x0 + 44, y - 2.2, PW - 44, 4.4, 2.2, { fill: T.line, w: 0 });
-            P.rrect(x0 + 44, y - 2.2, Math.max(4.4, (PW - 44) * v), 4.4, 2.2, { fill: T.exec, fillAlpha: 0.8, w: 0 });
+          COMP.forEach((n, i) => {
+            const yy = y + 4 + i * 8.5;
+            const w = Math.max(sev(i, 0), sev(i, 1)), hot = w > 1.05;
+            P.text(n, x0, yy, { size: 6.8, color: hot ? T.ink : T.mute });
+            P.rrect(x0 + 50, yy - 2, PW - 50, 4, 2, { fill: T.line, w: 0 });
+            P.rrect(x0 + 50, yy - 2, Math.max(4, (PW - 50) * clamp(w / 3.5, 0, 1)), 4, 2, { fill: hot ? T.exec : T.mute, fillAlpha: hot ? 0.85 : 0.45, w: 0 });
           });
+          y += 38;
+        }
+
+        // residual per chunk
+        P.text('action error per chunk', x0, y + 3, { size: P.small ? 8.5 : 6.8, color: T.mute });
+        const by0 = y + 9, bh = P.small ? 42 : 24, by1 = by0 + bh, n = 14, bw = PW / n;
+        P.line([[x0, by1], [x1, by1]], { w: 0.8, color: T.line });
+        s.bars.forEach(([r, on], i) => {
+          const h = clamp(r / 2.5, 0.04, 1) * bh, x = x0 + (i + n - s.bars.length) * bw;
+          P.rrect(x + bw * 0.18, by1 - h, bw * 0.64, h, 1, { fill: on ? T.ok : T.bad, fillAlpha: 0.85, w: 0 });
+        });
+
+        // the paper's number for this scenario (pi0.5 average success)
+        if (!P.small) {
+          const yy = by1 + 10;
+          P.text('π0.5 success', x0, yy, { size: 6.8, color: T.mute });
+          P.text(`${S.base}%`, x0 + 43, yy, { size: 7.5, color: T.mute, weight: 600 });
+          P.text('→', x0 + 70, yy, { size: 7.5, color: T.mute, align: 'center' });
+          P.text(`${S.ours}%`, x1, yy, { size: 7.5, color: T.ok, weight: 700, align: 'right' });
         }
 
         // the toggle
-        const ph = P.small ? 20 : 15, py = H - 12 - ph;
+        const ph = P.small ? 20 : 15, py = H - 10 - ph;
         s.pill = [x0, py, PW, ph];
         const on = s.comp;
-        P.rrect(x0, py, PW, ph, ph / 2, { fill: on ? T.ok : T.bg, fillAlpha: on ? 1 : 1, color: on ? T.ok : T.mute, w: 1 });
-        const knob = on ? x0 + PW - ph / 2 : x0 + ph / 2;
-        P.circle([knob, py + ph / 2], ph / 2 - 3, { fill: on ? T.bg : T.mute, w: 0 });
+        P.rrect(x0, py, PW, ph, ph / 2, { fill: on ? T.ok : T.bg, color: on ? T.ok : T.mute, w: 1 });
+        P.circle([on ? x0 + PW - ph / 2 : x0 + ph / 2, py + ph / 2], ph / 2 - 3, { fill: on ? T.bg : T.mute, w: 0 });
         P.text(on ? 'self-comp on' : 'self-comp off', x0 + PW / 2 + (on ? -ph / 4 : ph / 4), py + ph / 2 + 0.5,
           { size: P.small ? 10 : 7.5, weight: 600, align: 'center', color: on ? T.bg : T.mute });
-
-        // legend
-        if (!P.small) {
-          P.line([[14, 14], [26, 14]], { w: 1.2, color: T.acc, dash: [3, 2.5], cap: 'butt' });
-          P.text('commanded', 30, 14, { size: 7, color: T.ink });
-          P.line([[84, 14], [96, 14]], { w: 1.8, color: T.exec });
-          P.text('executed', 100, 14, { size: 7, color: T.ink });
-        }
       },
     };
   }
