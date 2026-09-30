@@ -322,138 +322,111 @@
 
   // ---------------------------------------------------------------- testdg
   // TestDG: test-time domain generalization for continual TTA.
-  // One idea: test domains keep changing. Each new domain lands somewhere
-  // in the domain-embedding space; when the domain changes, only a few
-  // prototypes of the previous domain are kept (hollow diamonds), and the
-  // current domain's embeddings are pulled onto them, so the encoder grows
-  // domain-invariant and each later domain lands closer. The strip below
-  // shows error over the stream: a baseline spikes at every domain change,
-  // TestDG stays flat. The pointer drops a new domain where it is.
+  // Two panels see the same stream of test domains (colour = domain,
+  // shape = class). Left adapts to the current domain only, so every new
+  // domain lands shifted and its first samples fall into the wrong class.
+  // Right (TestDG) keeps prototypes of the previous domain (diamonds) and
+  // makes domains indistinguishable while classes stay apart, so the gap
+  // shrinks domain after domain and the final, unseen domain lands where
+  // it belongs. The pointer's x scrubs through the stream.
   function testdgScene() {
-    const C = [160, 66], TOP = 12, BOT = 124;     // embedding space
-    const SY0 = 138, SY1 = 170, SPAN = 16;        // error strip, seconds shown
-    const DUR = 5.2, N = 24, NP = 5;
-    const FAR = [[110, -34], [-118, 30], [96, 40], [-100, -36], [16, 48], [-40, -44]];
-    const rnd = (k) => hash(k * 7919 + 13);
-    const gauss = (k) => { const u = Math.max(1e-6, rnd(k)), v = rnd(k + 1); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); };
+    const PANELS = [{ x: 82, name: 'current only' }, { x: 238, name: 'TestDG' }];
+    const CY = 84, TL0 = 22, TL1 = W - 22, TLY = 168;
+    const CLS = [[-24, -14], [24, -14], [0, 22]];                  // class centres
+    const OFF = [[34, -14], [-32, 18], [12, 34], [-30, -24], [38, 22]];   // domain shifts; last is unseen
+    const ND = OFF.length, PER = 6, LOOP = ND * 4 + 2;
+    const rnd = (k) => hash(k * 7919 + 13) - 0.5;
+    const s = { last: null };
 
-    const s = { dom: -1, t0: 0, shift: [0, 0], protos: [], old: [], oldT: 0, gap: 1, hist: [], lastPtr: null };
-    const colorOf = (T, k) => [T.exec, T.acc, T.warn, T.ok, T.violet][((k % 5) + 5) % 5];
-    // positions of the current domain's embeddings
-    function cloud(t) {
-      const a = align(t), out = [];
-      const tgt = s.protos.length ? centroid(s.protos.map((p) => p.pos)) : C;
-      const base = [C[0] + s.shift[0], C[1] + s.shift[1]];
-      const ctr = [lerp(base[0], tgt[0], a), lerp(base[1], tgt[1], a)];
-      const n = Math.min(N, Math.floor(3 + (t - s.t0) * 9));   // samples stream in
-      for (let i = 0; i < n; i++) {
-        const k = s.dom * 101 + i * 3;
-        out.push([ctr[0] + 11 * gauss(k), ctr[1] + 8 * gauss(k + 50)]);
-      }
+    // where domain d's feature cloud sits, for a method, at progress a in [0,1] of domain d
+    function shift(d, a, mine) {
+      const unseen = d === ND - 1;
+      const off = unseen && s.drag ? s.drag : OFF[d];                  // the cursor can play the unseen shift
+      const adapt = unseen ? 0 : 0.65 * ease(clamp(a / 0.7, 0, 1));    // test-time adaptation within a domain
+      const inv = mine ? 1 - 0.7 * Math.pow(0.6, d) : 0;               // TestDG: invariance built from past domains
+      const k = (1 - inv) * (1 - adapt);
+      return [off[0] * k, off[1] * k];
+    }
+    function points(d, a, mine, px) {
+      const sh = shift(d, a, mine), out = [];
+      CLS.forEach((c, ci) => {
+        for (let i = 0; i < PER; i++) {
+          const k = d * 97 + ci * 13 + i;
+          const p = [px + c[0] + sh[0] + 16 * rnd(k), CY + c[1] + sh[1] + 13 * rnd(k + 500)];
+          // predicted class = nearest class centre
+          let best = 0;
+          CLS.forEach((q, qi) => { if (dist(p, [px + q[0], CY + q[1]]) < dist(p, [px + CLS[best][0], CY + CLS[best][1]])) best = qi; });
+          out.push({ p, ci, ok: best === ci });
+        }
+      });
       return out;
     }
-    const centroid = (ps) => [ps.reduce((m, p) => m + p[0], 0) / ps.length, ps.reduce((m, p) => m + p[1], 0) / ps.length];
-    const align = (t) => ease(clamp((t - s.t0 - 0.6) / 2.6, 0, 1)) * 0.92;
-    // keep a few representative prototypes (greedy, spread over the cloud)
-    function selectProtos(pts) {
-      const ctr = centroid(pts), pick = [];
-      let first = pts.reduce((b, p) => (dist(p, ctr) < dist(b, ctr) ? p : b), pts[0]);
-      pick.push(first);
-      while (pick.length < NP) {
-        let best = null, bd = -1;
-        for (const p of pts) {
-          const d = Math.min(...pick.map((q) => dist(p, q)));
-          if (d > bd) { bd = d; best = p; }
-        }
-        pick.push(best);
-      }
-      return pick;
-    }
-    function newDomain(t, shift) {
-      if (s.dom >= 0) {
-        const pts = cloud(t);
-        s.old = pts; s.oldT = t; s.oldDom = s.dom;
-        s.protos = selectProtos(pts).map((p) => ({ pos: p, dom: s.dom, born: t }));
-        s.gap = Math.max(0.28, s.gap * 0.72);      // the encoder is more invariant each time
-      }
-      s.dom++; s.t0 = t;
-      if (!shift && s.dom % 6 === 0) { s.gap = 1; s.protos = []; }   // start the demo loop over
-      s.shift = shift || FAR[s.dom % FAR.length].map((v) => v * s.gap);
-      s.hist.push({ t, gap: s.gap });
+    function shape(P, ci, p, r, o) {
+      const ctx = P.ctx;
+      ctx.save();
+      ctx.beginPath();
+      if (ci === 0) ctx.arc(p[0], p[1], r, 0, TAU);
+      else if (ci === 1) { ctx.moveTo(p[0], p[1] - r * 1.15); ctx.lineTo(p[0] + r * 1.1, p[1] + r * 0.75); ctx.lineTo(p[0] - r * 1.1, p[1] + r * 0.75); ctx.closePath(); }
+      else ctx.rect(p[0] - r * 0.9, p[1] - r * 0.9, r * 1.8, r * 1.8);
+      ctx.globalAlpha = o.alpha ?? 1;
+      if (o.fill) { ctx.fillStyle = o.fill; ctx.fill(); }
+      if (o.stroke) { ctx.strokeStyle = o.stroke; ctx.lineWidth = o.w || 1; ctx.stroke(); }
+      ctx.restore();
     }
 
     return {
       sticky: true,
       idle: () => null,
       draw(P, st) {
-        const T = P.T, t = st.t;
-        if (s.dom < 0) newDomain(t);
-        // the pointer drops a new domain where it rests (if far from the current one)
-        if (!st.idle && st.ptr[1] < BOT) {
-          const cur = centroid(cloud(t)), want = [st.ptr[0] - C[0], st.ptr[1] - C[1]];
-          if (t - s.t0 > 1.2 && dist(st.ptr, cur) > 34 && (!s.lastPtr || dist(st.ptr, s.lastPtr) > 20)) {
-            s.lastPtr = st.ptr.slice();
-            newDomain(t, want);
+        const T = P.T;
+        const DOM = [T.exec, T.acc, T.warn, T.ok, T.ink];
+        // time along the stream: the pointer's x while hovering, else it plays
+        // idle: the stream plays. Hovering: you are the unseen domain's shift,
+        // measured from the centre of whichever panel the cursor is over
+        let u;
+        if (!st.idle) {
+          u = 0.999;
+          const px = st.ptr[0] < 160 ? PANELS[0].x : PANELS[1].x;
+          let v = [st.ptr[0] - px, st.ptr[1] - CY];
+          const L = Math.hypot(v[0], v[1]);
+          if (L > 46) v = [v[0] * 46 / L, v[1] * 46 / L];
+          s.drag = v;
+        } else { s.drag = null; u = (st.t % LOOP) / (ND * 4); }
+        u = clamp(u, 0, 0.999);
+        const d = Math.floor(u * ND), a = u * ND - d;
+
+        PANELS.forEach((pn, pi) => {
+          const mine = pi === 1, px = pn.x;
+          // where each class belongs
+          CLS.forEach((c, ci) => shape(P, ci, [px + c[0], CY + c[1]], 8, { stroke: T.mute, w: 1, alpha: 0.45 }));
+          // the previous domain: prototypes (TestDG) or its faded cloud (current only)
+          if (d > 0) {
+            const prev = points(d - 1, 1, mine, px);
+            if (mine) {
+              prev.filter((_, i) => i % 3 === 0).forEach(({ p }) => {
+                const r = 3.4, dia = [[p[0], p[1] - r], [p[0] + r, p[1]], [p[0], p[1] + r], [p[0] - r, p[1]], [p[0], p[1] - r]];
+                P.line(dia, { w: 1.2, color: DOM[d - 1], alpha: 0.9 });
+              });
+            } else prev.forEach(({ p, ci }) => shape(P, ci, p, 2.2, { fill: DOM[d - 1], alpha: 0.18 }));
           }
-        } else if (t - s.t0 > DUR) newDomain(t);
-
-        // ---- embedding space
-        P.dots(14, TOP + 2, W - 14, BOT - 4, 13);
-        // the previous domain dissolves, leaving its prototypes
-        const fade = 1 - clamp((t - s.oldT) / 0.9, 0, 1);
-        if (fade > 0) s.old.forEach((p) => P.circle(p, 2.2, { fill: colorOf(T, s.oldDom), fillAlpha: 0.7 * fade, w: 0 }));
-        const pts = cloud(t), col = colorOf(T, s.dom), a = align(t);
-        // pull lines toward the nearest prototype while aligning
-        if (s.protos.length && a < 0.85) {
-          pts.forEach((p, i) => {
-            if (i % 3) return;
-            const q = s.protos.reduce((b, r) => (dist(r.pos, p) < dist(b.pos, p) ? r : b), s.protos[0]).pos;
-            P.line([p, q], { w: 0.8, color: T.mute, alpha: 0.35 * (1 - a), dash: [2, 2.5] });
+          // the current domain; misclassified samples get a red ring
+          points(d, a, mine, px).forEach(({ p, ci, ok }) => {
+            shape(P, ci, p, 2.8, { fill: DOM[d], alpha: 0.9 });
+            if (!ok) P.circle(p, 4.4, { w: 1.1, color: T.bad });
           });
-        }
-        pts.forEach((p) => P.circle(p, 2.3, { fill: col, fillAlpha: 0.85, w: 0 }));
-        s.protos.forEach((r) => {
-          const pop = ease(clamp((t - r.born) / 0.5, 0, 1));
-          const d = 4.2 * (0.6 + 0.4 * pop), c = r.pos;
-          const dia = [[c[0], c[1] - d], [c[0] + d, c[1]], [c[0], c[1] + d], [c[0] - d, c[1]], [c[0], c[1] - d]];
-          P.ctx.save(); P.ctx.beginPath(); dia.forEach((q, i) => (i ? P.ctx.lineTo(q[0], q[1]) : P.ctx.moveTo(q[0], q[1])));
-          P.ctx.fillStyle = T.bg; P.ctx.fill(); P.ctx.restore();
-          P.line(dia, { w: 1.5, color: colorOf(T, r.dom) });
+          P.text(pn.name, px, 12, { size: P.small ? 11 : 8.5, weight: mine ? 700 : 500, color: mine ? T.ink : T.mute, align: 'center' });
         });
-        if (!P.small) {
-          P.circle([18, TOP + 4], 2.3, { fill: col, fillAlpha: 0.85, w: 0 });
-          P.text('current domain', 25, TOP + 4, { size: 7.5, color: T.ink });
-          const c = [102, TOP + 4], d = 3.6;
-          P.line([[c[0], c[1] - d], [c[0] + d, c[1]], [c[0], c[1] + d], [c[0] - d, c[1]], [c[0], c[1] - d]], { w: 1.3, color: T.ink });
-          P.text('prototypes', 110, TOP + 4, { size: 7.5, color: T.ink });
-        }
+        P.line([[160, 22], [160, 146]], { w: 0.8, color: T.line });
 
-        // ---- error over the stream: baseline spikes at each change, TestDG stays low
-        P.line([[14, SY1], [W - 14, SY1]], { w: 0.8, color: T.line });
-        const X = (tt) => W - 14 - (t - tt) / SPAN * (W - 28);
-        const Y = (e) => SY1 - clamp(e, 0, 1) * (SY1 - SY0);
-        s.hist.forEach((h) => { if (t - h.t < SPAN) P.line([[X(h.t), SY0 - 2], [X(h.t), SY1]], { w: 0.7, color: T.line, dash: [2, 2] }); });
-        const errAt = (tt, mine) => {
-          let h = null;
-          for (const e of s.hist) if (e.t <= tt) h = e;
-          if (!h) return 0.3;
-          const tau = tt - h.t;
-          return mine ? 0.18 + 0.28 * h.gap * Math.exp(-tau / 0.5) : 0.38 + 0.5 * Math.exp(-tau / 1.3);
-        };
-        const base = [], mine = [];
-        for (let i = 0; i <= 90; i++) {
-          const tt = t - SPAN + SPAN * i / 90;
-          base.push([X(tt), Y(errAt(tt, false))]); mine.push([X(tt), Y(errAt(tt, true))]);
+        // the stream: one segment per domain, the last one unseen
+        const sw = (TL1 - TL0) / ND;
+        for (let i = 0; i < ND; i++) {
+          const x = TL0 + i * sw + 1.5, unseen = i === ND - 1;
+          P.rrect(x, TLY - 2.5, sw - 3, 5, 2.5, { fill: DOM[i], fillAlpha: i <= d ? 0.85 : 0.25, color: DOM[i], w: unseen ? 1 : 0, dash: unseen ? [2, 2] : null });
         }
-        P.line(base, { w: 1.2, color: T.mute, alpha: 0.7, dash: [3, 2.5] });
-        P.line(mine, { w: 1.8, color: T.acc });
-        if (!P.small) {
-          P.text('error', 14, SY0 - 6, { size: 7, color: T.mute });
-          P.line([[40, SY0 - 6], [50, SY0 - 6]], { w: 1.8, color: T.acc });
-          P.text('TestDG', 53, SY0 - 6, { size: 7, color: T.ink });
-          P.line([[88, SY0 - 6], [98, SY0 - 6]], { w: 1.2, color: T.mute, dash: [3, 2.5] });
-          P.text('w/o', 101, SY0 - 6, { size: 7, color: T.ink });
-        }
+        const hx = TL0 + u * (TL1 - TL0);
+        P.line([[hx, TLY - 7], [hx, TLY + 7]], { w: 1.6, color: T.ink });
+        P.text('unseen', TL1 - sw / 2, TLY - 9, { size: 7, color: T.mute, align: 'center', detail: true });
       },
     };
   }
