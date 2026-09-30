@@ -3,7 +3,7 @@
 // fixed 320x180 board that is letterboxed into the canvas; the pointer
 // steers the scene, and when nobody is steering it plays by itself.
 // Colours come from the site's CSS variables, so light/dark just works.
-//   scenes: selfcomp
+//   scenes: selfcomp, testdg
 (function () {
   if (window.__pubFig) return;
   window.__pubFig = true;
@@ -16,6 +16,12 @@
   const ease = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   const approach = (dt, rate) => 1 - Math.exp(-dt * rate);
+  function hash(n) {                          // deterministic 0..1 from an integer
+    n = (n | 0) ^ 0x9e3779b9;
+    n = Math.imul(n ^ (n >>> 16), 0x85ebca6b);
+    n = Math.imul(n ^ (n >>> 13), 0xc2b2ae35);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  }
 
   // ---------------------------------------------------------------- theme
   let theme = null, themeAt = 0;
@@ -38,6 +44,8 @@
       exec: dark ? '#e58bd6' : '#a3308f',   // executed motion (teaser magenta)
       bad: dark ? '#ff7d6e' : '#d0342c',    // action error
       ok: dark ? '#6fd3a8' : '#16845a',     // compensated
+      warn: dark ? '#e8b25c' : '#c27a0e',
+      violet: dark ? '#b3a2ff' : '#6a4fc4',
       font: getComputedStyle(document.body).fontFamily || 'sans-serif',
     };
     return theme;
@@ -312,7 +320,145 @@
     };
   }
 
-  const SCENES = { selfcomp: selfcompScene };
+  // ---------------------------------------------------------------- testdg
+  // TestDG: test-time domain generalization for continual TTA.
+  // One idea: test domains keep changing. Each new domain lands somewhere
+  // in the domain-embedding space; when the domain changes, only a few
+  // prototypes of the previous domain are kept (hollow diamonds), and the
+  // current domain's embeddings are pulled onto them, so the encoder grows
+  // domain-invariant and each later domain lands closer. The strip below
+  // shows error over the stream: a baseline spikes at every domain change,
+  // TestDG stays flat. The pointer drops a new domain where it is.
+  function testdgScene() {
+    const C = [160, 66], TOP = 12, BOT = 124;     // embedding space
+    const SY0 = 138, SY1 = 170, SPAN = 16;        // error strip, seconds shown
+    const DUR = 5.2, N = 24, NP = 5;
+    const FAR = [[110, -34], [-118, 30], [96, 40], [-100, -36], [16, 48], [-40, -44]];
+    const rnd = (k) => hash(k * 7919 + 13);
+    const gauss = (k) => { const u = Math.max(1e-6, rnd(k)), v = rnd(k + 1); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); };
+
+    const s = { dom: -1, t0: 0, shift: [0, 0], protos: [], old: [], oldT: 0, gap: 1, hist: [], lastPtr: null };
+    const colorOf = (T, k) => [T.exec, T.acc, T.warn, T.ok, T.violet][((k % 5) + 5) % 5];
+    // positions of the current domain's embeddings
+    function cloud(t) {
+      const a = align(t), out = [];
+      const tgt = s.protos.length ? centroid(s.protos.map((p) => p.pos)) : C;
+      const base = [C[0] + s.shift[0], C[1] + s.shift[1]];
+      const ctr = [lerp(base[0], tgt[0], a), lerp(base[1], tgt[1], a)];
+      const n = Math.min(N, Math.floor(3 + (t - s.t0) * 9));   // samples stream in
+      for (let i = 0; i < n; i++) {
+        const k = s.dom * 101 + i * 3;
+        out.push([ctr[0] + 11 * gauss(k), ctr[1] + 8 * gauss(k + 50)]);
+      }
+      return out;
+    }
+    const centroid = (ps) => [ps.reduce((m, p) => m + p[0], 0) / ps.length, ps.reduce((m, p) => m + p[1], 0) / ps.length];
+    const align = (t) => ease(clamp((t - s.t0 - 0.6) / 2.6, 0, 1)) * 0.92;
+    // keep a few representative prototypes (greedy, spread over the cloud)
+    function selectProtos(pts) {
+      const ctr = centroid(pts), pick = [];
+      let first = pts.reduce((b, p) => (dist(p, ctr) < dist(b, ctr) ? p : b), pts[0]);
+      pick.push(first);
+      while (pick.length < NP) {
+        let best = null, bd = -1;
+        for (const p of pts) {
+          const d = Math.min(...pick.map((q) => dist(p, q)));
+          if (d > bd) { bd = d; best = p; }
+        }
+        pick.push(best);
+      }
+      return pick;
+    }
+    function newDomain(t, shift) {
+      if (s.dom >= 0) {
+        const pts = cloud(t);
+        s.old = pts; s.oldT = t; s.oldDom = s.dom;
+        s.protos = selectProtos(pts).map((p) => ({ pos: p, dom: s.dom, born: t }));
+        s.gap = Math.max(0.28, s.gap * 0.72);      // the encoder is more invariant each time
+      }
+      s.dom++; s.t0 = t;
+      if (!shift && s.dom % 6 === 0) { s.gap = 1; s.protos = []; }   // start the demo loop over
+      s.shift = shift || FAR[s.dom % FAR.length].map((v) => v * s.gap);
+      s.hist.push({ t, gap: s.gap });
+    }
+
+    return {
+      sticky: true,
+      idle: () => null,
+      draw(P, st) {
+        const T = P.T, t = st.t;
+        if (s.dom < 0) newDomain(t);
+        // the pointer drops a new domain where it rests (if far from the current one)
+        if (!st.idle && st.ptr[1] < BOT) {
+          const cur = centroid(cloud(t)), want = [st.ptr[0] - C[0], st.ptr[1] - C[1]];
+          if (t - s.t0 > 1.2 && dist(st.ptr, cur) > 34 && (!s.lastPtr || dist(st.ptr, s.lastPtr) > 20)) {
+            s.lastPtr = st.ptr.slice();
+            newDomain(t, want);
+          }
+        } else if (t - s.t0 > DUR) newDomain(t);
+
+        // ---- embedding space
+        P.dots(14, TOP + 2, W - 14, BOT - 4, 13);
+        // the previous domain dissolves, leaving its prototypes
+        const fade = 1 - clamp((t - s.oldT) / 0.9, 0, 1);
+        if (fade > 0) s.old.forEach((p) => P.circle(p, 2.2, { fill: colorOf(T, s.oldDom), fillAlpha: 0.7 * fade, w: 0 }));
+        const pts = cloud(t), col = colorOf(T, s.dom), a = align(t);
+        // pull lines toward the nearest prototype while aligning
+        if (s.protos.length && a < 0.85) {
+          pts.forEach((p, i) => {
+            if (i % 3) return;
+            const q = s.protos.reduce((b, r) => (dist(r.pos, p) < dist(b.pos, p) ? r : b), s.protos[0]).pos;
+            P.line([p, q], { w: 0.8, color: T.mute, alpha: 0.35 * (1 - a), dash: [2, 2.5] });
+          });
+        }
+        pts.forEach((p) => P.circle(p, 2.3, { fill: col, fillAlpha: 0.85, w: 0 }));
+        s.protos.forEach((r) => {
+          const pop = ease(clamp((t - r.born) / 0.5, 0, 1));
+          const d = 4.2 * (0.6 + 0.4 * pop), c = r.pos;
+          const dia = [[c[0], c[1] - d], [c[0] + d, c[1]], [c[0], c[1] + d], [c[0] - d, c[1]], [c[0], c[1] - d]];
+          P.ctx.save(); P.ctx.beginPath(); dia.forEach((q, i) => (i ? P.ctx.lineTo(q[0], q[1]) : P.ctx.moveTo(q[0], q[1])));
+          P.ctx.fillStyle = T.bg; P.ctx.fill(); P.ctx.restore();
+          P.line(dia, { w: 1.5, color: colorOf(T, r.dom) });
+        });
+        if (!P.small) {
+          P.circle([18, TOP + 4], 2.3, { fill: col, fillAlpha: 0.85, w: 0 });
+          P.text('current domain', 25, TOP + 4, { size: 7.5, color: T.ink });
+          const c = [102, TOP + 4], d = 3.6;
+          P.line([[c[0], c[1] - d], [c[0] + d, c[1]], [c[0], c[1] + d], [c[0] - d, c[1]], [c[0], c[1] - d]], { w: 1.3, color: T.ink });
+          P.text('prototypes', 110, TOP + 4, { size: 7.5, color: T.ink });
+        }
+
+        // ---- error over the stream: baseline spikes at each change, TestDG stays low
+        P.line([[14, SY1], [W - 14, SY1]], { w: 0.8, color: T.line });
+        const X = (tt) => W - 14 - (t - tt) / SPAN * (W - 28);
+        const Y = (e) => SY1 - clamp(e, 0, 1) * (SY1 - SY0);
+        s.hist.forEach((h) => { if (t - h.t < SPAN) P.line([[X(h.t), SY0 - 2], [X(h.t), SY1]], { w: 0.7, color: T.line, dash: [2, 2] }); });
+        const errAt = (tt, mine) => {
+          let h = null;
+          for (const e of s.hist) if (e.t <= tt) h = e;
+          if (!h) return 0.3;
+          const tau = tt - h.t;
+          return mine ? 0.18 + 0.28 * h.gap * Math.exp(-tau / 0.5) : 0.38 + 0.5 * Math.exp(-tau / 1.3);
+        };
+        const base = [], mine = [];
+        for (let i = 0; i <= 90; i++) {
+          const tt = t - SPAN + SPAN * i / 90;
+          base.push([X(tt), Y(errAt(tt, false))]); mine.push([X(tt), Y(errAt(tt, true))]);
+        }
+        P.line(base, { w: 1.2, color: T.mute, alpha: 0.7, dash: [3, 2.5] });
+        P.line(mine, { w: 1.8, color: T.acc });
+        if (!P.small) {
+          P.text('error', 14, SY0 - 6, { size: 7, color: T.mute });
+          P.line([[40, SY0 - 6], [50, SY0 - 6]], { w: 1.8, color: T.acc });
+          P.text('TestDG', 53, SY0 - 6, { size: 7, color: T.ink });
+          P.line([[88, SY0 - 6], [98, SY0 - 6]], { w: 1.2, color: T.mute, dash: [3, 2.5] });
+          P.text('w/o', 101, SY0 - 6, { size: 7, color: T.ink });
+        }
+      },
+    };
+  }
+
+  const SCENES = { selfcomp: selfcompScene, testdg: testdgScene };
   const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
   // ---------------------------------------------------------------- mount
@@ -361,7 +507,7 @@
         // with reduced motion the figure holds still until the pointer moves it
         if (!(reduceMotion.matches && st.idle)) st.t += dt;
         st.dt = dt;
-        if (st.idle) st.target = scene.idle(st.t);
+        if (st.idle) { const it = scene.idle(st.t); if (it) st.target = it; }   // null: keep the last spot
         st.ptr = [lerp(st.ptr[0], st.target[0], approach(dt, st.idle ? 6 : 14)), lerp(st.ptr[1], st.target[1], approach(dt, st.idle ? 6 : 14))];
         const T = readTheme(now);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
