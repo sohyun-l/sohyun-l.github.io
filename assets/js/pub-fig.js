@@ -316,7 +316,7 @@
   function testdgScene() {
     const DOMS = ['gaussian', 'shot', 'fog', 'snow', 'bright', 'unseen'];
     const N = DOMS.length, X0 = 16, X1 = W - 16, SEG = (X1 - X0) / N;
-    const TY = 10, TW = SEG - 10, TH = 22, LY = TY + TH + 13;
+    const TY = 9, TW = SEG - 6, TH = 24, LY = TY + TH + 12;
     const BOX = [{ x: 12, name: 'prior ctta' }, { x: 166, name: 'testdg' }], BW = 142, BY = 62, BH = 94;
     const SPOT = [[-42, -20], [40, -22], [-34, 22], [44, 18], [4, -26], [-52, 4]];   // where each domain lands, unadapted
     const PER = 9;
@@ -338,35 +338,78 @@
       return clamp(base + (d ? (mine ? 0.05 : 0.3) * Math.exp(-f / 0.2) : 0), 0, 1);
     }
 
-    function tile(P, x, y, w, h, d, hot) {
-      const T = P.T, ctx = P.ctx, name = DOMS[d];
-      ctx.save();
-      ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-      ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h);
-      const px = (fx, fy) => [x + fx * w, y + fy * h];
-      ctx.fillStyle = T.faint;
-      ctx.beginPath(); ctx.moveTo(...px(0, 0.8)); ctx.quadraticCurveTo(...px(0.5, 0.6), ...px(1, 0.76)); ctx.lineTo(...px(1, 1)); ctx.lineTo(...px(0, 1)); ctx.closePath(); ctx.fill();
-      P.rect(...px(0.36, 0.46), w * 0.26, h * 0.26, { w: 0.9, color: T.ink, fill: T.bg });
-      P.line([px(0.32, 0.48), px(0.49, 0.26), px(0.66, 0.48)], { w: 0.9, color: T.ink });
-      for (let i = 0; i < 60; i++) {
-        const a = [x + (rnd(d * 500 + i) + 0.5) * w, y + (rnd(d * 500 + i + 250) + 0.5) * h];
-        if (name === 'gaussian') { ctx.fillStyle = T.mute; ctx.globalAlpha = 0.55; ctx.fillRect(a[0], a[1], 0.9, 0.9); }
-        if (name === 'shot' && i % 3 === 0) { ctx.fillStyle = i % 2 ? T.ink : T.bg; ctx.globalAlpha = 0.8; ctx.fillRect(a[0], a[1], 1.5, 1.5); }
-        if (name === 'snow' && i % 2 === 0) { ctx.globalAlpha = 0.9; ctx.strokeStyle = T.mute; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[0] + 1.3, a[1] + 2); ctx.stroke(); }
-      }
-      ctx.globalAlpha = 1;
-      if (name === 'fog') { ctx.globalAlpha = 0.55; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
-      if (name === 'bright') { ctx.globalAlpha = 0.45; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
-      if (name === 'unseen') {
-        const c = w / 5;
-        for (let i = 0; i < 5; i++) for (let j = 0; j < Math.ceil(h / c); j++) {
-          ctx.globalAlpha = 0.25 + 0.3 * (rnd(900 + i * 7 + j) + 0.5);
-          ctx.fillStyle = (i + j) % 2 ? T.bg : T.faint; ctx.fillRect(x + i * c, y + j * c, c, c);
+    // small photos of one scene under each corruption, rendered once off
+    // screen: a house on a hill under the sky, then the corruption applied
+    // pixel by pixel the way the benchmark's corruptions look
+    let photos = null;
+    function makePhotos() {
+      const PW = 120, PH = 70, out = [];
+      let seed = 1;
+      const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+      const gauss = () => { const u = Math.max(1e-6, rand()), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); };
+      DOMS.forEach((name, d) => {
+        seed = 1234 + d * 977;
+        const c = document.createElement('canvas'); c.width = PW; c.height = PH;
+        const g = c.getContext('2d');
+        const sky = g.createLinearGradient(0, 0, 0, PH * 0.7); sky.addColorStop(0, '#8fc3ee'); sky.addColorStop(1, '#dcefff');
+        g.fillStyle = sky; g.fillRect(0, 0, PW, PH);
+        g.fillStyle = '#ffd35a'; g.beginPath(); g.arc(PW * 0.82, PH * 0.2, PH * 0.1, 0, TAU); g.fill();
+        g.fillStyle = '#8cc56f'; g.beginPath(); g.moveTo(0, PH * 0.72); g.quadraticCurveTo(PW * 0.35, PH * 0.52, PW, PH * 0.66); g.lineTo(PW, PH); g.lineTo(0, PH); g.fill();
+        g.fillStyle = '#5f9e4c'; g.beginPath(); g.moveTo(0, PH * 0.86); g.quadraticCurveTo(PW * 0.6, PH * 0.74, PW, PH * 0.84); g.lineTo(PW, PH); g.lineTo(0, PH); g.fill();
+        g.fillStyle = '#f3e7d2'; g.fillRect(PW * 0.3, PH * 0.44, PW * 0.28, PH * 0.26);
+        g.fillStyle = '#c8553d'; g.beginPath(); g.moveTo(PW * 0.26, PH * 0.46); g.lineTo(PW * 0.44, PH * 0.26); g.lineTo(PW * 0.62, PH * 0.46); g.fill();
+        g.fillStyle = '#6b4f3a'; g.fillRect(PW * 0.41, PH * 0.56, PW * 0.07, PH * 0.14);
+        g.fillStyle = '#7a5a3c'; g.fillRect(PW * 0.72, PH * 0.5, PW * 0.025, PH * 0.16);
+        g.fillStyle = '#3f7d3a'; g.beginPath(); g.arc(PW * 0.733, PH * 0.44, PH * 0.12, 0, TAU); g.fill();
+        const img = g.getImageData(0, 0, PW, PH), px = img.data;
+        for (let i = 0; i < px.length; i += 4) {
+          const y = Math.floor(i / 4 / PW) / PH;
+          let r = px[i], gg = px[i + 1], b = px[i + 2];
+          if (name === 'gaussian') { r += 42 * gauss(); gg += 42 * gauss(); b += 42 * gauss(); }
+          if (name === 'shot') { r += 12 * gauss(); gg += 12 * gauss(); b += 12 * gauss(); }
+          if (name === 'fog') { const a = 0.5 + 0.3 * (1 - y) + 0.08 * Math.sin(i * 0.0007 + y * 9); r = lerp(r, 214, a); gg = lerp(gg, 220, a); b = lerp(b, 226, a); }
+          if (name === 'snow') { r = r * 0.75 + 20; gg = gg * 0.78 + 24; b = b * 0.82 + 34; }
+          if (name === 'bright') { r = 120 + r * 0.6; gg = 120 + gg * 0.6; b = 120 + b * 0.6; }
+          px[i] = clamp(r, 0, 255); px[i + 1] = clamp(gg, 0, 255); px[i + 2] = clamp(b, 0, 255);
         }
-      }
+        g.putImageData(img, 0, 0);
+        if (name === 'shot') {                      // sparse, saturated photon speckles
+          for (let k = 0; k < 150; k++) {
+            const hue = Math.floor(rand() * 360), sz = 1.5 + rand() * 1.5;
+            g.fillStyle = rand() < 0.3 ? '#111' : `hsl(${hue},95%,${55 + rand() * 25}%)`;
+            g.fillRect(rand() * PW, rand() * PH, sz, sz);
+          }
+        }
+        if (name === 'snow') {
+          g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1;
+          for (let k = 0; k < 90; k++) { const x0 = rand() * PW, y0 = rand() * PH, l = 2 + rand() * 4; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.45, y0 + l); g.stroke(); }
+          g.fillStyle = '#ffffff';
+          for (let k = 0; k < 70; k++) { g.beginPath(); g.arc(rand() * PW, rand() * PH, 0.7 + rand() * 1.3, 0, TAU); g.fill(); }
+        }
+        if (name === 'unseen') {                    // never-seen corruption: heavy pixelation
+          const bs = 10, im2 = g.getImageData(0, 0, PW, PH), q = im2.data;
+          for (let by = 0; by < PH; by += bs) for (let bx = 0; bx < PW; bx += bs) {
+            const j = ((by + bs / 2 | 0) * PW + (bx + bs / 2 | 0)) * 4;
+            g.fillStyle = `rgb(${q[j]},${q[j + 1]},${q[j + 2]})`; g.fillRect(bx, by, bs, bs);
+          }
+        }
+        out.push(c);
+      });
+      return out;
+    }
+    function tile(P, x, y, w, h, d, hot) {
+      const T = P.T, ctx = P.ctx;
+      photos = photos || makePhotos();
+      ctx.save();
+      ctx.imageSmoothingEnabled = DOMS[d] !== 'unseen';
+      ctx.drawImage(photos[d], x, y, w, h);
       ctx.restore();
       const col = d === N - 1 ? T.ink : T.pig[d];
-      P.rect(x, y, w, h, { w: hot ? 2 : 1.2, color: col, dash: d === N - 1 ? [2.5, 2] : null, alpha: hot ? 1 : 0.8 });
+      P.rect(x, y, w, h, { w: hot ? 2 : 1.2, color: col, dash: d === N - 1 ? [2.5, 2] : null, alpha: hot ? 1 : 0.85 });
+      if (d === N - 1) {
+        P.circle([x + w, y], 4.6, { fill: T.ink, w: 0 });
+        P.text('?', x + w, y + 0.4, { size: 6.5, color: T.bg, align: 'center', keepCase: true, bold: true });
+      }
     }
 
     return {
@@ -381,7 +424,7 @@
 
         // the test stream, with "now"
         DOMS.forEach((nm, i) => {
-          const x = X0 + i * SEG + 5;
+          const x = X0 + i * SEG + 3;
           tile(P, x, TY, TW, TH, i, i === d);
           P.text(nm, x + TW / 2, TY + TH + 6, { size: 5.6, align: 'center', color: i === d ? T.ink : T.mute, detail: true });
         });
