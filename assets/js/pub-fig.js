@@ -290,7 +290,6 @@
         if (landed && !hit) {
           P.line([X.ee, s.goal], { w: 1.6, color: T.bad });
           P.cross(X.ee, 3.2, { w: 1.7, color: T.ink });
-          P.text(`miss ${Math.round(miss * 4)} mm`, Math.max(X.ee[0], s.goal[0]) + 12, (X.ee[1] + s.goal[1]) / 2, { size: 8, color: T.bad, weight: 600, detail: true });
         }
 
         // tries so far on this target: red while missing, green once on target
