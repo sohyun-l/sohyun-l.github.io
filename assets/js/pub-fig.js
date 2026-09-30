@@ -167,16 +167,19 @@
   }
 
   // ---------------------------------------------------------------- selfcomp
-  // Taming VLAs under Robot Execution Errors (self-compensating VLA).
-  // The arm reaches for the target; execution errors make the executed
-  // reach miss the commanded one, and after each try the policy
-  // pre-compensates its next command from the command-execution residual,
-  // so the miss closes. Still: the tries on one target, the last one on
-  // it. Under the cursor: the cursor is the target and the arm tries live.
+  // Taming VLAs under Robot Execution Errors - the paper's Fig. 1a.
+  // The arm is to reach a cup. Before adaptation the command goes to the
+  // cup but the robot's execution falls short: the residual (red) and a
+  // failed grasp. Online updates from that residual shift the command
+  // (blue) so it pre-compensates; the residual is still there, but now
+  // the execution lands on the cup. Still: before (faint) and after.
+  // Under the cursor: its x scrubs the online updates, before -> after.
   function selfcompScene() {
-    const B = [96, 150], L1 = 84, L2 = 74, TABLE = 158;
-    const REACH = 1.1, HOLD = 0.8, BACK = 0.45, TRY = REACH + HOLD + BACK;
-    const HOME = [Math.PI / 2 + 0.25, -2.2];      // folded, upright
+    const B = [92, 150], L1 = 84, L2 = 76, TABLE = 158;
+    const HOME = [Math.PI / 2 + 0.25, -2.2];
+    const BOXX = 196, BOXW = 44, BOXTOP = 112;                // the box the cup stands on
+    const CUP = [BOXX + BOXW / 2, BOXTOP];                    // cup base centre
+    const GRASP = [CUP[0], CUP[1] - 11];                      // where the gripper must arrive
     const toWorld = (p) => [p[0] - B[0], B[1] - p[1]];
     const toScreen = (p) => [B[0] + p[0], B[1] - p[1]];
     function fk(q) {
@@ -186,201 +189,64 @@
     function ik(p) {
       const [x, y] = toWorld(p);
       const c2 = clamp((x * x + y * y - L1 * L1 - L2 * L2) / (2 * L1 * L2), -1, 1);
-      const q2 = -Math.acos(c2);                  // elbow up
+      const q2 = -Math.acos(c2);
       return [Math.atan2(y, x) - Math.atan2(L2 * Math.sin(q2), L1 + L2 * Math.cos(q2)), q2];
     }
-    // targets stay inside the workspace, leaving room for a command that aims past them
-    function reachable(p, margin = 30) {
-      let [x, y] = toWorld(p);
-      y = Math.max(y, 16);
-      const r = Math.hypot(x, y), a = Math.atan2(y, x);
-      const rr = clamp(r, 60, L1 + L2 - margin);
-      const q = toScreen([rr * Math.cos(a), rr * Math.sin(a)]);
-      return margin > 5 ? [clamp(q[0], B[0] + 30, W - 24), clamp(q[1], 22, TABLE - 20)] : q;
-    }
-    // execution errors along a reach (u: 0..1): friction shortfall,
-    // pose-dependent gravity sag and a backlash-like offset
-    function executed(qc, u) {
+    // execution errors: friction shortfall, gravity sag, a joint offset
+    function executed(qc, u = 1) {
       const q = [HOME[0] + (qc[0] - HOME[0]) * u * 0.9, HOME[1] + (qc[1] - HOME[1]) * u * 0.9];
       const q12 = q[0] + q[1];
-      return [q[0] - u * (0.2 * Math.cos(q[0]) + 0.1 * Math.cos(q12)) - 0.03 * u, q[1] - u * 0.16 * Math.cos(q12) + 0.1 * u];
+      return [q[0] - u * (0.2 * Math.cos(q[0]) + 0.1 * Math.cos(q12)), q[1] - u * 0.12 * Math.cos(q12) + 0.06 * u];
     }
-    const G0 = reachable([222, 70]);               // the still picture's target
-    const cmdFor = (goal, off) => ik(reachable([goal[0] - off[0], goal[1] - off[1]], 1));
-    const landed = (qc) => fk(executed(qc, 1)).ee;
-    // learning from the residual: shift the next command by the miss
-    const learn = (off, miss) => [off[0] + 0.8 * miss[0], off[1] + 0.8 * miss[1]];
-
-    // the still picture: the first try, aimed at G0, and the command after
-    // learning from the residual, aimed past G0 so that it lands on it
-    const still = (() => {
-      let off = [0, 0], first = null, qc, e;
-      for (let i = 0; i < 8; i++) {
-        qc = cmdFor(G0, off); e = landed(qc);
-        if (!first) first = { qc, e };
-        if (dist(e, G0) < 1.5) break;
-        off = learn(off, [e[0] - G0[0], e[1] - G0[1]]);
+    const landed = (aim) => fk(executed(ik(aim))).ee;
+    // the fully adapted aim: iterate on the residual until execution lands on GRASP
+    const AIM = (() => {
+      let aim = GRASP.slice();
+      for (let i = 0; i < 40; i++) {
+        const e = landed(aim);
+        aim = [aim[0] - 0.7 * (e[0] - GRASP[0]), aim[1] - 0.7 * (e[1] - GRASP[1])];
       }
-      return { first, last: { qc, e }, aim: fk(qc).ee };
+      return aim;
     })();
-    const arrow = (P, a, b, color) => {
-      if (dist(a, b) < 4) return;
-      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      P.line([a, [b[0] - 3 * Math.cos(ang), b[1] - 3 * Math.sin(ang)]], { w: 1.3, color });
-      P.head(b, ang, { color, head: 5.5 });
-    };
+    const s = { p: 1 };
 
-    const live = { on: false, t0: 0, off: [0, 0], goal: null, qc: null, tries: [], cut: false };
-    function startTry(t, goal) { live.t0 = t; live.goal = goal.slice(); live.qc = cmdFor(goal, live.off); live.cut = false; }
-
-    function path(qc, upto, exec) {
-      const pts = [], n = 28;
-      for (let i = 0; i <= n * upto; i++) {
-        const v = i / n;
+    function reachPath(qc, exec) {
+      const pts = [];
+      for (let i = 0; i <= 28; i++) {
+        const v = i / 28;
         pts.push(fk(exec ? executed(qc, v) : [HOME[0] + (qc[0] - HOME[0]) * v, HOME[1] + (qc[1] - HOME[1]) * v]).ee);
       }
       return pts;
     }
-    function arm(P, q, ghost) {
+    function arm(P, q, o = {}) {
       const T = P.T, K = fk(q);
-      if (ghost) {
-        P.line([B, K.elbow, K.ee], { w: 1.2, color: T.acc, dash: [3, 2.5], cap: 'butt', alpha: 0.9 });
-        return;
-      }
-      P.line([B, K.elbow, K.ee], { w: 3, color: T.ink });
-      const gd = [Math.cos(-K.a), Math.sin(-K.a)], gn = [-gd[1], gd[0]];
+      if (o.ghost) { P.line([B, K.elbow, K.ee], { w: 1.2, color: T.acc, dash: [3, 2.5], cap: 'butt', alpha: o.alpha ?? 0.9 }); return K; }
+      P.line([B, K.elbow, K.ee], { w: 3, color: T.ink, alpha: o.alpha ?? 1 });
+      const gd = [Math.cos(-K.a), Math.sin(-K.a)], gn = [-gd[1], gd[0]], open = o.closed ? 3 : 5;
       for (const sg of [-1, 1]) {
-        const b = [K.ee[0] + gn[0] * 4 * sg, K.ee[1] + gn[1] * 4 * sg];
-        P.line([K.ee, b, [b[0] + gd[0] * 6, b[1] + gd[1] * 6]], { w: 1.6, color: T.ink });
+        const b = [K.ee[0] + gn[0] * open * sg, K.ee[1] + gn[1] * open * sg];
+        P.line([K.ee, b, [b[0] + gd[0] * 6, b[1] + gd[1] * 6]], { w: 1.6, color: T.ink, alpha: o.alpha ?? 1 });
       }
-      for (const [c, r] of [[B, 3.6], [K.elbow, 3.2]]) P.circle(c, r, { w: 1.4, color: T.ink, fill: T.bg });
+      if (!o.alpha || o.alpha > 0.5) for (const [c, r] of [[B, 3.6], [K.elbow, 3.2]]) P.circle(c, r, { w: 1.4, color: T.ink, fill: T.bg });
+      return K;
     }
-    function tryBoxes(P, list) {
-      const T = P.T, s = P.small ? 11 : 8, gap = P.small ? 4 : 3;
-      const x1 = W - 14, x0 = x1 - list.length * (s + gap) + gap, y = 14;
-      P.text('try', x0 - 5, y + s / 2, { size: 6.5, align: 'right', detail: true });
-      list.forEach((m, i) => {
-        const x = x0 + i * (s + gap), hit = m < 4;
-        P.rect(x, y, s, s, { w: 1, color: hit ? T.acc : T.bad, fill: T.bg });
-        if (hit) P.check(x + s / 2, y + s / 2, s / 11, { color: T.acc, w: 1.3 });
-        else P.cross(x + s / 2, y + s / 2, s / 13, { color: T.bad, w: 1.3 });
-      });
-    }
-
-    return {
-      sticky: true,
-      idle: () => null,
-      draw(P, st) {
-        const T = P.T, t = st.t;
-        P.marks();
-        P.dots(16, 16, W - 16, TABLE - 8, 12);
-        // ground
-        P.line([[16, TABLE], [W - 16, TABLE]], { w: 1.1, color: T.ink });
-        for (let x = 20; x < W - 16; x += 6) P.line([[x, TABLE], [x - 4, TABLE + 4]], { w: 0.7, color: T.faint });
-        P.rect(B[0] - 10, B[1] - 1, 20, TABLE - B[1] + 1, { w: 1.3, color: T.ink, fill: T.bg });
-        if (!P.small) {
-          P.line([[16, 16], [28, 16]], { w: 1.2, color: T.acc, dash: [3, 2.5], cap: 'butt' });
-          P.text('commanded', 32, 16, { size: 6.5, color: T.acc });
-          P.line([[92, 16], [104, 16]], { w: 2.2, color: T.ink });
-          P.text('executed', 108, 16, { size: 6.5, color: T.ink });
-        }
-
-        if (st.idle) {
-          // ---- the still picture
-          live.on = false;
-          const { first, last, aim } = still;
-          // 1st try: commanded straight at the target, executed lands off
-          P.line(path(first.qc, 1, false), { w: 1, color: T.acc, dash: [1.5, 3], alpha: 0.45 });
-          P.line(path(first.qc, 1, true), { w: 1, color: T.ink, alpha: 0.35 });
-          P.cross(first.e[0], first.e[1], 0.85, { color: T.bad, w: 1.4 });
-          // after learning from the residual: aimed past the target, lands on it
-          P.line(path(last.qc, 1, false), { w: 1.2, color: T.acc, dash: [1.5, 3] });
-          P.line(path(last.qc, 1, true), { w: 1.2, color: T.ink });
-          arm(P, last.qc, true);
-          arm(P, executed(last.qc, 1), false);
-          P.circle(aim, 2.4, { w: 1.2, color: T.acc, fill: T.bg });
-          arrow(P, G0, first.e, T.bad);             // residual: executed - commanded
-          arrow(P, G0, aim, T.acc);                 // the pre-compensated command
-          P.target(G0, 6.5, { color: T.ink });
-          P.text('residual', first.e[0] + 7, first.e[1] + 3, { size: 6.5, color: T.bad, detail: true });
-          P.text('pre-compensated', aim[0] + 6, aim[1] - 6, { size: 6.5, color: T.acc, detail: true });
-          tryBoxes(P, [dist(first.e, G0), dist(last.e, G0)]);
-          return;
-        }
-
-        // ---- live, under the cursor
-        const goalNow = reachable(st.ptr);
-        if (!live.on) { live.on = true; live.off = [0, 0]; live.tries = []; startTry(t, goalNow); }
-        let ph = t - live.t0;
-        if (!live.cut && ph > 0.3 && ph < REACH + HOLD && dist(goalNow, live.goal) > 10) { live.cut = true; live.t0 = t - (REACH + HOLD); ph = REACH + HOLD; }
-        if (ph >= TRY) {
-          if (!live.cut) {
-            const e = landed(live.qc), miss = [e[0] - live.goal[0], e[1] - live.goal[1]];
-            live.off = learn(live.off, miss);
-            live.tries.push(Math.hypot(miss[0], miss[1]));
-            if (live.tries.length > 6) live.tries.shift();
-          }
-          if (live.cut || dist(goalNow, live.goal) > 6) live.tries = [];
-          startTry(t, goalNow); ph = 0;
-        }
-        const u = ph < REACH ? ease(ph / REACH) : ph < REACH + HOLD ? 1 : 1 - ease((ph - REACH - HOLD) / BACK);
-        const out = ph < REACH + HOLD, qCmd = [HOME[0] + (live.qc[0] - HOME[0]) * u, HOME[1] + (live.qc[1] - HOME[1]) * u];
-        const qExe = executed(live.qc, u), X = fk(qExe).ee;
-        if (out) {
-          P.line(path(live.qc, u, false), { w: 1.2, color: T.acc, dash: [1.5, 3] });
-          P.line(path(live.qc, u, true), { w: 1.2, color: T.ink });
-        }
-        arm(P, qCmd, true);
-        arm(P, qExe, false);
-        const done = out && ph >= REACH * 0.98, miss = dist(X, live.goal), aimPt = fk(live.qc).ee;
-        if (dist(aimPt, live.goal) > 4) { P.circle(aimPt, 2.4, { w: 1.2, color: T.acc, fill: T.bg }); arrow(P, live.goal, aimPt, T.acc); }
-        P.target(goalNow, 6.5, { color: T.ink });
-        if (done && miss >= 4) { arrow(P, live.goal, X, T.bad); P.cross(X[0], X[1], 0.85, { color: T.bad, w: 1.4 }); }
-        tryBoxes(P, live.tries);
-      },
+    const arrow = (P, a, b, color) => {
+      if (dist(a, b) < 4) return;
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      P.line([a, [b[0] - 3 * Math.cos(ang), b[1] - 3 * Math.sin(ang)]], { w: 1.3, color });
+      P.head(b, ang, { color, head: 5 });
     };
-  }
-
-  // ---------------------------------------------------------------- testdg
-  // TestDG: test-time domain generalization for continual TTA.
-  // The paper's own picture (its Fig. 3a), in two boards: samples of the
-  // seen test domains (colours) for two classes (circle / triangle) on
-  // either side of the class boundary. Prior CTTA adapts to each domain
-  // at hand, so the domains stay apart and an unseen domain (outlined)
-  // lands across the boundary: wrong. TestDG makes the domains
-  // indistinguishable as they stream in, so they overlap and the unseen
-  // domain lands on them: right. Still until the cursor moves the unseen
-  // domain; Prior CTTA follows it, TestDG barely moves.
-  function testdgScene() {
-    const BOX = [{ x: 12, name: 'prior ctta' }, { x: 168, name: 'testdg' }], BW = 140, BY = 30, BH = 116;
-    const CY = BY + BH / 2, CLS = [-26, 26];                   // class centres, left / right of the boundary
-    const DOFF = [[-14, -24], [14, -12], [-10, 20], [14, 24]];  // where each seen domain sits
-    const UN = [-33, 4];                                        // the unseen domain's shift
-    const PER = 5;
-    const rnd = (k) => hash(k * 7919 + 13) - 0.5;
-    const s = { cur: UN.slice() };
-
-    function shape(P, ci, p, r, o) {
-      const ctx = P.ctx;
-      ctx.save();
-      ctx.beginPath();
-      if (ci === 0) ctx.arc(p[0], p[1], r, 0, TAU);
-      else { ctx.moveTo(p[0], p[1] - r * 1.15); ctx.lineTo(p[0] + r * 1.1, p[1] + r * 0.8); ctx.lineTo(p[0] - r * 1.1, p[1] + r * 0.8); ctx.closePath(); }
-      ctx.globalAlpha = o.alpha ?? 1;
-      if (o.fill) { ctx.fillStyle = o.fill; ctx.fill(); }
-      if (o.stroke) { ctx.strokeStyle = o.stroke; ctx.lineWidth = Math.max(o.w || 1, 1 / P.k); ctx.stroke(); }
-      ctx.restore();
+    function cup(P, ok) {
+      const T = P.T, [x, y] = CUP;
+      P.rect(BOXX, BOXTOP, BOXW, TABLE - BOXTOP, { w: 1.2, color: T.ink, fill: T.bg });
+      P.line([[x - 7, y], [x - 8.5, y - 14], [x + 8.5, y - 14], [x + 7, y], [x - 7, y]], { w: 1.3, color: ok ? T.acc : T.ink });
+      P.line([[x + 8, y - 11], [x + 12, y - 9], [x + 12, y - 5], [x + 7.6, y - 4]], { w: 1.1, color: ok ? T.acc : T.ink });
     }
-    // samples of one domain; k scales how far its shift carries through
-    function cloud(cx, sh, k, seed) {
-      const out = [];
-      CLS.forEach((c, ci) => {
-        for (let i = 0; i < PER; i++) {
-          const j = seed * 131 + ci * 17 + i;
-          out.push({ ci, p: [cx + c + sh[0] * k + 14 * rnd(j), CY + sh[1] * k + 14 * rnd(j + 500)] });
-        }
-      });
-      return out;
+    // one state of adaptation p in [0, 1]
+    function state(p) {
+      const aim = [lerp(GRASP[0], AIM[0], p), lerp(GRASP[1], AIM[1], p)], qc = ik(aim);
+      const X = fk(executed(qc)).ee;
+      return { aim, qc, X, ok: dist(X, GRASP) < 3.5 };
     }
 
     return {
@@ -389,45 +255,153 @@
       draw(P, st) {
         const T = P.T;
         P.marks();
-        let want = UN;
-        if (!st.idle) {
-          const cx = st.ptr[0] < 160 ? BOX[0].x + BW / 2 : BOX[1].x + BW / 2;
-          let v = [st.ptr[0] - cx, st.ptr[1] - CY];
-          const L = Math.hypot(v[0], v[1]);
-          if (L > 44) v = [v[0] * 44 / L, v[1] * 44 / L];
-          want = v;
-        }
-        const kk = approach(st.dt || 0.016, 10);
-        s.cur = [lerp(s.cur[0], want[0], kk), lerp(s.cur[1], want[1], kk)];
+        P.dots(16, 16, W - 16, TABLE - 8, 12);
+        P.line([[16, TABLE], [W - 16, TABLE]], { w: 1.1, color: T.ink });
+        for (let x = 20; x < W - 16; x += 6) P.line([[x, TABLE], [x - 4, TABLE + 4]], { w: 0.7, color: T.faint });
+        P.rect(B[0] - 10, B[1] - 1, 20, TABLE - B[1] + 1, { w: 1.3, color: T.ink, fill: T.bg });
 
-        BOX.forEach((bx, bi) => {
-          const mine = bi === 1, cx = bx.x + BW / 2;
-          P.text(bx.name, bx.x, BY - 9, { size: P.small ? 10 : 7, color: mine ? T.acc : T.mute, bold: mine });
-          P.rect(bx.x, BY, BW, BH, { w: 1.1, color: T.ink });
-          P.dots(bx.x + 8, BY + 8, bx.x + BW - 8, BY + BH - 8, 10);
-          P.line([[cx, BY + 4], [cx, BY + BH - 4]], { w: 1, color: T.mute, dash: [3, 3] });   // class boundary
-          P.ctx.save(); P.ctx.beginPath(); P.ctx.rect(bx.x + 1, BY + 1, BW - 2, BH - 2); P.ctx.clip();
-          // seen domains: apart for Prior CTTA, overlapping for TestDG
-          DOFF.forEach((o, d) => cloud(cx, o, mine ? 0.15 : 1, d).forEach(({ ci, p }) => shape(P, ci, p, 3.4, { fill: T.pig[d], alpha: 0.85 })));
-          // the unseen domain, outlined; a sample across the boundary is wrong
-          cloud(cx, s.cur, mine ? 0.15 : 1, 9).forEach(({ ci, p }) => {
-            shape(P, ci, p, 4.2, { fill: T.bg, stroke: T.ink, w: 1.4 });
-            if ((p[0] < cx) !== (ci === 0)) P.cross(p[0] + 5.5, p[1] - 5.5, 0.6, { color: T.bad, w: 1.3 });
-          });
-          P.ctx.restore();
+        // how far online adaptation has gone: the cursor's x, else fully adapted
+        const want = st.idle ? 1 : clamp((st.ptr[0] - 40) / (W - 80), 0, 1);
+        s.p = lerp(s.p, want, approach(st.dt || 0.016, 12));
+        const now = state(s.p), before = state(0);
+
+        if (st.idle) {
+          // the failed first attempt, faint
+          arm(P, executed(before.qc), { alpha: 0.22 });
+          P.cross(before.X[0], before.X[1], 0.85, { color: T.bad, w: 1.4, alpha: 0.7 });
+        }
+        P.line(reachPath(now.qc, false), { w: 1.1, color: T.acc, dash: [1.5, 3] });
+        P.line(reachPath(now.qc, true), { w: 1.1, color: T.ink, alpha: 0.6 });
+        cup(P, now.ok);
+        arm(P, now.qc, { ghost: true });
+        arm(P, executed(now.qc), { closed: now.ok });
+        P.circle(now.aim, 2.4, { w: 1.2, color: T.acc, fill: T.bg });
+        arrow(P, now.aim, now.X, T.bad);                         // residual: executed vs commanded
+        if (now.ok) P.check(GRASP[0] + 16, GRASP[1] - 12, 1.1, { color: T.acc, w: 1.8 });
+        else P.cross(GRASP[0] + 16, GRASP[1] - 12, 1, { color: T.bad, w: 1.8 });
+
+        // legend
+        if (!P.small) {
+          P.line([[16, 16], [28, 16]], { w: 1.2, color: T.acc, dash: [3, 2.5], cap: 'butt' });
+          P.text('command', 32, 16, { size: 6.5, color: T.acc });
+          P.line([[82, 16], [94, 16]], { w: 2.4, color: T.ink });
+          P.text('execution', 98, 16, { size: 6.5, color: T.ink });
+          P.line([[152, 16], [164, 16]], { w: 1.3, color: T.bad });
+          P.text('residual', 168, 16, { size: 6.5, color: T.bad });
+        }
+        // the adaptation scale, drawn only while scrubbing
+        if (!st.idle) {
+          const y = H - 8, x0 = 40, x1 = W - 40, xp = lerp(x0, x1, s.p);
+          P.line([[x0, y], [x1, y]], { w: 1, color: T.faint });
+          P.line([[x0, y], [xp, y]], { w: 1.6, color: T.acc });
+          P.circle([xp, y], 2.6, { fill: T.acc, w: 0 });
+          P.text('before', x0 - 4, y, { size: 6, align: 'right', detail: true });
+          P.text('online update', x1 + 4, y, { size: 6, detail: true });
+        }
+      },
+    };
+  }
+
+  // ---------------------------------------------------------------- testdg
+  // TestDG - the paper's Fig. 1b. Test images arrive as a stream of
+  // domains (noise, fog, snow, ...), the last one never seen. Error over
+  // the stream: prior CTTA, adapting to the domain at hand, spikes at every
+  // change and stays high on the unseen domain; TestDG, having learned
+  // features invariant across the domains so far, stays low throughout.
+  // Still: the whole stream. Under the cursor: its x scrubs the stream.
+  function testdgScene() {
+    const DOMS = ['gaussian', 'shot', 'fog', 'snow', 'bright', 'unseen'];
+    const N = DOMS.length, X0 = 20, X1 = W - 20, SEG = (X1 - X0) / N;
+    const TY = 24, TW = SEG - 8, TH = TW * 0.72;              // image tiles
+    const CY0 = TY + TH + 22, CY1 = H - 16;                    // error chart
+    const rnd = (k) => hash(k * 7919 + 11);
+    // schematic error levels (after the paper's Fig. 1b): per domain base,
+    // plus a spike right after each change that decays
+    const PRIOR = [0.62, 0.55, 0.42, 0.5, 0.3, 0.8], OURS = [0.36, 0.32, 0.24, 0.28, 0.18, 0.3];
+    function err(u, mine) {
+      const d = Math.min(N - 1, Math.floor(u * N)), f = u * N - d;
+      const base = (mine ? OURS : PRIOR)[d];
+      const spike = d === 0 ? 0 : (mine ? 0.06 : 0.3) * Math.exp(-f / 0.18);
+      const wig = 0.02 * Math.sin(u * 90 + (mine ? 1 : 0)) + 0.015 * Math.sin(u * 211);
+      return clamp(base + spike + wig, 0.03, 0.97);
+    }
+    const s = { u: null };
+
+    // a tiny test image: a house on a hill, then the domain's corruption
+    function tile(P, x, y, w, h, d, hot) {
+      const T = P.T, ctx = P.ctx;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+      ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h);
+      const px = (fx, fy) => [x + fx * w, y + fy * h];
+      ctx.fillStyle = T.faint;
+      ctx.beginPath(); ctx.moveTo(...px(0, 0.78)); ctx.quadraticCurveTo(...px(0.5, 0.58), ...px(1, 0.74)); ctx.lineTo(...px(1, 1)); ctx.lineTo(...px(0, 1)); ctx.closePath(); ctx.fill();
+      P.rect(...px(0.34, 0.44), w * 0.3, h * 0.26, { w: 1, color: T.ink, fill: T.bg });
+      P.line([px(0.3, 0.46), px(0.49, 0.26), px(0.68, 0.46)], { w: 1, color: T.ink });
+      P.circle(px(0.8, 0.22), w * 0.06, { w: 1, color: T.ink });
+      const name = DOMS[d];
+      for (let i = 0; i < 70; i++) {
+        const a = [x + rnd(d * 500 + i) * w, y + rnd(d * 500 + i + 250) * h];
+        if (name === 'gaussian') { ctx.fillStyle = T.mute; ctx.globalAlpha = 0.55; ctx.fillRect(a[0], a[1], 0.9, 0.9); }
+        if (name === 'shot' && i % 3 === 0) { ctx.fillStyle = i % 2 ? T.ink : T.bg; ctx.globalAlpha = 0.8; ctx.fillRect(a[0], a[1], 1.6, 1.6); }
+        if (name === 'snow' && i % 2 === 0) { ctx.globalAlpha = 0.9; ctx.strokeStyle = T.mute; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[0] + 1.4, a[1] + 2.2); ctx.stroke(); }
+      }
+      ctx.globalAlpha = 1;
+      if (name === 'fog') { const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, T.bg); g.addColorStop(1, 'rgba(128,128,128,0)'); ctx.globalAlpha = 0.75; ctx.fillStyle = g; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 0.35; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
+      if (name === 'bright') { ctx.globalAlpha = 0.5; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
+      if (name === 'unseen') {                 // a corruption never seen: coarse pixelation
+        const c = w / 6;
+        for (let i = 0; i < 6; i++) for (let j = 0; j < Math.ceil(h / c); j++) {
+          ctx.globalAlpha = 0.22 + 0.3 * rnd(900 + i * 7 + j);
+          ctx.fillStyle = (i + j) % 2 ? T.bg : T.faint;
+          ctx.fillRect(x + i * c, y + j * c, c, c);
+        }
+      }
+      ctx.restore();
+      if (name === 'unseen') {
+        P.rect(x, y, w, h, { w: 1.2, color: T.ink, dash: [2.5, 2] });
+        P.circle([x + w, y], 4.6, { fill: T.ink, w: 0 });
+        P.text('?', x + w, y + 0.4, { size: 6.5, color: T.bg, align: 'center', keepCase: true, bold: true });
+      } else P.rect(x, y, w, h, { w: hot ? 1.8 : 1, color: hot ? T.acc : T.ink });
+      if (hot && name === 'unseen') P.rect(x - 1, y - 1, w + 2, h + 2, { w: 1.4, color: T.acc });
+    }
+
+    return {
+      sticky: true,
+      idle: () => null,
+      draw(P, st) {
+        const T = P.T;
+        P.marks();
+        const hover = !st.idle;
+        if (hover) s.u = clamp((st.ptr[0] - X0) / (X1 - X0), 0, 0.999);
+        const cur = hover ? Math.floor(s.u * N) : -1;
+
+        // the stream of test domains
+        DOMS.forEach((nm, d) => {
+          const x = X0 + d * SEG + 4;
+          tile(P, x, TY, TW, TH, d, d === cur);
+          P.text(nm, x + TW / 2, TY + TH + 7, { size: 5.8, align: 'center', color: d === N - 1 ? T.ink : T.mute, detail: true });
+          if (d) P.line([[X0 + d * SEG, TY + TH + 14], [X0 + d * SEG, CY1]], { w: 0.8, color: T.faint, dash: [2, 2] });
         });
 
-        // legend: seen domains in colour, the unseen one outlined
-        const y = H - 12, fs = P.small ? 9 : 6.5;
-        // measure first, then centre the whole legend
-        const wSeen = P.text('seen domains', -999, -999, { size: fs }), wUn = P.text('unseen', -999, -999, { size: fs });
-        let x = W / 2 - (30 + wSeen + 16 + 8 + wUn) / 2;
-        T.pig.forEach((c, i) => P.circle([x + 3 + i * 7, y], 2.8, { fill: c, w: 0 }));
-        x += 30;
-        P.text('seen domains', x, y, { size: fs });
-        x += wSeen + 16;
-        P.circle([x + 3, y], 3, { fill: T.bg, color: T.ink, w: 1.3 });
-        P.text('unseen', x + 10, y, { size: fs });
+        // error over the stream
+        const Y = (e) => CY1 - e * (CY1 - CY0);
+        P.line([[X0, CY1], [X1, CY1]], { w: 1, color: T.ink });
+        P.line([[X0, CY0 - 2], [X0, CY1]], { w: 1, color: T.ink });
+        P.text('error', X0 - 3, CY0 - 6, { size: 6, detail: true });
+        const curve = (mine) => { const pts = []; for (let i = 0; i <= 240; i++) { const u = i / 240 * 0.999; pts.push([X0 + u * (X1 - X0), Y(err(u, mine))]); } return pts; };
+        P.line(curve(false), { w: 1.3, color: T.mute, dash: [3, 2.5] });
+        P.line(curve(true), { w: 2, color: T.acc });
+        const fs = P.small ? 9 : 6.5;
+        P.text('prior ctta', X0 + 5, Y(PRIOR[0]) - 10, { size: fs, color: T.mute });
+        P.text('testdg', X0 + 5, Y(OURS[0]) + 10, { size: fs, color: T.acc, bold: true });
+
+        if (hover) {
+          const x = X0 + s.u * (X1 - X0);
+          P.line([[x, CY0 - 4], [x, CY1]], { w: 1, color: T.ink, alpha: 0.6 });
+          P.circle([x, Y(err(s.u, false))], 2.6, { fill: T.bg, color: T.mute, w: 1.3 });
+          P.circle([x, Y(err(s.u, true))], 2.8, { fill: T.acc, w: 0 });
+        }
       },
     };
   }
