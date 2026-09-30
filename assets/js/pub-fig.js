@@ -323,7 +323,7 @@
   // ---------------------------------------------------------------- testdg
   // TestDG: test-time domain generalization for continual TTA.
   // Two panels see the same stream of test domains (colour = domain,
-  // shape = class). Left adapts to the current domain only, so every new
+  // shape = class). Left, prior CTTA, adapts to the current domain only, so every new
   // domain lands shifted and its first samples fall into the wrong class.
   // Right (TestDG) keeps prototypes of the previous domain (diamonds) and
   // makes domains indistinguishable while classes stay apart, so the gap
@@ -331,10 +331,10 @@
   // it belongs. The picture holds still; the cursor plays the unseen
   // domain's shift: the current-only cloud follows it, TestDG barely moves.
   function testdgScene() {
-    const PANELS = [{ x: 82, name: 'current only' }, { x: 238, name: 'TestDG' }];
-    const CY = 84, TL0 = 22, TL1 = W - 22, TLY = 168;
-    const CLS = [[-24, -14], [24, -14], [0, 22]];                  // class centres
-    const OFF = [[34, -14], [-32, 18], [12, 34], [-30, -24], [38, 22]];   // domain shifts; last is unseen
+    const PANELS = [{ x: 80, name: 'Prior CTTA' }, { x: 240, name: 'TestDG' }];
+    const CY = 90, TL0 = 22, TL1 = W - 22, TLY = 172;
+    const CLS = [[-36, -22], [36, -22], [0, 32]];                  // class centres
+    const OFF = [[40, -18], [-40, 22], [14, 38], [-36, -26], [30, 30]];   // domain shifts; last is unseen
     const ND = OFF.length, PER = 6;
     const rnd = (k) => hash(k * 7919 + 13) - 0.5;
     const s = { last: null };
@@ -353,7 +353,7 @@
       CLS.forEach((c, ci) => {
         for (let i = 0; i < PER; i++) {
           const k = d * 97 + ci * 13 + i;
-          const p = [px + c[0] + sh[0] + 16 * rnd(k), CY + c[1] + sh[1] + 13 * rnd(k + 500)];
+          const p = [px + c[0] + sh[0] + 26 * rnd(k), CY + c[1] + sh[1] + 20 * rnd(k + 500)];
           // predicted class = nearest class centre
           let best = 0;
           CLS.forEach((q, qi) => { if (dist(p, [px + q[0], CY + q[1]]) < dist(p, [px + CLS[best][0], CY + CLS[best][1]])) best = qi; });
@@ -390,7 +390,7 @@
           const px = st.ptr[0] < 160 ? PANELS[0].x : PANELS[1].x;
           let v = [st.ptr[0] - px, st.ptr[1] - CY];
           const L = Math.hypot(v[0], v[1]);
-          if (L > 46) v = [v[0] * 46 / L, v[1] * 46 / L];
+          if (L > 60) v = [v[0] * 60 / L, v[1] * 60 / L];
           want = v;
         }
         s.cur = s.cur || OFF[ND - 1].slice();
@@ -400,34 +400,36 @@
 
         PANELS.forEach((pn, pi) => {
           const mine = pi === 1, px = pn.x;
+          P.ctx.save(); P.ctx.beginPath(); P.ctx.rect(px - 78, 20, 156, 144); P.ctx.clip();
           // where each class belongs
-          CLS.forEach((c, ci) => shape(P, ci, [px + c[0], CY + c[1]], 8, { stroke: T.mute, w: 1, alpha: 0.45 }));
+          CLS.forEach((c, ci) => shape(P, ci, [px + c[0], CY + c[1]], 14, { stroke: T.mute, w: 1.3, alpha: 0.45 }));
           // the previous domain: prototypes (TestDG) or its faded cloud (current only)
           if (d > 0) {
             const prev = points(d - 1, 1, mine, px);
             if (mine) {
               prev.filter((_, i) => i % 3 === 0).forEach(({ p }) => {
-                const r = 3.4, dia = [[p[0], p[1] - r], [p[0] + r, p[1]], [p[0], p[1] + r], [p[0] - r, p[1]], [p[0], p[1] - r]];
-                P.line(dia, { w: 1.2, color: DOM[d - 1], alpha: 0.9 });
+                const r = 5, dia = [[p[0], p[1] - r], [p[0] + r, p[1]], [p[0], p[1] + r], [p[0] - r, p[1]], [p[0], p[1] - r]];
+                P.line(dia, { w: 1.5, color: DOM[d - 1], alpha: 0.9 });
               });
-            } else prev.forEach(({ p, ci }) => shape(P, ci, p, 2.2, { fill: DOM[d - 1], alpha: 0.18 }));
+            } else prev.forEach(({ p, ci }) => shape(P, ci, p, 3.2, { fill: DOM[d - 1], alpha: 0.18 }));
           }
           // the current domain; misclassified samples get a red ring
           points(d, a, mine, px).forEach(({ p, ci, ok }) => {
-            shape(P, ci, p, 2.8, { fill: DOM[d], alpha: 0.9 });
-            if (!ok) P.circle(p, 4.4, { w: 1.1, color: T.bad });
+            shape(P, ci, p, 5, { fill: DOM[d], alpha: 0.9 });
+            if (!ok) P.circle(p, 7.4, { w: 1.5, color: T.bad });
           });
-          P.text(pn.name, px, 12, { size: P.small ? 11 : 8.5, weight: mine ? 700 : 500, color: mine ? T.ink : T.mute, align: 'center' });
+          P.ctx.restore();
+          P.text(pn.name, px, 12, { size: P.small ? 13 : 9, weight: mine ? 700 : 500, color: mine ? T.ink : T.mute, align: 'center' });
         });
-        P.line([[160, 22], [160, 146]], { w: 0.8, color: T.line });
+        P.line([[160, 24], [160, 160]], { w: 0.8, color: T.line });
 
         // the stream: one segment per domain, the last one unseen
         const sw = (TL1 - TL0) / ND;
         for (let i = 0; i < ND; i++) {
           const x = TL0 + i * sw + 1.5, unseen = i === ND - 1;
-          P.rrect(x, TLY - 2.5, sw - 3, 5, 2.5, { fill: DOM[i], fillAlpha: i <= d ? 0.85 : 0.25, color: DOM[i], w: unseen ? 1 : 0, dash: unseen ? [2, 2] : null });
+          P.rrect(x, TLY - 2, sw - 3, 4, 2, { fill: DOM[i], fillAlpha: i <= d ? 0.85 : 0.25, color: DOM[i], w: unseen ? 1 : 0, dash: unseen ? [2, 2] : null });
         }
-        P.text('unseen', TL1 - sw / 2, TLY - 9, { size: 7, color: T.mute, align: 'center', detail: true });
+        P.text('unseen', TL1 - sw / 2, TLY - 8, { size: 7, color: T.mute, align: 'center', detail: true });
       },
     };
   }
