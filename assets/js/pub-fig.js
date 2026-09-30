@@ -328,20 +328,21 @@
   // Right (TestDG) keeps prototypes of the previous domain (diamonds) and
   // makes domains indistinguishable while classes stay apart, so the gap
   // shrinks domain after domain and the final, unseen domain lands where
-  // it belongs. The pointer's x scrubs through the stream.
+  // it belongs. The picture holds still; the cursor plays the unseen
+  // domain's shift: the current-only cloud follows it, TestDG barely moves.
   function testdgScene() {
     const PANELS = [{ x: 82, name: 'current only' }, { x: 238, name: 'TestDG' }];
     const CY = 84, TL0 = 22, TL1 = W - 22, TLY = 168;
     const CLS = [[-24, -14], [24, -14], [0, 22]];                  // class centres
     const OFF = [[34, -14], [-32, 18], [12, 34], [-30, -24], [38, 22]];   // domain shifts; last is unseen
-    const ND = OFF.length, PER = 6, LOOP = ND * 4 + 2;
+    const ND = OFF.length, PER = 6;
     const rnd = (k) => hash(k * 7919 + 13) - 0.5;
     const s = { last: null };
 
     // where domain d's feature cloud sits, for a method, at progress a in [0,1] of domain d
     function shift(d, a, mine) {
       const unseen = d === ND - 1;
-      const off = unseen && s.drag ? s.drag : OFF[d];                  // the cursor can play the unseen shift
+      const off = unseen && s.cur ? s.cur : OFF[d];                    // the cursor plays the unseen shift
       const adapt = unseen ? 0 : 0.65 * ease(clamp(a / 0.7, 0, 1));    // test-time adaptation within a domain
       const inv = mine ? 1 - 0.7 * Math.pow(0.6, d) : 0;               // TestDG: invariance built from past domains
       const k = (1 - inv) * (1 - adapt);
@@ -381,19 +382,21 @@
         const T = P.T;
         const DOM = [T.exec, T.acc, T.warn, T.ok, T.ink];
         // time along the stream: the pointer's x while hovering, else it plays
-        // idle: the stream plays. Hovering: you are the unseen domain's shift,
-        // measured from the centre of whichever panel the cursor is over
-        let u;
+        // a still picture of the unseen domain until the cursor moves it:
+        // the cursor is that domain's shift, measured from the centre of
+        // whichever panel it is over; off the figure it eases back
+        let want = OFF[ND - 1];
         if (!st.idle) {
-          u = 0.999;
           const px = st.ptr[0] < 160 ? PANELS[0].x : PANELS[1].x;
           let v = [st.ptr[0] - px, st.ptr[1] - CY];
           const L = Math.hypot(v[0], v[1]);
           if (L > 46) v = [v[0] * 46 / L, v[1] * 46 / L];
-          s.drag = v;
-        } else { s.drag = null; u = (st.t % LOOP) / (ND * 4); }
-        u = clamp(u, 0, 0.999);
-        const d = Math.floor(u * ND), a = u * ND - d;
+          want = v;
+        }
+        s.cur = s.cur || OFF[ND - 1].slice();
+        const kk = approach(st.dt || 0.016, 10);
+        s.cur = [lerp(s.cur[0], want[0], kk), lerp(s.cur[1], want[1], kk)];
+        const d = ND - 1, a = 0;
 
         PANELS.forEach((pn, pi) => {
           const mine = pi === 1, px = pn.x;
@@ -424,8 +427,6 @@
           const x = TL0 + i * sw + 1.5, unseen = i === ND - 1;
           P.rrect(x, TLY - 2.5, sw - 3, 5, 2.5, { fill: DOM[i], fillAlpha: i <= d ? 0.85 : 0.25, color: DOM[i], w: unseen ? 1 : 0, dash: unseen ? [2, 2] : null });
         }
-        const hx = TL0 + u * (TL1 - TL0);
-        P.line([[hx, TLY - 7], [hx, TLY + 7]], { w: 1.6, color: T.ink });
         P.text('unseen', TL1 - sw / 2, TLY - 9, { size: 7, color: T.mute, align: 'center', detail: true });
       },
     };
