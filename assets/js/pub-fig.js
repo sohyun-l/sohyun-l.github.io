@@ -1,6 +1,6 @@
 // pub-fig.js: interactive publication figures, drawn like a drafting sheet
-// (after kdwonn.github.io): white paper, ink linework, one blue pigment,
-// sienna only for errors, small mono labels. Mounts on every
+// (after kdwonn.github.io) in the site's own colours: its paper, ink and
+// accent, red only for errors, small uppercase labels. Mounts on every
 // <canvas data-fig-scene="...">; each scene draws on a 320x180 board that
 // is letterboxed into the canvas. Figures hold still and move only under
 // the cursor.
@@ -25,24 +25,30 @@
   }
 
   // ---------------------------------------------------------------- theme
-  const LIGHT = {
-    bg: '#ffffff', ink: '#15181d', mute: '#7c828c', faint: 'rgba(20,30,50,.2)', grid: 'rgba(20,30,50,.14)',
-    acc: '#1a3190', alt: '#0f6e62', bad: '#b4442a', badSoft: 'rgba(180,68,42,.1)', ochre: '#b07a12', violet: '#5b3fa8',
-  };
-  const DARK = {
-    bg: '#15181d', ink: '#eceef1', mute: '#8b919b', faint: 'rgba(236,238,241,.22)', grid: 'rgba(236,238,241,.1)',
-    acc: '#8ea2ff', alt: '#5ccfb8', bad: '#ff8a5b', badSoft: 'rgba(255,138,91,.12)', ochre: '#e8b25c', violet: '#b3a2ff',
-  };
-  const FONT = '"iA Writer Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+  // The site's own palette: its paper, text and accent colours and its
+  // font, so the figures sit on the page like the rest of it. Only the
+  // error colour and the domain pigments are added.
   let theme = null, themeAt = 0;
   function readTheme(now) {
     if (theme && now - themeAt < 400) return theme;
     themeAt = now;
-    // the site's own background decides light or dark
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--global-bg-color').trim();
+    const cs = getComputedStyle(document.documentElement);
+    const v = (n, d) => cs.getPropertyValue(n).trim() || d;
+    const bg = v('--global-bg-color', '#faf0eb');
     const m = bg.match(/^#?([0-9a-f]{6})$/i);
     const lum = m ? parseInt(m[1].slice(0, 2), 16) * 0.3 + parseInt(m[1].slice(2, 4), 16) * 0.59 + parseInt(m[1].slice(4, 6), 16) * 0.11 : 240;
-    theme = lum < 110 ? DARK : LIGHT;
+    const dark = lum < 110;
+    theme = {
+      dark, bg,
+      ink: v('--global-text-color', '#2a2422'),
+      mute: v('--global-text-color-light', '#7a6b66'),
+      faint: v('--global-divider-color', '#ead9d0'),
+      grid: v('--global-divider-color', '#ead9d0'),
+      acc: v('--global-theme-color', '#2563eb'),
+      bad: dark ? '#ff6b5e' : '#c0392b',
+      pig: dark ? ['#8fb4ff', '#5fd0b8', '#f2c46b', '#c9a8ff'] : ['#3b6fd8', '#12897a', '#c2841a', '#8a4fd1'],
+      font: getComputedStyle(document.body).fontFamily || 'Inter, sans-serif',
+    };
     return theme;
   }
 
@@ -118,8 +124,8 @@
       const size = o.size ?? 7;
       const s = o.keepCase ? str : str.toUpperCase();
       ctx.save();
-      ctx.font = `${o.bold ? 700 : 400} ${size}px ${FONT}`;
-      if ('letterSpacing' in ctx) ctx.letterSpacing = o.keepCase ? '0px' : `${(size * 0.14).toFixed(2)}px`;
+      ctx.font = `${o.bold ? 700 : 500} ${size}px ${T.font}`;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = o.keepCase ? '0px' : `${(size * 0.1).toFixed(2)}px`;
       ctx.fillStyle = o.color || T.mute;
       ctx.globalAlpha = o.alpha ?? 1;
       ctx.textAlign = o.align || 'left';
@@ -197,7 +203,7 @@
     function executed(qc, u) {
       const q = [HOME[0] + (qc[0] - HOME[0]) * u * 0.9, HOME[1] + (qc[1] - HOME[1]) * u * 0.9];
       const q12 = q[0] + q[1];
-      return [q[0] - u * (0.12 * Math.cos(q[0]) + 0.06 * Math.cos(q12)) - 0.05 * u, q[1] - u * 0.1 * Math.cos(q12) + 0.08 * u];
+      return [q[0] - u * (0.2 * Math.cos(q[0]) + 0.1 * Math.cos(q12)) - 0.03 * u, q[1] - u * 0.16 * Math.cos(q12) + 0.1 * u];
     }
     const G0 = reachable([222, 70]);               // the still picture's target
     const cmdFor = (goal, off) => ik(reachable([goal[0] - off[0], goal[1] - off[1]], 1));
@@ -205,18 +211,24 @@
     // learning from the residual: shift the next command by the miss
     const learn = (off, miss) => [off[0] + 0.8 * miss[0], off[1] + 0.8 * miss[1]];
 
-    // the still picture: three tries on G0
+    // the still picture: the first try, aimed at G0, and the command after
+    // learning from the residual, aimed past G0 so that it lands on it
     const still = (() => {
-      let off = [0, 0];
-      const tries = [];
-      for (let i = 0; i < 6; i++) {                   // until it lands on the target
-        const qc = cmdFor(G0, off), e = landed(qc);
-        tries.push({ qc, e, miss: dist(e, G0) });
-        if (dist(e, G0) < 4) break;
+      let off = [0, 0], first = null, qc, e;
+      for (let i = 0; i < 8; i++) {
+        qc = cmdFor(G0, off); e = landed(qc);
+        if (!first) first = { qc, e };
+        if (dist(e, G0) < 1.5) break;
         off = learn(off, [e[0] - G0[0], e[1] - G0[1]]);
       }
-      return tries;
+      return { first, last: { qc, e }, aim: fk(qc).ee };
     })();
+    const arrow = (P, a, b, color) => {
+      if (dist(a, b) < 4) return;
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      P.line([a, [b[0] - 3 * Math.cos(ang), b[1] - 3 * Math.sin(ang)]], { w: 1.3, color });
+      P.head(b, ang, { color, head: 5.5 });
+    };
 
     const live = { on: false, t0: 0, off: [0, 0], goal: null, qc: null, tries: [], cut: false };
     function startTry(t, goal) { live.t0 = t; live.goal = goal.slice(); live.qc = cmdFor(goal, live.off); live.cut = false; }
@@ -276,18 +288,23 @@
         if (st.idle) {
           // ---- the still picture
           live.on = false;
-          still.slice(0, -1).forEach((tr, i) => {
-            P.line(path(tr.qc, 1, true), { w: 1, color: T.ink, alpha: 0.22 + 0.12 * i });
-            P.cross(tr.e[0], tr.e[1], 0.8, { color: T.bad, w: 1.3, alpha: 0.6 + 0.2 * i });
-          });
-          const last = still[still.length - 1];
+          const { first, last, aim } = still;
+          // 1st try: commanded straight at the target, executed lands off
+          P.line(path(first.qc, 1, false), { w: 1, color: T.acc, dash: [1.5, 3], alpha: 0.45 });
+          P.line(path(first.qc, 1, true), { w: 1, color: T.ink, alpha: 0.35 });
+          P.cross(first.e[0], first.e[1], 0.85, { color: T.bad, w: 1.4 });
+          // after learning from the residual: aimed past the target, lands on it
           P.line(path(last.qc, 1, false), { w: 1.2, color: T.acc, dash: [1.5, 3] });
           P.line(path(last.qc, 1, true), { w: 1.2, color: T.ink });
-          P.dim(still[0].e, G0, { color: T.bad });
           arm(P, last.qc, true);
           arm(P, executed(last.qc, 1), false);
-          P.target(G0, 6.5, { color: T.acc });
-          tryBoxes(P, still.map((tr) => tr.miss));
+          P.circle(aim, 2.4, { w: 1.2, color: T.acc, fill: T.bg });
+          arrow(P, G0, first.e, T.bad);             // residual: executed - commanded
+          arrow(P, G0, aim, T.acc);                 // the pre-compensated command
+          P.target(G0, 6.5, { color: T.ink });
+          P.text('residual', first.e[0] + 7, first.e[1] + 3, { size: 6.5, color: T.bad, detail: true });
+          P.text('pre-compensated', aim[0] + 6, aim[1] - 6, { size: 6.5, color: T.acc, detail: true });
+          tryBoxes(P, [dist(first.e, G0), dist(last.e, G0)]);
           return;
         }
 
@@ -315,9 +332,10 @@
         }
         arm(P, qCmd, true);
         arm(P, qExe, false);
-        const done = out && ph >= REACH * 0.98, miss = dist(X, live.goal);
-        P.target(goalNow, 6.5, { color: done && miss < 4 ? T.acc : T.ink });
-        if (done && miss >= 4) { P.dim(X, live.goal, { color: T.bad }); P.cross(X[0], X[1], 0.8, { color: T.bad, w: 1.3 }); }
+        const done = out && ph >= REACH * 0.98, miss = dist(X, live.goal), aimPt = fk(live.qc).ee;
+        if (dist(aimPt, live.goal) > 4) { P.circle(aimPt, 2.4, { w: 1.2, color: T.acc, fill: T.bg }); arrow(P, live.goal, aimPt, T.acc); }
+        P.target(goalNow, 6.5, { color: T.ink });
+        if (done && miss >= 4) { arrow(P, live.goal, X, T.bad); P.cross(X[0], X[1], 0.85, { color: T.bad, w: 1.4 }); }
         tryBoxes(P, live.tries);
       },
     };
@@ -325,53 +343,44 @@
 
   // ---------------------------------------------------------------- testdg
   // TestDG: test-time domain generalization for continual TTA.
-  // Two boards see the same stream of test domains (colour = domain,
-  // shape = class, dashed outline = where each class belongs). Prior CTTA
-  // adapts to the current domain only, so an unseen domain lands shifted
-  // and its samples fall into the wrong class. TestDG aligns each domain
-  // with prototypes of the previous one (diamonds) and grows invariant, so
-  // the unseen domain lands in place. Still until the cursor moves it: the
-  // cursor is the unseen domain's shift.
+  // The paper's own picture (its Fig. 3a), in two boards: samples of the
+  // seen test domains (colours) for two classes (circle / triangle) on
+  // either side of the class boundary. Prior CTTA adapts to each domain
+  // at hand, so the domains stay apart and an unseen domain (outlined)
+  // lands across the boundary: wrong. TestDG makes the domains
+  // indistinguishable as they stream in, so they overlap and the unseen
+  // domain lands on them: right. Still until the cursor moves the unseen
+  // domain; Prior CTTA follows it, TestDG barely moves.
   function testdgScene() {
-    const BOX = [{ x: 14, name: 'prior ctta' }, { x: 170, name: 'testdg' }], BW = 136, BY = 28, BH = 118;
-    const CY = BY + BH / 2 + 2;
-    const CLS = [[-34, -24], [34, -24], [0, 30]];
-    const OFF = [[40, -18], [-40, 22], [14, 38], [-36, -26], [30, 30]];   // domain shifts; last is unseen
-    const ND = OFF.length, PER = 6, UNSEEN = ND - 1;
+    const BOX = [{ x: 12, name: 'prior ctta' }, { x: 168, name: 'testdg' }], BW = 140, BY = 30, BH = 116;
+    const CY = BY + BH / 2, CLS = [-26, 26];                   // class centres, left / right of the boundary
+    const DOFF = [[-14, -24], [14, -12], [-10, 20], [14, 24]];  // where each seen domain sits
+    const UN = [-33, 4];                                        // the unseen domain's shift
+    const PER = 5;
     const rnd = (k) => hash(k * 7919 + 13) - 0.5;
-    const s = { cur: OFF[UNSEEN].slice() };
+    const s = { cur: UN.slice() };
 
-    function shift(d, mine) {
-      const off = d === UNSEEN ? s.cur : OFF[d];
-      const adapt = d === UNSEEN ? 0 : 0.65;                 // earlier domains were adapted to
-      const inv = mine ? 1 - 0.7 * Math.pow(0.6, d) : 0;     // TestDG: invariance built up over domains
-      const k = (1 - inv) * (1 - adapt);
-      return [off[0] * k, off[1] * k];
-    }
-    function samples(d, mine, cx) {
-      const sh = shift(d, mine), out = [];
-      CLS.forEach((c, ci) => {
-        for (let i = 0; i < PER; i++) {
-          const k = d * 97 + ci * 13 + i;
-          const p = [cx + c[0] + sh[0] + 24 * rnd(k), CY + c[1] + sh[1] + 18 * rnd(k + 500)];
-          let best = 0;
-          CLS.forEach((q, qi) => { if (dist(p, [cx + q[0], CY + q[1]]) < dist(p, [cx + CLS[best][0], CY + CLS[best][1]])) best = qi; });
-          out.push({ p, ci, ok: best === ci });
-        }
-      });
-      return out;
-    }
     function shape(P, ci, p, r, o) {
       const ctx = P.ctx;
       ctx.save();
       ctx.beginPath();
       if (ci === 0) ctx.arc(p[0], p[1], r, 0, TAU);
-      else if (ci === 1) { ctx.moveTo(p[0], p[1] - r * 1.15); ctx.lineTo(p[0] + r * 1.1, p[1] + r * 0.75); ctx.lineTo(p[0] - r * 1.1, p[1] + r * 0.75); ctx.closePath(); }
-      else ctx.rect(p[0] - r * 0.88, p[1] - r * 0.88, r * 1.76, r * 1.76);
+      else { ctx.moveTo(p[0], p[1] - r * 1.15); ctx.lineTo(p[0] + r * 1.1, p[1] + r * 0.8); ctx.lineTo(p[0] - r * 1.1, p[1] + r * 0.8); ctx.closePath(); }
       ctx.globalAlpha = o.alpha ?? 1;
       if (o.fill) { ctx.fillStyle = o.fill; ctx.fill(); }
-      if (o.stroke) { ctx.strokeStyle = o.stroke; ctx.lineWidth = Math.max(o.w || 1, 1 / P.k); if (o.dash) ctx.setLineDash(o.dash); ctx.stroke(); }
+      if (o.stroke) { ctx.strokeStyle = o.stroke; ctx.lineWidth = Math.max(o.w || 1, 1 / P.k); ctx.stroke(); }
       ctx.restore();
+    }
+    // samples of one domain; k scales how far its shift carries through
+    function cloud(cx, sh, k, seed) {
+      const out = [];
+      CLS.forEach((c, ci) => {
+        for (let i = 0; i < PER; i++) {
+          const j = seed * 131 + ci * 17 + i;
+          out.push({ ci, p: [cx + c + sh[0] * k + 14 * rnd(j), CY + sh[1] * k + 14 * rnd(j + 500)] });
+        }
+      });
+      return out;
     }
 
     return {
@@ -379,16 +388,13 @@
       idle: () => null,
       draw(P, st) {
         const T = P.T;
-        const DOM = [T.acc, T.alt, T.ochre, T.violet, T.ink];
         P.marks();
-
-        // the cursor plays the unseen domain's shift, from the centre of the board it is over
-        let want = OFF[UNSEEN];
+        let want = UN;
         if (!st.idle) {
           const cx = st.ptr[0] < 160 ? BOX[0].x + BW / 2 : BOX[1].x + BW / 2;
           let v = [st.ptr[0] - cx, st.ptr[1] - CY];
           const L = Math.hypot(v[0], v[1]);
-          if (L > 56) v = [v[0] * 56 / L, v[1] * 56 / L];
+          if (L > 44) v = [v[0] * 44 / L, v[1] * 44 / L];
           want = v;
         }
         const kk = approach(st.dt || 0.016, 10);
@@ -396,37 +402,32 @@
 
         BOX.forEach((bx, bi) => {
           const mine = bi === 1, cx = bx.x + BW / 2;
-          P.text(bx.name, bx.x, BY - 8, { size: P.small ? 10 : 7, color: mine ? T.acc : T.mute, bold: mine });
-          P.rect(bx.x, BY, BW, BH, { w: 1.2, color: T.ink, fill: T.bg });
+          P.text(bx.name, bx.x, BY - 9, { size: P.small ? 10 : 7, color: mine ? T.acc : T.mute, bold: mine });
+          P.rect(bx.x, BY, BW, BH, { w: 1.1, color: T.ink });
           P.dots(bx.x + 8, BY + 8, bx.x + BW - 8, BY + BH - 8, 10);
+          P.line([[cx, BY + 4], [cx, BY + BH - 4]], { w: 1, color: T.mute, dash: [3, 3] });   // class boundary
           P.ctx.save(); P.ctx.beginPath(); P.ctx.rect(bx.x + 1, BY + 1, BW - 2, BH - 2); P.ctx.clip();
-          CLS.forEach((c, ci) => shape(P, ci, [cx + c[0], CY + c[1]], 13, { stroke: T.ink, w: 1, dash: [3, 2.5], alpha: 0.55 }));
-          // the previous domain: its prototypes (TestDG) or its faded samples
-          const prev = samples(UNSEEN - 1, mine, cx);
-          if (mine) prev.filter((_, i) => i % 3 === 0).forEach(({ p }) => {
-            const r = 4.6;
-            P.line([[p[0], p[1] - r], [p[0] + r, p[1]], [p[0], p[1] + r], [p[0] - r, p[1]], [p[0], p[1] - r]], { w: 1.3, color: DOM[UNSEEN - 1] });
-          });
-          else prev.forEach(({ p, ci }) => shape(P, ci, p, 3.2, { fill: DOM[UNSEEN - 1], alpha: 0.2 }));
-          // the unseen domain; a wrong class gets a sienna cross
-          samples(UNSEEN, mine, cx).forEach(({ p, ci, ok }) => {
-            shape(P, ci, p, 4.2, { fill: DOM[UNSEEN] });
-            if (!ok) P.cross(p[0] + 5.5, p[1] - 5.5, 0.55, { color: T.bad, w: 1.2 });
+          // seen domains: apart for Prior CTTA, overlapping for TestDG
+          DOFF.forEach((o, d) => cloud(cx, o, mine ? 0.15 : 1, d).forEach(({ ci, p }) => shape(P, ci, p, 3.4, { fill: T.pig[d], alpha: 0.85 })));
+          // the unseen domain, outlined; a sample across the boundary is wrong
+          cloud(cx, s.cur, mine ? 0.15 : 1, 9).forEach(({ ci, p }) => {
+            shape(P, ci, p, 4.2, { fill: T.bg, stroke: T.ink, w: 1.4 });
+            if ((p[0] < cx) !== (ci === 0)) P.cross(p[0] + 5.5, p[1] - 5.5, 0.6, { color: T.bad, w: 1.3 });
           });
           P.ctx.restore();
         });
 
-        // the domain stream, as a row of cells; the last one is unseen
-        const cs = P.small ? 12 : 10, gap = 4, n = ND, x0 = W / 2 - (n * cs + (n - 1) * gap) / 2, y = H - 18;
-        for (let i = 0; i < n; i++) {
-          const x = x0 + i * (cs + gap), unseen = i === UNSEEN;
-          if (unseen) P.rect(x, y, cs, cs, { w: 1.2, color: T.ink, dash: [2, 1.6], fill: T.bg });
-          else P.rect(x, y, cs, cs, { w: 0, fill: DOM[i] });
-          P.text(unseen ? '?' : `${i + 1}`, x + cs / 2, y + cs / 2 + 0.5, { size: cs * 0.62, align: 'center', color: unseen ? T.ink : T.bg, keepCase: true, bold: unseen });
-          if (i < n - 1) P.line([[x + cs + 0.8, y + cs / 2], [x + cs + gap - 0.8, y + cs / 2]], { w: 0.8, color: T.faint });
-        }
-        P.text('test domains', x0 - 8, y + cs / 2, { size: 6.5, align: 'right', detail: true });
-        P.text('unseen', x0 + n * (cs + gap) + 4, y + cs / 2, { size: 6.5, detail: true });
+        // legend: seen domains in colour, the unseen one outlined
+        const y = H - 12, fs = P.small ? 9 : 6.5;
+        // measure first, then centre the whole legend
+        const wSeen = P.text('seen domains', -999, -999, { size: fs }), wUn = P.text('unseen', -999, -999, { size: fs });
+        let x = W / 2 - (30 + wSeen + 16 + 8 + wUn) / 2;
+        T.pig.forEach((c, i) => P.circle([x + 3 + i * 7, y], 2.8, { fill: c, w: 0 }));
+        x += 30;
+        P.text('seen domains', x, y, { size: fs });
+        x += wSeen + 16;
+        P.circle([x + 3, y], 3, { fill: T.bg, color: T.ink, w: 1.3 });
+        P.text('unseen', x + 10, y, { size: fs });
       },
     };
   }
