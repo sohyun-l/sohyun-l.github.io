@@ -1,8 +1,9 @@
-// pub-fig.js: interactive publication figures (after kdwonn.github.io).
-// Mounts on every <canvas data-fig-scene="...">. Each scene draws into a
-// fixed 320x180 board that is letterboxed into the canvas; the pointer
-// steers the scene, and when nobody is steering it plays by itself.
-// Colours come from the site's CSS variables, so light/dark just works.
+// pub-fig.js: interactive publication figures, drawn like a drafting sheet
+// (after kdwonn.github.io): white paper, ink linework, one blue pigment,
+// sienna only for errors, small mono labels. Mounts on every
+// <canvas data-fig-scene="...">; each scene draws on a 320x180 board that
+// is letterboxed into the canvas. Figures hold still and move only under
+// the cursor.
 //   scenes: selfcomp, testdg
 (function () {
   if (window.__pubFig) return;
@@ -24,65 +25,66 @@
   }
 
   // ---------------------------------------------------------------- theme
+  const LIGHT = {
+    bg: '#ffffff', ink: '#15181d', mute: '#7c828c', faint: 'rgba(20,30,50,.2)', grid: 'rgba(20,30,50,.14)',
+    acc: '#1a3190', alt: '#0f6e62', bad: '#b4442a', badSoft: 'rgba(180,68,42,.1)', ochre: '#b07a12', violet: '#5b3fa8',
+  };
+  const DARK = {
+    bg: '#15181d', ink: '#eceef1', mute: '#8b919b', faint: 'rgba(236,238,241,.22)', grid: 'rgba(236,238,241,.1)',
+    acc: '#8ea2ff', alt: '#5ccfb8', bad: '#ff8a5b', badSoft: 'rgba(255,138,91,.12)', ochre: '#e8b25c', violet: '#b3a2ff',
+  };
+  const FONT = '"iA Writer Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace';
   let theme = null, themeAt = 0;
   function readTheme(now) {
     if (theme && now - themeAt < 400) return theme;
     themeAt = now;
-    const cs = getComputedStyle(document.documentElement);
-    const v = (n, d) => cs.getPropertyValue(n).trim() || d;
-    const bg = v('--global-bg-color', '#faf0eb');
-    // crude luminance test on the page background picks the pigment set
+    // the site's own background decides light or dark
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--global-bg-color').trim();
     const m = bg.match(/^#?([0-9a-f]{6})$/i);
-    const lum = m ? (parseInt(m[1].slice(0, 2), 16) * 0.3 + parseInt(m[1].slice(2, 4), 16) * 0.59 + parseInt(m[1].slice(4, 6), 16) * 0.11) : 240;
-    const dark = lum < 110;
-    theme = {
-      dark, bg,
-      ink: v('--global-text-color', '#2a2422'),
-      mute: v('--global-text-color-light', '#7a6b66'),
-      line: v('--global-divider-color', '#ead9d0'),
-      acc: v('--global-theme-color', '#2563eb'),
-      exec: dark ? '#e58bd6' : '#a3308f',   // executed motion (teaser magenta)
-      bad: dark ? '#ff7d6e' : '#d0342c',    // action error
-      ok: dark ? '#6fd3a8' : '#16845a',     // compensated
-      warn: dark ? '#e8b25c' : '#c27a0e',
-      violet: dark ? '#b3a2ff' : '#6a4fc4',
-      font: getComputedStyle(document.body).fontFamily || 'sans-serif',
-    };
+    const lum = m ? parseInt(m[1].slice(0, 2), 16) * 0.3 + parseInt(m[1].slice(2, 4), 16) * 0.59 + parseInt(m[1].slice(4, 6), 16) * 0.11 : 240;
+    theme = lum < 110 ? DARK : LIGHT;
     return theme;
   }
 
   // ---------------------------------------------------------------- pen
   function makePen(ctx, T, k, small) {
     const P = { T, small, k, ctx };
-    const minW = 1 / k;
+    const lw = (w) => Math.max(w, 1 / k);     // never thinner than a device pixel
     P.line = (pts, o = {}) => {
       if (pts.length < 2) return;
       ctx.save();
       ctx.strokeStyle = o.color || T.ink;
-      ctx.lineWidth = Math.max(o.w ?? 1.2, minW);
+      ctx.lineWidth = lw(o.w ?? 1.2);
       ctx.globalAlpha = o.alpha ?? 1;
       ctx.lineCap = o.cap || 'round';
       ctx.lineJoin = 'round';
-      if (o.dash) { ctx.setLineDash(o.dash); ctx.lineDashOffset = o.dashOffset || 0; }
+      if (o.dash) ctx.setLineDash(o.dash);
       ctx.beginPath();
       pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])));
       ctx.stroke();
       ctx.restore();
     };
-    P.arrow = (a, b, o = {}) => {
-      const h = o.head ?? 6, ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      if (dist(a, b) < h * 0.8) return;
-      P.line([a, [b[0] - h * 0.5 * Math.cos(ang), b[1] - h * 0.5 * Math.sin(ang)]], o);
+    P.head = (tip, ang, o = {}) => {
+      const h = o.head ?? 6, hw = h * 0.38, b = [tip[0] - h * Math.cos(ang), tip[1] - h * Math.sin(ang)];
       ctx.save();
       ctx.fillStyle = o.color || T.ink;
       ctx.globalAlpha = o.alpha ?? 1;
       ctx.beginPath();
-      ctx.moveTo(b[0], b[1]);
-      ctx.lineTo(b[0] - h * Math.cos(ang - 0.42), b[1] - h * Math.sin(ang - 0.42));
-      ctx.lineTo(b[0] - h * Math.cos(ang + 0.42), b[1] - h * Math.sin(ang + 0.42));
+      ctx.moveTo(tip[0], tip[1]);
+      ctx.lineTo(b[0] - hw * Math.sin(ang), b[1] + hw * Math.cos(ang));
+      ctx.lineTo(b[0] + hw * Math.sin(ang), b[1] - hw * Math.cos(ang));
       ctx.closePath();
       ctx.fill();
       ctx.restore();
+    };
+    // a dimension line: the gap between a and b, arrowheads at both ends
+    P.dim = (a, b, o = {}) => {
+      const L = dist(a, b);
+      if (L < 3) return;
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), h = Math.min(5, L / 3);
+      P.line([a, b], { w: 1, color: o.color });
+      P.head(b, ang, { color: o.color, head: h });
+      P.head(a, ang + Math.PI, { color: o.color, head: h });
     };
     P.circle = (c, r, o = {}) => {
       ctx.save();
@@ -92,89 +94,87 @@
       if (o.w !== 0) {
         ctx.globalAlpha = o.alpha ?? 1;
         ctx.strokeStyle = o.color || T.ink;
-        ctx.lineWidth = Math.max(o.w ?? 1.2, minW);
+        ctx.lineWidth = lw(o.w ?? 1.2);
         if (o.dash) ctx.setLineDash(o.dash);
         ctx.stroke();
       }
       ctx.restore();
     };
-    P.rrect = (x, y, w, h, r, o = {}) => {
+    P.rect = (x, y, w, h, o = {}) => {
       ctx.save();
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
-      if (o.fill) { ctx.globalAlpha = o.fillAlpha ?? 1; ctx.fillStyle = o.fill; ctx.fill(); }
+      if (o.fill) { ctx.globalAlpha = o.fillAlpha ?? 1; ctx.fillStyle = o.fill; ctx.fillRect(x, y, w, h); }
       if (o.w !== 0) {
         ctx.globalAlpha = o.alpha ?? 1;
         ctx.strokeStyle = o.color || T.ink;
-        ctx.lineWidth = Math.max(o.w ?? 1, minW);
+        ctx.lineWidth = lw(o.w ?? 1.2);
         if (o.dash) ctx.setLineDash(o.dash);
-        ctx.stroke();
+        ctx.strokeRect(x, y, w, h);
       }
       ctx.restore();
     };
-    // o.detail: only drawn when the figure is shown large enough to read it
+    // small mono label; o.detail: only when the figure is shown large
     P.text = (str, x, y, o = {}) => {
       if (o.detail && small) return 0;
-      const size = o.size ?? 8;
+      const size = o.size ?? 7;
+      const s = o.keepCase ? str : str.toUpperCase();
       ctx.save();
-      ctx.font = `${o.weight || 500} ${size}px ${T.font}`;
+      ctx.font = `${o.bold ? 700 : 400} ${size}px ${FONT}`;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = o.keepCase ? '0px' : `${(size * 0.14).toFixed(2)}px`;
       ctx.fillStyle = o.color || T.mute;
       ctx.globalAlpha = o.alpha ?? 1;
       ctx.textAlign = o.align || 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(str, x, y);
-      const wd = ctx.measureText(str).width;
+      ctx.fillText(s, x, y);
+      const wd = ctx.measureText(s).width;
       ctx.restore();
       return wd;
     };
-    P.star = (c, r, o = {}) => {
-      ctx.save();
-      ctx.beginPath();
-      for (let i = 0; i < 10; i++) {
-        const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
-        const p = [c[0] + rr * Math.cos(a), c[1] + rr * Math.sin(a)];
-        i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]);
-      }
-      ctx.closePath();
-      ctx.fillStyle = o.fill || T.bg;
-      ctx.fill();
-      ctx.strokeStyle = o.color || T.ink;
-      ctx.lineWidth = Math.max(o.w ?? 1.3, minW);
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-      ctx.restore();
+    P.target = (c, r, o = {}) => {
+      const col = o.color || T.ink;
+      P.circle(c, r, { w: 1.3, color: col, fill: T.bg });
+      const e = r + 4;
+      P.line([[c[0] - e, c[1]], [c[0] + e, c[1]]], { w: 1, color: col });
+      P.line([[c[0], c[1] - e], [c[0], c[1] + e]], { w: 1, color: col });
     };
-    P.cross = (c, r, o = {}) => {
-      P.line([[c[0] - r, c[1] - r], [c[0] + r, c[1] + r]], o);
-      P.line([[c[0] + r, c[1] - r], [c[0] - r, c[1] + r]], o);
+    P.check = (x, y, s, o = {}) => P.line([[x - 4 * s, y], [x - 1.2 * s, y + 3 * s], [x + 4.5 * s, y - 4 * s]], { w: 1.6, ...o });
+    P.cross = (x, y, s, o = {}) => {
+      P.line([[x - 3.2 * s, y - 3.2 * s], [x + 3.2 * s, y + 3.2 * s]], { w: 1.6, ...o });
+      P.line([[x + 3.2 * s, y - 3.2 * s], [x - 3.2 * s, y + 3.2 * s]], { w: 1.6, ...o });
     };
     P.dots = (x0, y0, x1, y1, pitch) => {
       ctx.save();
-      ctx.fillStyle = T.line;
-      const s = 1.3 / k;
+      ctx.fillStyle = T.grid;
+      const d = 1.2 / k;
       for (let x = x0; x <= x1 + 0.1; x += pitch)
-        for (let y = y0; y <= y1 + 0.1; y += pitch) ctx.fillRect(x - s / 2, y - s / 2, s, s);
+        for (let y = y0; y <= y1 + 0.1; y += pitch) ctx.fillRect(x - d / 2, y - d / 2, d, d);
       ctx.restore();
+    };
+    // registration marks in two corners, as on a drafting sheet
+    P.marks = () => {
+      if (small) return;
+      for (const [x, y] of [[9, 9], [W - 9, H - 9]]) {
+        P.line([[x - 3.5, y], [x + 3.5, y]], { w: 0.9, color: T.faint });
+        P.line([[x, y - 3.5], [x, y + 3.5]], { w: 0.9, color: T.faint });
+      }
     };
     return P;
   }
 
   // ---------------------------------------------------------------- selfcomp
   // Taming VLAs under Robot Execution Errors (self-compensating VLA).
-  // One idea: the arm keeps reaching for the target. Execution errors
-  // (gravity-compensation error, friction, backlash) make the executed
-  // reach miss the commanded one; after each try the policy learns from
-  // the command-execution residual and pre-compensates the next command,
-  // so the miss shrinks try by try. The pointer moves the target, and the
-  // arm re-adapts on the fly.
+  // The arm reaches for the target; execution errors make the executed
+  // reach miss the commanded one, and after each try the policy
+  // pre-compensates its next command from the command-execution residual,
+  // so the miss closes. Still: the tries on one target, the last one on
+  // it. Under the cursor: the cursor is the target and the arm tries live.
   function selfcompScene() {
-    const B = [100, 166], L1 = 92, L2 = 80, TABLE = 170;
+    const B = [96, 150], L1 = 84, L2 = 74, TABLE = 158;
     const REACH = 1.1, HOLD = 0.8, BACK = 0.45, TRY = REACH + HOLD + BACK;
+    const HOME = [Math.PI / 2 + 0.25, -2.2];      // folded, upright
     const toWorld = (p) => [p[0] - B[0], B[1] - p[1]];
     const toScreen = (p) => [B[0] + p[0], B[1] - p[1]];
     function fk(q) {
-      const e = [L1 * Math.cos(q[0]), L1 * Math.sin(q[0])];
-      const a = q[0] + q[1];
+      const e = [L1 * Math.cos(q[0]), L1 * Math.sin(q[0])], a = q[0] + q[1];
       return { elbow: toScreen(e), ee: toScreen([e[0] + L2 * Math.cos(a), e[1] + L2 * Math.sin(a)]), a };
     }
     function ik(p) {
@@ -183,8 +183,7 @@
       const q2 = -Math.acos(c2);                  // elbow up
       return [Math.atan2(y, x) - Math.atan2(L2 * Math.sin(q2), L1 + L2 * Math.cos(q2)), q2];
     }
-    // targets stay well inside the workspace, so a pre-compensated command
-    // (which aims past the target) still has room
+    // targets stay inside the workspace, leaving room for a command that aims past them
     function reachable(p, margin = 30) {
       let [x, y] = toWorld(p);
       y = Math.max(y, 16);
@@ -193,170 +192,170 @@
       const q = toScreen([rr * Math.cos(a), rr * Math.sin(a)]);
       return margin > 5 ? [clamp(q[0], B[0] + 30, W - 24), clamp(q[1], 22, TABLE - 20)] : q;
     }
-    const HOME = [Math.PI / 2 + 0.25, -2.2];      // folded, upright
-    // execution errors for a commanded joint configuration: gravity sag
-    // (pose dependent), friction shortfall and a backlash offset
-    function executed(qh, qc, u) {
-      const q = [qh[0] + (qc[0] - qh[0]) * u * 0.9, qh[1] + (qc[1] - qh[1]) * u * 0.9];
+    // execution errors along a reach (u: 0..1): friction shortfall,
+    // pose-dependent gravity sag and a backlash-like offset
+    function executed(qc, u) {
+      const q = [HOME[0] + (qc[0] - HOME[0]) * u * 0.9, HOME[1] + (qc[1] - HOME[1]) * u * 0.9];
       const q12 = q[0] + q[1];
-      return [q[0] - u * (0.12 * Math.cos(q[0]) + 0.06 * Math.cos(q12)) - 0.05 * u,
-        q[1] - u * 0.1 * Math.cos(q12) + 0.08 * u];
+      return [q[0] - u * (0.12 * Math.cos(q[0]) + 0.06 * Math.cos(q12)) - 0.05 * u, q[1] - u * 0.1 * Math.cos(q12) + 0.08 * u];
     }
-    const TOUR = [[236, 62], [206, 128], [150, 40], [252, 108], [192, 84]];
+    const G0 = reachable([222, 70]);               // the still picture's target
+    const cmdFor = (goal, off) => ik(reachable([goal[0] - off[0], goal[1] - off[1]], 1));
+    const landed = (qc) => fk(executed(qc, 1)).ee;
+    // learning from the residual: shift the next command by the miss
+    const learn = (off, miss) => [off[0] + 0.8 * miss[0], off[1] + 0.8 * miss[1]];
 
-    const s = { t0: null, off: [0, 0], goal: null, cmd: null, tries: [], tourI: 0, good: 0, marks: [] };
-    function startTry(goal) {
-      s.goal = goal.slice();
-      s.cmd = reachable([goal[0] - s.off[0], goal[1] - s.off[1]], 1);
-      s.qc = ik(s.cmd);
+    // the still picture: three tries on G0
+    const still = (() => {
+      let off = [0, 0];
+      const tries = [];
+      for (let i = 0; i < 6; i++) {                   // until it lands on the target
+        const qc = cmdFor(G0, off), e = landed(qc);
+        tries.push({ qc, e, miss: dist(e, G0) });
+        if (dist(e, G0) < 4) break;
+        off = learn(off, [e[0] - G0[0], e[1] - G0[1]]);
+      }
+      return tries;
+    })();
+
+    const live = { on: false, t0: 0, off: [0, 0], goal: null, qc: null, tries: [], cut: false };
+    function startTry(t, goal) { live.t0 = t; live.goal = goal.slice(); live.qc = cmdFor(goal, live.off); live.cut = false; }
+
+    function path(qc, upto, exec) {
+      const pts = [], n = 28;
+      for (let i = 0; i <= n * upto; i++) {
+        const v = i / n;
+        pts.push(fk(exec ? executed(qc, v) : [HOME[0] + (qc[0] - HOME[0]) * v, HOME[1] + (qc[1] - HOME[1]) * v]).ee);
+      }
+      return pts;
     }
-    function endTry() {
-      const e = fk(executed(HOME, s.qc, 1)).ee;
-      const miss = [e[0] - s.goal[0], e[1] - s.goal[1]], m = Math.hypot(miss[0], miss[1]);
-      // learn from the residual: pre-compensate the next command
-      s.off = [s.off[0] + 0.8 * miss[0], s.off[1] + 0.8 * miss[1]];
-      s.tries.push(m);
-      if (s.tries.length > 7) s.tries.shift();
-      s.marks.push(e);
-      if (s.marks.length > 4) s.marks.shift();
-      s.good = m < 4 ? s.good + 1 : 0;
+    function arm(P, q, ghost) {
+      const T = P.T, K = fk(q);
+      if (ghost) {
+        P.line([B, K.elbow, K.ee], { w: 1.2, color: T.acc, dash: [3, 2.5], cap: 'butt', alpha: 0.9 });
+        return;
+      }
+      P.line([B, K.elbow, K.ee], { w: 3, color: T.ink });
+      const gd = [Math.cos(-K.a), Math.sin(-K.a)], gn = [-gd[1], gd[0]];
+      for (const sg of [-1, 1]) {
+        const b = [K.ee[0] + gn[0] * 4 * sg, K.ee[1] + gn[1] * 4 * sg];
+        P.line([K.ee, b, [b[0] + gd[0] * 6, b[1] + gd[1] * 6]], { w: 1.6, color: T.ink });
+      }
+      for (const [c, r] of [[B, 3.6], [K.elbow, 3.2]]) P.circle(c, r, { w: 1.4, color: T.ink, fill: T.bg });
+    }
+    function tryBoxes(P, list) {
+      const T = P.T, s = P.small ? 11 : 8, gap = P.small ? 4 : 3;
+      const x1 = W - 14, x0 = x1 - list.length * (s + gap) + gap, y = 14;
+      P.text('try', x0 - 5, y + s / 2, { size: 6.5, align: 'right', detail: true });
+      list.forEach((m, i) => {
+        const x = x0 + i * (s + gap), hit = m < 4;
+        P.rect(x, y, s, s, { w: 1, color: hit ? T.acc : T.bad, fill: T.bg });
+        if (hit) P.check(x + s / 2, y + s / 2, s / 11, { color: T.acc, w: 1.3 });
+        else P.cross(x + s / 2, y + s / 2, s / 13, { color: T.bad, w: 1.3 });
+      });
     }
 
     return {
-      state: s,
       sticky: true,
-      init(st) { st.ptr = TOUR[0].slice(); st.target = TOUR[0].slice(); },
-      // hold each target until the arm has hit it twice, then move on
-      idle() {
-        if (s.good >= 2) { s.tourI = (s.tourI + 1) % TOUR.length; s.good = 0; }
-        return TOUR[s.tourI];
-      },
+      idle: () => null,
       draw(P, st) {
         const T = P.T, t = st.t;
-        const goalNow = reachable(st.ptr);
-        if (s.t0 === null) { s.t0 = t; startTry(goalNow); }
-        let ph = t - s.t0;
-        // the target moved mid-reach: give up this try and head back at once
-        if (!s.cut && ph > 0.3 && ph < REACH + HOLD && dist(goalNow, s.goal) > 10) {
-          s.cut = true; s.t0 = t - (REACH + HOLD); ph = REACH + HOLD;
+        P.marks();
+        P.dots(16, 16, W - 16, TABLE - 8, 12);
+        // ground
+        P.line([[16, TABLE], [W - 16, TABLE]], { w: 1.1, color: T.ink });
+        for (let x = 20; x < W - 16; x += 6) P.line([[x, TABLE], [x - 4, TABLE + 4]], { w: 0.7, color: T.faint });
+        P.rect(B[0] - 10, B[1] - 1, 20, TABLE - B[1] + 1, { w: 1.3, color: T.ink, fill: T.bg });
+        if (!P.small) {
+          P.line([[16, 16], [28, 16]], { w: 1.2, color: T.acc, dash: [3, 2.5], cap: 'butt' });
+          P.text('commanded', 32, 16, { size: 6.5, color: T.acc });
+          P.line([[92, 16], [104, 16]], { w: 2.2, color: T.ink });
+          P.text('executed', 108, 16, { size: 6.5, color: T.ink });
         }
+
+        if (st.idle) {
+          // ---- the still picture
+          live.on = false;
+          still.slice(0, -1).forEach((tr, i) => {
+            P.line(path(tr.qc, 1, true), { w: 1, color: T.ink, alpha: 0.22 + 0.12 * i });
+            P.cross(tr.e[0], tr.e[1], 0.8, { color: T.bad, w: 1.3, alpha: 0.6 + 0.2 * i });
+          });
+          const last = still[still.length - 1];
+          P.line(path(last.qc, 1, false), { w: 1.2, color: T.acc, dash: [1.5, 3] });
+          P.line(path(last.qc, 1, true), { w: 1.2, color: T.ink });
+          P.dim(still[0].e, G0, { color: T.bad });
+          arm(P, last.qc, true);
+          arm(P, executed(last.qc, 1), false);
+          P.target(G0, 6.5, { color: T.acc });
+          tryBoxes(P, still.map((tr) => tr.miss));
+          return;
+        }
+
+        // ---- live, under the cursor
+        const goalNow = reachable(st.ptr);
+        if (!live.on) { live.on = true; live.off = [0, 0]; live.tries = []; startTry(t, goalNow); }
+        let ph = t - live.t0;
+        if (!live.cut && ph > 0.3 && ph < REACH + HOLD && dist(goalNow, live.goal) > 10) { live.cut = true; live.t0 = t - (REACH + HOLD); ph = REACH + HOLD; }
         if (ph >= TRY) {
-          if (!s.cut) endTry();                 // only a finished reach teaches anything
-          // a new target: the marks of the old one no longer apply
-          if (s.cut || dist(goalNow, s.goal) > 6) { s.marks = []; s.tries = []; }
-          s.cut = false; s.t0 = t; ph = 0; startTry(goalNow);
+          if (!live.cut) {
+            const e = landed(live.qc), miss = [e[0] - live.goal[0], e[1] - live.goal[1]];
+            live.off = learn(live.off, miss);
+            live.tries.push(Math.hypot(miss[0], miss[1]));
+            if (live.tries.length > 6) live.tries.shift();
+          }
+          if (live.cut || dist(goalNow, live.goal) > 6) live.tries = [];
+          startTry(t, goalNow); ph = 0;
         }
         const u = ph < REACH ? ease(ph / REACH) : ph < REACH + HOLD ? 1 : 1 - ease((ph - REACH - HOLD) / BACK);
-        const out = ph < REACH + HOLD;
-
-        const qCmd = [HOME[0] + (s.qc[0] - HOME[0]) * u, HOME[1] + (s.qc[1] - HOME[1]) * u];
-        const qExe = executed(HOME, s.qc, u);
-        const C = fk(qCmd), X = fk(qExe);
-
-        // stage
-        P.dots(14, 14, W - 14, TABLE - 8, 13);
-        P.line([[12, TABLE], [W - 12, TABLE]], { w: 1, color: T.mute, alpha: 0.6 });
-        for (let x = 16; x < W - 12; x += 7) P.line([[x, TABLE], [x - 4, TABLE + 4]], { w: 0.7, color: T.mute, alpha: 0.35 });
-
-        // paths of this reach: commanded (dashed) and executed
+        const out = ph < REACH + HOLD, qCmd = [HOME[0] + (live.qc[0] - HOME[0]) * u, HOME[1] + (live.qc[1] - HOME[1]) * u];
+        const qExe = executed(live.qc, u), X = fk(qExe).ee;
         if (out) {
-          const n = 24, cp = [], xp = [];
-          const lim = Math.max(1, Math.round(n * (ph < REACH ? ease(ph / REACH) : 1)));
-          for (let i = 0; i <= lim; i++) {
-            const v = i / n;
-            cp.push(fk([HOME[0] + (s.qc[0] - HOME[0]) * v, HOME[1] + (s.qc[1] - HOME[1]) * v]).ee);
-            xp.push(fk(executed(HOME, s.qc, v)).ee);
-          }
-          P.line(cp, { w: 1.3, color: T.acc, dash: [3.5, 3], cap: 'butt', alpha: 0.9 });
-          P.line(xp, { w: 1.8, color: T.exec, alpha: 0.85 });
+          P.line(path(live.qc, u, false), { w: 1.2, color: T.acc, dash: [1.5, 3] });
+          P.line(path(live.qc, u, true), { w: 1.2, color: T.ink });
         }
-
-        // where earlier tries landed: they close in on the target
-        s.marks.forEach((m, i) => P.cross(m, 2.4, { w: 1.2, color: T.exec, alpha: 0.2 + 0.15 * i }));
-
-        // pedestal
-        P.rrect(B[0] - 12, B[1] - 2, 24, TABLE - B[1] + 2, 2.5, { fill: T.ink, fillAlpha: 0.85, w: 0 });
-        P.rrect(B[0] - 17, TABLE - 3, 34, 3, 1, { fill: T.ink, w: 0 });
-
-        // commanded arm (ghost) and executed arm
-        const ghost = { w: 10, color: T.acc, alpha: 0.14 };
-        P.line([B, C.elbow], ghost);
-        P.line([C.elbow, C.ee], { ...ghost, w: 8 });
-        const arm = { w: 10, color: T.exec, alpha: 0.92 };
-        P.line([B, X.elbow], arm);
-        P.line([X.elbow, X.ee], { ...arm, w: 8 });
-        const ga = -X.a, gd = [Math.cos(ga), Math.sin(ga)], gn = [-gd[1], gd[0]];
-        const g0 = [X.ee[0] + gd[0] * 2, X.ee[1] + gd[1] * 2];
-        for (const sg of [-1, 1]) {
-          const b = [g0[0] + gn[0] * 4.5 * sg, g0[1] + gn[1] * 4.5 * sg];
-          P.line([[g0[0], g0[1]], b, [b[0] + gd[0] * 7, b[1] + gd[1] * 7]], { w: 2, color: T.exec });
-        }
-        for (const [c, r] of [[B, 5.5], [X.elbow, 4.6]]) {
-          P.circle(c, r, { fill: T.bg, w: 0 });
-          P.circle(c, r * 0.55, { fill: T.acc, w: 0 });
-        }
-
-        // target; at the end of a reach, the miss (red) or a hit (check)
-        const miss = dist(X.ee, s.goal), landed = ph >= REACH * 0.98 && out;
-        const hit = landed && miss < 4;
-        P.star(goalNow, 8, { fill: hit ? T.ok : T.bg, color: hit ? T.ok : T.ink });   // follows the cursor at once
-        if (landed && !hit) {
-          P.line([X.ee, s.goal], { w: 1.6, color: T.bad });
-          P.cross(X.ee, 3.2, { w: 1.7, color: T.ink });
-        }
-
-        // tries so far on this target: red while missing, green once on target
-        const n = s.tries.length, dx = P.small ? 13 : 10, x0 = W - 16 - (n - 1) * dx, y0 = 14;
-        s.tries.forEach((m, i) => P.circle([x0 + i * dx, y0], P.small ? 3.4 : 2.6, { fill: m < 4 ? T.ok : T.bad, fillAlpha: m < 4 ? 1 : clamp(0.35 + m / 30, 0.35, 1), w: 0 }));
-
-        // a two-word legend, only when shown large
-        if (!P.small) {
-          P.line([[16, 14], [28, 14]], { w: 1.3, color: T.acc, dash: [3.5, 3], cap: 'butt' });
-          P.text('commanded', 32, 14, { size: 7.5, color: T.ink });
-          P.line([[84, 14], [96, 14]], { w: 1.8, color: T.exec });
-          P.text('executed', 100, 14, { size: 7.5, color: T.ink });
-        }
+        arm(P, qCmd, true);
+        arm(P, qExe, false);
+        const done = out && ph >= REACH * 0.98, miss = dist(X, live.goal);
+        P.target(goalNow, 6.5, { color: done && miss < 4 ? T.acc : T.ink });
+        if (done && miss >= 4) { P.dim(X, live.goal, { color: T.bad }); P.cross(X[0], X[1], 0.8, { color: T.bad, w: 1.3 }); }
+        tryBoxes(P, live.tries);
       },
     };
   }
 
   // ---------------------------------------------------------------- testdg
   // TestDG: test-time domain generalization for continual TTA.
-  // Two panels see the same stream of test domains (colour = domain,
-  // shape = class). Left, prior CTTA, adapts to the current domain only, so every new
-  // domain lands shifted and its first samples fall into the wrong class.
-  // Right (TestDG) keeps prototypes of the previous domain (diamonds) and
-  // makes domains indistinguishable while classes stay apart, so the gap
-  // shrinks domain after domain and the final, unseen domain lands where
-  // it belongs. The picture holds still; the cursor plays the unseen
-  // domain's shift: the current-only cloud follows it, TestDG barely moves.
+  // Two boards see the same stream of test domains (colour = domain,
+  // shape = class, dashed outline = where each class belongs). Prior CTTA
+  // adapts to the current domain only, so an unseen domain lands shifted
+  // and its samples fall into the wrong class. TestDG aligns each domain
+  // with prototypes of the previous one (diamonds) and grows invariant, so
+  // the unseen domain lands in place. Still until the cursor moves it: the
+  // cursor is the unseen domain's shift.
   function testdgScene() {
-    const PANELS = [{ x: 80, name: 'Prior CTTA' }, { x: 240, name: 'TestDG' }];
-    const CY = 90, TL0 = 22, TL1 = W - 22, TLY = 172;
-    const CLS = [[-36, -22], [36, -22], [0, 32]];                  // class centres
+    const BOX = [{ x: 14, name: 'prior ctta' }, { x: 170, name: 'testdg' }], BW = 136, BY = 28, BH = 118;
+    const CY = BY + BH / 2 + 2;
+    const CLS = [[-34, -24], [34, -24], [0, 30]];
     const OFF = [[40, -18], [-40, 22], [14, 38], [-36, -26], [30, 30]];   // domain shifts; last is unseen
-    const ND = OFF.length, PER = 6;
+    const ND = OFF.length, PER = 6, UNSEEN = ND - 1;
     const rnd = (k) => hash(k * 7919 + 13) - 0.5;
-    const s = { last: null };
+    const s = { cur: OFF[UNSEEN].slice() };
 
-    // where domain d's feature cloud sits, for a method, at progress a in [0,1] of domain d
-    function shift(d, a, mine) {
-      const unseen = d === ND - 1;
-      const off = unseen && s.cur ? s.cur : OFF[d];                    // the cursor plays the unseen shift
-      const adapt = unseen ? 0 : 0.65 * ease(clamp(a / 0.7, 0, 1));    // test-time adaptation within a domain
-      const inv = mine ? 1 - 0.7 * Math.pow(0.6, d) : 0;               // TestDG: invariance built from past domains
+    function shift(d, mine) {
+      const off = d === UNSEEN ? s.cur : OFF[d];
+      const adapt = d === UNSEEN ? 0 : 0.65;                 // earlier domains were adapted to
+      const inv = mine ? 1 - 0.7 * Math.pow(0.6, d) : 0;     // TestDG: invariance built up over domains
       const k = (1 - inv) * (1 - adapt);
       return [off[0] * k, off[1] * k];
     }
-    function points(d, a, mine, px) {
-      const sh = shift(d, a, mine), out = [];
+    function samples(d, mine, cx) {
+      const sh = shift(d, mine), out = [];
       CLS.forEach((c, ci) => {
         for (let i = 0; i < PER; i++) {
           const k = d * 97 + ci * 13 + i;
-          const p = [px + c[0] + sh[0] + 26 * rnd(k), CY + c[1] + sh[1] + 20 * rnd(k + 500)];
-          // predicted class = nearest class centre
+          const p = [cx + c[0] + sh[0] + 24 * rnd(k), CY + c[1] + sh[1] + 18 * rnd(k + 500)];
           let best = 0;
-          CLS.forEach((q, qi) => { if (dist(p, [px + q[0], CY + q[1]]) < dist(p, [px + CLS[best][0], CY + CLS[best][1]])) best = qi; });
+          CLS.forEach((q, qi) => { if (dist(p, [cx + q[0], CY + q[1]]) < dist(p, [cx + CLS[best][0], CY + CLS[best][1]])) best = qi; });
           out.push({ p, ci, ok: best === ci });
         }
       });
@@ -368,10 +367,10 @@
       ctx.beginPath();
       if (ci === 0) ctx.arc(p[0], p[1], r, 0, TAU);
       else if (ci === 1) { ctx.moveTo(p[0], p[1] - r * 1.15); ctx.lineTo(p[0] + r * 1.1, p[1] + r * 0.75); ctx.lineTo(p[0] - r * 1.1, p[1] + r * 0.75); ctx.closePath(); }
-      else ctx.rect(p[0] - r * 0.9, p[1] - r * 0.9, r * 1.8, r * 1.8);
+      else ctx.rect(p[0] - r * 0.88, p[1] - r * 0.88, r * 1.76, r * 1.76);
       ctx.globalAlpha = o.alpha ?? 1;
       if (o.fill) { ctx.fillStyle = o.fill; ctx.fill(); }
-      if (o.stroke) { ctx.strokeStyle = o.stroke; ctx.lineWidth = o.w || 1; ctx.stroke(); }
+      if (o.stroke) { ctx.strokeStyle = o.stroke; ctx.lineWidth = Math.max(o.w || 1, 1 / P.k); if (o.dash) ctx.setLineDash(o.dash); ctx.stroke(); }
       ctx.restore();
     }
 
@@ -380,56 +379,54 @@
       idle: () => null,
       draw(P, st) {
         const T = P.T;
-        const DOM = [T.exec, T.acc, T.warn, T.ok, T.ink];
-        // time along the stream: the pointer's x while hovering, else it plays
-        // a still picture of the unseen domain until the cursor moves it:
-        // the cursor is that domain's shift, measured from the centre of
-        // whichever panel it is over; off the figure it eases back
-        let want = OFF[ND - 1];
+        const DOM = [T.acc, T.alt, T.ochre, T.violet, T.ink];
+        P.marks();
+
+        // the cursor plays the unseen domain's shift, from the centre of the board it is over
+        let want = OFF[UNSEEN];
         if (!st.idle) {
-          const px = st.ptr[0] < 160 ? PANELS[0].x : PANELS[1].x;
-          let v = [st.ptr[0] - px, st.ptr[1] - CY];
+          const cx = st.ptr[0] < 160 ? BOX[0].x + BW / 2 : BOX[1].x + BW / 2;
+          let v = [st.ptr[0] - cx, st.ptr[1] - CY];
           const L = Math.hypot(v[0], v[1]);
-          if (L > 60) v = [v[0] * 60 / L, v[1] * 60 / L];
+          if (L > 56) v = [v[0] * 56 / L, v[1] * 56 / L];
           want = v;
         }
-        s.cur = s.cur || OFF[ND - 1].slice();
         const kk = approach(st.dt || 0.016, 10);
         s.cur = [lerp(s.cur[0], want[0], kk), lerp(s.cur[1], want[1], kk)];
-        const d = ND - 1, a = 0;
 
-        PANELS.forEach((pn, pi) => {
-          const mine = pi === 1, px = pn.x;
-          P.ctx.save(); P.ctx.beginPath(); P.ctx.rect(px - 78, 20, 156, 144); P.ctx.clip();
-          // where each class belongs
-          CLS.forEach((c, ci) => shape(P, ci, [px + c[0], CY + c[1]], 14, { stroke: T.mute, w: 1.3, alpha: 0.45 }));
-          // the previous domain: prototypes (TestDG) or its faded cloud (current only)
-          if (d > 0) {
-            const prev = points(d - 1, 1, mine, px);
-            if (mine) {
-              prev.filter((_, i) => i % 3 === 0).forEach(({ p }) => {
-                const r = 5, dia = [[p[0], p[1] - r], [p[0] + r, p[1]], [p[0], p[1] + r], [p[0] - r, p[1]], [p[0], p[1] - r]];
-                P.line(dia, { w: 1.5, color: DOM[d - 1], alpha: 0.9 });
-              });
-            } else prev.forEach(({ p, ci }) => shape(P, ci, p, 3.2, { fill: DOM[d - 1], alpha: 0.18 }));
-          }
-          // the current domain; misclassified samples get a red ring
-          points(d, a, mine, px).forEach(({ p, ci, ok }) => {
-            shape(P, ci, p, 5, { fill: DOM[d], alpha: 0.9 });
-            if (!ok) P.circle(p, 7.4, { w: 1.5, color: T.bad });
+        BOX.forEach((bx, bi) => {
+          const mine = bi === 1, cx = bx.x + BW / 2;
+          P.text(bx.name, bx.x, BY - 8, { size: P.small ? 10 : 7, color: mine ? T.acc : T.mute, bold: mine });
+          P.rect(bx.x, BY, BW, BH, { w: 1.2, color: T.ink, fill: T.bg });
+          P.dots(bx.x + 8, BY + 8, bx.x + BW - 8, BY + BH - 8, 10);
+          P.ctx.save(); P.ctx.beginPath(); P.ctx.rect(bx.x + 1, BY + 1, BW - 2, BH - 2); P.ctx.clip();
+          CLS.forEach((c, ci) => shape(P, ci, [cx + c[0], CY + c[1]], 13, { stroke: T.ink, w: 1, dash: [3, 2.5], alpha: 0.55 }));
+          // the previous domain: its prototypes (TestDG) or its faded samples
+          const prev = samples(UNSEEN - 1, mine, cx);
+          if (mine) prev.filter((_, i) => i % 3 === 0).forEach(({ p }) => {
+            const r = 4.6;
+            P.line([[p[0], p[1] - r], [p[0] + r, p[1]], [p[0], p[1] + r], [p[0] - r, p[1]], [p[0], p[1] - r]], { w: 1.3, color: DOM[UNSEEN - 1] });
+          });
+          else prev.forEach(({ p, ci }) => shape(P, ci, p, 3.2, { fill: DOM[UNSEEN - 1], alpha: 0.2 }));
+          // the unseen domain; a wrong class gets a sienna cross
+          samples(UNSEEN, mine, cx).forEach(({ p, ci, ok }) => {
+            shape(P, ci, p, 4.2, { fill: DOM[UNSEEN] });
+            if (!ok) P.cross(p[0] + 5.5, p[1] - 5.5, 0.55, { color: T.bad, w: 1.2 });
           });
           P.ctx.restore();
-          P.text(pn.name, px, 12, { size: P.small ? 13 : 9, weight: mine ? 700 : 500, color: mine ? T.ink : T.mute, align: 'center' });
         });
-        P.line([[160, 24], [160, 160]], { w: 0.8, color: T.line });
 
-        // the stream: one segment per domain, the last one unseen
-        const sw = (TL1 - TL0) / ND;
-        for (let i = 0; i < ND; i++) {
-          const x = TL0 + i * sw + 1.5, unseen = i === ND - 1;
-          P.rrect(x, TLY - 2, sw - 3, 4, 2, { fill: DOM[i], fillAlpha: i <= d ? 0.85 : 0.25, color: DOM[i], w: unseen ? 1 : 0, dash: unseen ? [2, 2] : null });
+        // the domain stream, as a row of cells; the last one is unseen
+        const cs = P.small ? 12 : 10, gap = 4, n = ND, x0 = W / 2 - (n * cs + (n - 1) * gap) / 2, y = H - 18;
+        for (let i = 0; i < n; i++) {
+          const x = x0 + i * (cs + gap), unseen = i === UNSEEN;
+          if (unseen) P.rect(x, y, cs, cs, { w: 1.2, color: T.ink, dash: [2, 1.6], fill: T.bg });
+          else P.rect(x, y, cs, cs, { w: 0, fill: DOM[i] });
+          P.text(unseen ? '?' : `${i + 1}`, x + cs / 2, y + cs / 2 + 0.5, { size: cs * 0.62, align: 'center', color: unseen ? T.ink : T.bg, keepCase: true, bold: unseen });
+          if (i < n - 1) P.line([[x + cs + 0.8, y + cs / 2], [x + cs + gap - 0.8, y + cs / 2]], { w: 0.8, color: T.faint });
         }
-        P.text('unseen', TL1 - sw / 2, TLY - 8, { size: 7, color: T.mute, align: 'center', detail: true });
+        P.text('test domains', x0 - 8, y + cs / 2, { size: 6.5, align: 'right', detail: true });
+        P.text('unseen', x0 + n * (cs + gap) + 4, y + cs / 2, { size: 6.5, detail: true });
       },
     };
   }
