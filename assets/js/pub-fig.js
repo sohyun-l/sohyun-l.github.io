@@ -46,7 +46,7 @@
       grid: v('--global-divider-color', '#ead9d0'),
       acc: v('--global-theme-color', '#2563eb'),
       bad: dark ? '#ff6b5e' : '#c0392b',
-      pig: dark ? ['#8fb4ff', '#5fd0b8', '#f2c46b', '#c9a8ff'] : ['#3b6fd8', '#12897a', '#c2841a', '#8a4fd1'],
+      pig: dark ? ['#8fb4ff', '#5fd0b8', '#f2c46b', '#c9a8ff', '#f6a6cf'] : ['#3b6fd8', '#12897a', '#c2841a', '#8a4fd1', '#b8327a'],
       font: getComputedStyle(document.body).fontFamily || 'Inter, sans-serif',
     };
     return theme;
@@ -303,105 +303,119 @@
   }
 
   // ---------------------------------------------------------------- testdg
-  // TestDG - the paper's Fig. 1b. Test images arrive as a stream of
-  // domains (noise, fog, snow, ...), the last one never seen. Error over
-  // the stream: prior CTTA, adapting to the domain at hand, spikes at every
-  // change and stays high on the unseen domain; TestDG, having learned
-  // features invariant across the domains so far, stays low throughout.
-  // Still: the whole stream. Under the cursor: its x scrubs the stream.
+  // TestDG: test-time domain generalization for continual TTA.
+  // Top: the test stream - unlabeled images whose corruption keeps
+  // changing, the last kind never seen; the cursor's x is "now". Below,
+  // the model adapts online as the stream goes, and each board shows the
+  // domain embeddings of every domain seen so far. Prior CTTA adapts to
+  // the domain at hand, so each domain sits apart and a new one lands
+  // somewhere new. TestDG pulls the current domain onto prototypes of the
+  // previous one (diamonds) - domain-invariant learning at test time - so
+  // the domains pile up in one region and the next, even unseen, lands
+  // there too. Under each board, the error at that moment.
   function testdgScene() {
     const DOMS = ['gaussian', 'shot', 'fog', 'snow', 'bright', 'unseen'];
-    const N = DOMS.length, X0 = 20, X1 = W - 20, SEG = (X1 - X0) / N;
-    const TY = 24, TW = SEG - 8, TH = TW * 0.72;              // image tiles
-    const CY0 = TY + TH + 22, CY1 = H - 16;                    // error chart
-    const rnd = (k) => hash(k * 7919 + 11);
-    // schematic error levels (after the paper's Fig. 1b): per domain base,
-    // plus a spike right after each change that decays
-    const PRIOR = [0.62, 0.55, 0.42, 0.5, 0.3, 0.8], OURS = [0.36, 0.32, 0.24, 0.28, 0.18, 0.3];
-    function err(u, mine) {
-      const d = Math.min(N - 1, Math.floor(u * N)), f = u * N - d;
-      const base = (mine ? OURS : PRIOR)[d];
-      const spike = d === 0 ? 0 : (mine ? 0.06 : 0.3) * Math.exp(-f / 0.18);
-      const wig = 0.02 * Math.sin(u * 90 + (mine ? 1 : 0)) + 0.015 * Math.sin(u * 211);
-      return clamp(base + spike + wig, 0.03, 0.97);
-    }
-    const s = { u: null };
+    const N = DOMS.length, X0 = 16, X1 = W - 16, SEG = (X1 - X0) / N;
+    const TY = 10, TW = SEG - 10, TH = 22, LY = TY + TH + 13;
+    const BOX = [{ x: 12, name: 'prior ctta' }, { x: 166, name: 'testdg' }], BW = 142, BY = 62, BH = 94;
+    const SPOT = [[-42, -20], [40, -22], [-34, 22], [44, 18], [4, -26], [-52, 4]];   // where each domain lands, unadapted
+    const PER = 9;
+    const rnd = (k) => hash(k * 7919 + 11) - 0.5;
+    const s = { u: 0.999 };
 
-    // a tiny test image: a house on a hill, then the domain's corruption
+    // centre of domain d's embeddings at progress f within it
+    function centre(d, f, mine) {
+      if (!mine) return SPOT[d];                                   // stays where it landed
+      const g = Math.pow(0.5, d);                                  // each domain arrives closer
+      const start = [SPOT[d][0] * g, SPOT[d][1] * g];
+      const tgt = [0, 0];                                          // the shared region
+      const a = 0.85 * ease(clamp(f / 0.6, 0, 1));                 // pulled onto the prototypes
+      return [lerp(start[0], tgt[0], a), lerp(start[1], tgt[1], a)];
+    }
+    const pts = (d, c, n) => Array.from({ length: n }, (_, i) => [c[0] + 15 * rnd(d * 61 + i), c[1] + 11 * rnd(d * 61 + i + 300)]);
+    function err(d, f, mine) {
+      const base = mine ? [0.36, 0.3, 0.26, 0.24, 0.2, 0.24][d] : [0.6, 0.55, 0.45, 0.5, 0.35, 0.82][d];
+      return clamp(base + (d ? (mine ? 0.05 : 0.3) * Math.exp(-f / 0.2) : 0), 0, 1);
+    }
+
     function tile(P, x, y, w, h, d, hot) {
-      const T = P.T, ctx = P.ctx;
+      const T = P.T, ctx = P.ctx, name = DOMS[d];
       ctx.save();
       ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
       ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h);
       const px = (fx, fy) => [x + fx * w, y + fy * h];
       ctx.fillStyle = T.faint;
-      ctx.beginPath(); ctx.moveTo(...px(0, 0.78)); ctx.quadraticCurveTo(...px(0.5, 0.58), ...px(1, 0.74)); ctx.lineTo(...px(1, 1)); ctx.lineTo(...px(0, 1)); ctx.closePath(); ctx.fill();
-      P.rect(...px(0.34, 0.44), w * 0.3, h * 0.26, { w: 1, color: T.ink, fill: T.bg });
-      P.line([px(0.3, 0.46), px(0.49, 0.26), px(0.68, 0.46)], { w: 1, color: T.ink });
-      P.circle(px(0.8, 0.22), w * 0.06, { w: 1, color: T.ink });
-      const name = DOMS[d];
-      for (let i = 0; i < 70; i++) {
-        const a = [x + rnd(d * 500 + i) * w, y + rnd(d * 500 + i + 250) * h];
+      ctx.beginPath(); ctx.moveTo(...px(0, 0.8)); ctx.quadraticCurveTo(...px(0.5, 0.6), ...px(1, 0.76)); ctx.lineTo(...px(1, 1)); ctx.lineTo(...px(0, 1)); ctx.closePath(); ctx.fill();
+      P.rect(...px(0.36, 0.46), w * 0.26, h * 0.26, { w: 0.9, color: T.ink, fill: T.bg });
+      P.line([px(0.32, 0.48), px(0.49, 0.26), px(0.66, 0.48)], { w: 0.9, color: T.ink });
+      for (let i = 0; i < 60; i++) {
+        const a = [x + (rnd(d * 500 + i) + 0.5) * w, y + (rnd(d * 500 + i + 250) + 0.5) * h];
         if (name === 'gaussian') { ctx.fillStyle = T.mute; ctx.globalAlpha = 0.55; ctx.fillRect(a[0], a[1], 0.9, 0.9); }
-        if (name === 'shot' && i % 3 === 0) { ctx.fillStyle = i % 2 ? T.ink : T.bg; ctx.globalAlpha = 0.8; ctx.fillRect(a[0], a[1], 1.6, 1.6); }
-        if (name === 'snow' && i % 2 === 0) { ctx.globalAlpha = 0.9; ctx.strokeStyle = T.mute; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[0] + 1.4, a[1] + 2.2); ctx.stroke(); }
+        if (name === 'shot' && i % 3 === 0) { ctx.fillStyle = i % 2 ? T.ink : T.bg; ctx.globalAlpha = 0.8; ctx.fillRect(a[0], a[1], 1.5, 1.5); }
+        if (name === 'snow' && i % 2 === 0) { ctx.globalAlpha = 0.9; ctx.strokeStyle = T.mute; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[0] + 1.3, a[1] + 2); ctx.stroke(); }
       }
       ctx.globalAlpha = 1;
-      if (name === 'fog') { const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, T.bg); g.addColorStop(1, 'rgba(128,128,128,0)'); ctx.globalAlpha = 0.75; ctx.fillStyle = g; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 0.35; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
-      if (name === 'bright') { ctx.globalAlpha = 0.5; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
-      if (name === 'unseen') {                 // a corruption never seen: coarse pixelation
-        const c = w / 6;
-        for (let i = 0; i < 6; i++) for (let j = 0; j < Math.ceil(h / c); j++) {
-          ctx.globalAlpha = 0.22 + 0.3 * rnd(900 + i * 7 + j);
-          ctx.fillStyle = (i + j) % 2 ? T.bg : T.faint;
-          ctx.fillRect(x + i * c, y + j * c, c, c);
+      if (name === 'fog') { ctx.globalAlpha = 0.55; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
+      if (name === 'bright') { ctx.globalAlpha = 0.45; ctx.fillStyle = T.bg; ctx.fillRect(x, y, w, h); }
+      if (name === 'unseen') {
+        const c = w / 5;
+        for (let i = 0; i < 5; i++) for (let j = 0; j < Math.ceil(h / c); j++) {
+          ctx.globalAlpha = 0.25 + 0.3 * (rnd(900 + i * 7 + j) + 0.5);
+          ctx.fillStyle = (i + j) % 2 ? T.bg : T.faint; ctx.fillRect(x + i * c, y + j * c, c, c);
         }
       }
       ctx.restore();
-      if (name === 'unseen') {
-        P.rect(x, y, w, h, { w: 1.2, color: T.ink, dash: [2.5, 2] });
-        P.circle([x + w, y], 4.6, { fill: T.ink, w: 0 });
-        P.text('?', x + w, y + 0.4, { size: 6.5, color: T.bg, align: 'center', keepCase: true, bold: true });
-      } else P.rect(x, y, w, h, { w: hot ? 1.8 : 1, color: hot ? T.acc : T.ink });
-      if (hot && name === 'unseen') P.rect(x - 1, y - 1, w + 2, h + 2, { w: 1.4, color: T.acc });
+      const col = d === N - 1 ? T.ink : T.pig[d];
+      P.rect(x, y, w, h, { w: hot ? 2 : 1.2, color: col, dash: d === N - 1 ? [2.5, 2] : null, alpha: hot ? 1 : 0.8 });
     }
 
     return {
       sticky: true,
       idle: () => null,
       draw(P, st) {
-        const T = P.T;
+        const T = P.T, COL = [...T.pig, T.ink];
         P.marks();
-        const hover = !st.idle;
-        if (hover) s.u = clamp((st.ptr[0] - X0) / (X1 - X0), 0, 0.999);
-        const cur = hover ? Math.floor(s.u * N) : -1;
+        const want = st.idle ? 0.999 : clamp((st.ptr[0] - X0) / (X1 - X0), 0, 0.999);
+        s.u = lerp(s.u, want, approach(st.dt || 0.016, 12));
+        const d = Math.min(N - 1, Math.floor(s.u * N)), f = s.u * N - d;
 
-        // the stream of test domains
-        DOMS.forEach((nm, d) => {
-          const x = X0 + d * SEG + 4;
-          tile(P, x, TY, TW, TH, d, d === cur);
-          P.text(nm, x + TW / 2, TY + TH + 7, { size: 5.8, align: 'center', color: d === N - 1 ? T.ink : T.mute, detail: true });
-          if (d) P.line([[X0 + d * SEG, TY + TH + 14], [X0 + d * SEG, CY1]], { w: 0.8, color: T.faint, dash: [2, 2] });
+        // the test stream, with "now"
+        DOMS.forEach((nm, i) => {
+          const x = X0 + i * SEG + 5;
+          tile(P, x, TY, TW, TH, i, i === d);
+          P.text(nm, x + TW / 2, TY + TH + 6, { size: 5.6, align: 'center', color: i === d ? T.ink : T.mute, detail: true });
         });
+        const nx = X0 + s.u * (X1 - X0);
+        P.line([[X0, LY], [X1, LY]], { w: 0.8, color: T.faint });
+        P.line([[X0, LY], [nx, LY]], { w: 1.6, color: T.ink });
+        P.head([nx + 1, LY], 0, { head: 5 });
+        P.text('test stream', X1, LY + 7, { size: 5.8, align: 'right', detail: true });
 
-        // error over the stream
-        const Y = (e) => CY1 - e * (CY1 - CY0);
-        P.line([[X0, CY1], [X1, CY1]], { w: 1, color: T.ink });
-        P.line([[X0, CY0 - 2], [X0, CY1]], { w: 1, color: T.ink });
-        P.text('error', X0 - 3, CY0 - 6, { size: 6, detail: true });
-        const curve = (mine) => { const pts = []; for (let i = 0; i <= 240; i++) { const u = i / 240 * 0.999; pts.push([X0 + u * (X1 - X0), Y(err(u, mine))]); } return pts; };
-        P.line(curve(false), { w: 1.3, color: T.mute, dash: [3, 2.5] });
-        P.line(curve(true), { w: 2, color: T.acc });
-        const fs = P.small ? 9 : 6.5;
-        P.text('prior ctta', X0 + 5, Y(PRIOR[0]) - 10, { size: fs, color: T.mute });
-        P.text('testdg', X0 + 5, Y(OURS[0]) + 10, { size: fs, color: T.acc, bold: true });
-
-        if (hover) {
-          const x = X0 + s.u * (X1 - X0);
-          P.line([[x, CY0 - 4], [x, CY1]], { w: 1, color: T.ink, alpha: 0.6 });
-          P.circle([x, Y(err(s.u, false))], 2.6, { fill: T.bg, color: T.mute, w: 1.3 });
-          P.circle([x, Y(err(s.u, true))], 2.8, { fill: T.acc, w: 0 });
-        }
+        BOX.forEach((bx, bi) => {
+          const mine = bi === 1, cx = bx.x + BW / 2, cy = BY + BH / 2 - 6;
+          P.text(bx.name, bx.x + BW / 2, BY - 7, { align: 'center', size: P.small ? 9.5 : 7, color: mine ? T.acc : T.mute, bold: mine });
+          P.rect(bx.x, BY, BW, BH, { w: 1.1, color: T.ink });
+          P.dots(bx.x + 8, BY + 8, bx.x + BW - 8, BY + BH - 20, 10);
+          const at = (c) => [cx + c[0], cy + c[1]];
+          // domains already passed, fainter the older
+          for (let k = 0; k < d; k++) pts(k, at(centre(k, 1, mine)), PER).forEach((p) => P.circle(p, 2.2, { fill: COL[k], fillAlpha: 0.25 + 0.1 * (k - d + 4), w: 0 }));
+          // TestDG keeps a few prototypes of the previous domain
+          let protoC = null;
+          if (mine && d > 0) {
+            const pr = pts(d - 1, at(centre(d - 1, 1, true)), PER).filter((_, i) => i % 3 === 0);
+            protoC = pr.reduce((m, p) => [m[0] + p[0] / pr.length, m[1] + p[1] / pr.length], [0, 0]);
+            pr.forEach((p) => { const r = 3.8; P.line([[p[0], p[1] - r], [p[0] + r, p[1]], [p[0], p[1] + r], [p[0] - r, p[1]], [p[0], p[1] - r]], { w: 1.3, color: COL[d - 1] }); });
+          }
+          // the domain at hand, streaming in
+          const c = at(centre(d, f, mine)), cur = pts(d, c, Math.max(3, Math.round(PER * clamp(f / 0.35, 0.3, 1))));
+          if (protoC && f < 0.55) P.line([c, protoC], { w: 1, color: T.acc, dash: [2, 2], alpha: 1 - f / 0.55 });
+          cur.forEach((p) => (d === N - 1 ? P.circle(p, 2.8, { fill: T.bg, color: T.ink, w: 1.2 }) : P.circle(p, 2.8, { fill: COL[d], w: 0 })));
+          // error right now
+          const e = err(d, f, mine), by = BY + BH - 9, bx0 = bx.x + 34, bw = BW - 44;
+          P.text('error', bx.x + 7, by, { size: 6, detail: true });
+          P.rect(bx0, by - 2.5, bw, 5, { w: 0, fill: T.faint });
+          P.rect(bx0, by - 2.5, bw * e, 5, { w: 0, fill: mine ? T.acc : T.bad, fillAlpha: 0.85 });
+        });
       },
     };
   }
