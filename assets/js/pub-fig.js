@@ -216,6 +216,7 @@
 
     return {
       state: s,
+      sticky: true,
       init(st) { st.ptr = TOUR[0].slice(); st.target = TOUR[0].slice(); },
       // hold each target until the arm has hit it twice, then move on
       idle() {
@@ -227,11 +228,15 @@
         const goalNow = reachable(st.ptr);
         if (s.t0 === null) { s.t0 = t; startTry(goalNow); }
         let ph = t - s.t0;
+        // the target moved mid-reach: give up this try and head back at once
+        if (!s.cut && ph > 0.3 && ph < REACH + HOLD && dist(goalNow, s.goal) > 10) {
+          s.cut = true; s.t0 = t - (REACH + HOLD); ph = REACH + HOLD;
+        }
         if (ph >= TRY) {
-          endTry();
+          if (!s.cut) endTry();                 // only a finished reach teaches anything
           // a new target: the marks of the old one no longer apply
-          if (dist(goalNow, s.goal) > 6) { s.marks = []; s.tries = []; }
-          s.t0 = t; ph = 0; startTry(goalNow);
+          if (s.cut || dist(goalNow, s.goal) > 6) { s.marks = []; s.tries = []; }
+          s.cut = false; s.t0 = t; ph = 0; startTry(goalNow);
         }
         const u = ph < REACH ? ease(ph / REACH) : ph < REACH + HOLD ? 1 : 1 - ease((ph - REACH - HOLD) / BACK);
         const out = ph < REACH + HOLD;
@@ -286,7 +291,7 @@
         // target; at the end of a reach, the miss (red) or a hit (check)
         const miss = dist(X.ee, s.goal), landed = ph >= REACH * 0.98 && out;
         const hit = landed && miss < 4;
-        P.star(s.goal, 8, { fill: hit ? T.ok : T.bg, color: hit ? T.ok : T.ink });
+        P.star(goalNow, 8, { fill: hit ? T.ok : T.bg, color: hit ? T.ok : T.ink });   // follows the cursor at once
         if (landed && !hit) {
           P.line([X.ee, s.goal], { w: 1.6, color: T.bad });
           P.cross(X.ee, 3.2, { w: 1.7, color: T.ink });
@@ -351,7 +356,8 @@
       const dt = clamp((now - last) / 1000, 0, 0.05);   // rAF stamps can predate mount
       last = now;
       if (visible && view.cw > 0) {
-        st.idle = !st.hover || now - st.lastMove > 2500;
+        // sticky scenes keep the cursor's spot for as long as it stays on the figure
+        st.idle = !st.hover || (!scene.sticky && now - st.lastMove > 2500);
         // with reduced motion the figure holds still until the pointer moves it
         if (!(reduceMotion.matches && st.idle)) st.t += dt;
         st.dt = dt;
