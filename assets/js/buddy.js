@@ -68,7 +68,7 @@ function start() {
     coat: mat(0xf3c331, 0.42), trim: mat(0xdca91c, 0.5), boot: mat(0x2f4a6d, 0.4), cloud: mat(0xeef1f5, 0.9),
     drop: new THREE.MeshStandardMaterial({ color: 0x6fa8e0, roughness: 0.2, transparent: true, opacity: 0.85 }) };
   M.coat.side = THREE.DoubleSide;
-  const _c = new THREE.Color(), _c2 = new THREE.Color(), BOOTC = M.boot.color.clone();
+  const _c = new THREE.Color(), _c2 = new THREE.Color(), _c3 = new THREE.Color(), BOOTC = M.boot.color.clone(), TRIMC = M.trim.color.clone();
   const COAT = M.coat.color.clone(), FUR = M.fur.color.clone(), LIGHT = M.light.color.clone(), SNOW = new THREE.Color(0xf3f5f8), GREY = new THREE.Color(0x8d8a86);
   const sphere = (r, m, s = [1, 1, 1], p = [0, 0, 0]) => {
     const o = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m);
@@ -183,6 +183,17 @@ function start() {
     hike: { coat: 0x4f8a4b, boots: 0x7a5536, wear: ['backpack', 'bucket'] },                 // a hiking jacket, backpack, bucket hat
     visit: { coat: 0xb5835a, boots: 0x7a5536, wear: ['shirt'] },                             // a cardigan over a shirt
     aodai: { coat: 0xc8102e, boots: 0x2b2b33, wear: ['aodai'] },                             // an áo dài
+    lab: { coat: 0xf4f4f1, boots: 0x2b2b33, wear: ['shirt', 'tie', 'glasses'] },             // a lab coat
+    pajama: { coat: 0x7fa7d8, boots: 'fur', wear: ['nightcap'] },                            // pyjamas and a nightcap
+    suit: { coat: 0x2f3e5c, boots: 0x2b2b33, wear: ['shirt', 'tie'] },                       // a blazer and tie
+    casual: { coat: 0xb5835a, boots: 0x7a5536, wear: ['shirt', 'glasses'] },                 // a cardigan and glasses
+  };
+  // the about and publications pages: dressed for each section and paper (weather papers keep the raincoat)
+  const SPOTOUTFIT = {
+    'sec:education': 'grad', 'sec:honors': 'award', 'sec:services': 'suit', 'sec:experience': 'casual',
+    'sec:publications': 'casual', 'sec:news': 'casual', 'sec:visitors': 'casual',
+    lee2026selfcompensatingvla: 'lab', yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
+    lee2023pid: 'pajama',
   };
   function outfitFor(file, act, venue) {
     if (venue === 'hanoi') return OUTFIT.aodai;
@@ -203,7 +214,15 @@ function start() {
   // canvas reaching past the page edge never makes the page wider
   const layer = document.createElement('div'); layer.className = 'buddy-layer'; document.body.appendChild(layer);
   // the layer is as tall as the page (measured with it collapsed, so it never feeds its own height)
-  const fitLayer = () => { layer.style.height = '0'; layer.style.height = Math.max(document.documentElement.scrollHeight, innerHeight) + 'px'; };
+  const fitLayer = () => {
+    let bottom = innerHeight;
+    for (const c of document.body.children) {
+      if (c === layer || /buddy/.test(c.className) || getComputedStyle(c).position === 'fixed') continue;
+      bottom = Math.max(bottom, c.getBoundingClientRect().bottom + scrollY);
+    }
+    const h = Math.ceil(bottom) + 'px';
+    if (layer.style.height !== h) layer.style.height = h;
+  };
   fitLayer(); setInterval(fitLayer, 600); addEventListener('resize', fitLayer);
   const hole = document.createElement('div'); hole.className = 'buddy-hole'; layer.appendChild(hole);
   const bubble = document.createElement('div'); bubble.className = 'buddy-bubble'; bubble.setAttribute('aria-live', 'polite');
@@ -507,6 +526,10 @@ function start() {
   PR.aodai.add(new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.85), pmat(0xc8102e, 0.5, { side: THREE.DoubleSide })).translateY(0.35).translateZ(0.98));
   PR.aodai.add(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.5, 0.2, 28), pmat(0xc8102e, 0.5)).translateY(2.02));
   PR.aodai.add(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.025, 6, 28), pmat(0xe3b341, 0.4)).rotateX(Math.PI / 2).translateZ(-1.92));
+  PR.nightcap = new THREE.Group(); PR.nightcap.position.set(0, 0.5, -0.05); PR.nightcap.rotation.z = 0.35; P.head.add(PR.nightcap);   // a nightcap
+  PR.nightcap.add(new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.3, 24), pmat(0x7fa7d8, 0.85)).translateY(0.55));
+  PR.nightcap.add(new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.1, 8, 28), pmat(0xffffff, 0.9)).rotateX(Math.PI / 2));
+  PR.nightcap.add(sphere(0.16, pmat(0xffffff, 0.9), [1, 1, 1], [0, 1.22, 0]));
   // a conference badge on a lanyard
   PR.badge = new THREE.Group(); P.body.add(PR.badge);
   for (const sg of [-1, 1]) { const cord = capsule(0.018, 0.75, pmat(0x3b6fd8, 0.5), [sg * 0.2, 1.62, 0.88]); cord.rotation.z = sg * 0.32; cord.rotation.x = -0.25; PR.badge.add(cord); }
@@ -615,7 +638,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls'].includes(k) ? 0 : 1));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
@@ -829,10 +852,8 @@ function start() {
     if (!st.pos || reduce) { st.pos = p.slice(); return; }
     const d = Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]);
     if (st.burrow) { burrowTo(p); return; }
-    // out of sight and far away: come in from the edge of the screen it was beyond, then walk
-    const vis = st.pos[1] > scrollY - 40 && st.pos[1] < scrollY + innerHeight + 40;
-    if (!vis && d > innerHeight * 0.8) st.pos = [p[0], st.pos[1] < scrollY ? scrollY - 30 : scrollY + innerHeight + 30];
-    st.path = [p];                                              // just walk there, leaving paw prints
+    if (d > Math.max(innerHeight * 0.9, 600)) { burrowTo(p); return; }   // far: dig down, pop up there
+    st.path = [p];                                              // near: walk, leaving paw prints
   }
   // phones: stand at the right edge, level with what is on screen
   function besideMobile(spot) {
@@ -864,6 +885,7 @@ function start() {
     const act = (st.venue && VACT[st.venue] && ['point', 'cheese', 'speech', 'tada'].includes(ACT[key]) ? VACT[st.venue] : ACT[key]) || null;
     if (act !== st.act) { st.act = act; st.actT = 0; }
     if (key.startsWith('gal:')) st.outfit = outfitFor(key.slice(4), act, st.venue);
+    else st.outfit = OUTFIT[SPOTOUTFIT[key]] || null;                 // sections and papers (null: the raincoat)
     say(lineFor(spot, el) + (st.venue ? ` · ${VNAME[st.venue]}` : ''), 3800);
   }
   document.addEventListener('pointermove', (e) => {
@@ -1391,6 +1413,7 @@ function start() {
       const of = st.act && st.outfit;
       M.coat.color.lerp(snowy ? SNOW : of ? (of.coat == null ? FUR : _c.setHex(of.coat)) : COAT, Math.min(1, dt * 6));
       M.boot.color.lerp(of ? (of.boots === 'fur' ? FUR : _c2.setHex(of.boots)) : BOOTC, Math.min(1, dt * 6));
+      M.trim.color.lerp(of && of.coat != null ? _c3.setHex(of.coat).multiplyScalar(0.82) : TRIMC, Math.min(1, dt * 6));   // the hem matches the outfit
       P.hood.visible = !of;
       P.shell.forEach((o) => (o.visible = !of || of.coat != null));
     }
