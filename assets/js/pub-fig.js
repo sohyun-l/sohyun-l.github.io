@@ -259,8 +259,9 @@
   // cup but the robot's execution falls short: the residual (red) and a
   // failed grasp. Online updates from that residual shift the command
   // (blue) so it pre-compensates; the residual is still there, but now
-  // the execution lands on the cup. Still: before (faint) and after.
-  // Under the cursor: its x scrubs the online updates, before -> after.
+  // the execution lands on the cup. Every touch is a try: moving the
+  // cursor over the figure makes the robot try again, and it closes in
+  // on the cup try by try. Still: all the tries, the last one on the cup.
   function selfcompScene() {
     const B = [92, 150], L1 = 84, L2 = 76, TABLE = 158;
     const HOME = [Math.PI / 2 + 0.25, -2.2];
@@ -295,7 +296,8 @@
       }
       return aim;
     })();
-    const s = { p: 1 };
+    const STEPS = [0, 0.4, 0.75, 1];                         // adaptation after each try
+    const s = { tries: null };
 
     function reachPath(qc, exec) {
       const pts = [];
@@ -347,25 +349,47 @@
         for (let x = 20; x < W - 16; x += 6) P.line([[x, TABLE], [x - 4, TABLE + 4]], { w: 0.7, color: T.faint });
         P.rect(B[0] - 10, B[1] - 1, 20, TABLE - B[1] + 1, { w: 1.3, color: T.ink, fill: T.bg });
 
-        // how far online adaptation has gone: the cursor's x, else fully adapted
-        const want = st.idle ? 1 : clamp((st.ptr[0] - 40) / (W - 80), 0, 1);
-        s.p = lerp(s.p, want, approach(st.dt || 0.016, 12));
-        const now = state(s.p), before = state(0);
-
-        if (st.idle) {
-          // the failed first attempt, faint
-          arm(P, executed(before.qc), { alpha: 0.22 });
-          P.cross(before.X[0], before.X[1], 0.85, { color: T.bad, w: 1.4, alpha: 0.7 });
+        // every touch is one more try: the cursor's travel over the figure
+        // triggers the next attempt, and each attempt's residual updates the
+        // policy, so the command pre-compensates a bit more every time
+        const t = st.t, REACH = 0.7;
+        if (st.idle) { s.tries = null; s.last = null; }
+        else {
+          if (!s.tries) { s.tries = [0]; s.t0 = t; s.travel = 0; }
+          if (s.last) s.travel += dist(st.ptr, s.last);
+          s.last = st.ptr.slice();
+          if (s.travel > 60 && t - s.t0 > REACH + 0.35 && s.tries.length < STEPS.length) {
+            s.tries.push(STEPS[s.tries.length]); s.t0 = t; s.travel = 0;
+          }
         }
-        P.line(reachPath(now.qc, false), { w: 1.1, color: T.acc, dash: [1.5, 3] });
-        P.line(reachPath(now.qc, true), { w: 1.1, color: T.ink, alpha: 0.6 });
-        cup(P, now.ok);
-        arm(P, now.qc, { ghost: true });
-        arm(P, executed(now.qc), { closed: now.ok });
-        P.circle(now.aim, 2.4, { w: 1.2, color: T.acc, fill: T.bg });
-        arrow(P, now.aim, now.X, T.bad);                         // residual: executed vs commanded
-        if (now.ok) P.check(GRASP[0] + 16, GRASP[1] - 12, 1.1, { color: T.acc, w: 1.8 });
-        else P.cross(GRASP[0] + 16, GRASP[1] - 12, 1, { color: T.bad, w: 1.8 });
+        const list = s.tries || STEPS;                       // still: the whole story
+        const u = s.tries ? ease(clamp((t - s.t0) / REACH, 0, 1)) : 1;
+        const now = state(list[list.length - 1]);
+        // earlier tries, faint, each with where it landed
+        list.slice(0, -1).forEach((p, i) => {
+          const o = state(p);
+          P.line(reachPath(o.qc, true), { w: 1, color: T.ink, alpha: 0.18 + 0.08 * i });
+          P.cross(o.X[0], o.X[1], 0.8, { color: T.bad, w: 1.3, alpha: 0.45 + 0.15 * i });
+        });
+        cup(P, u >= 1 && now.ok);
+        const qx = executed(now.qc, u), qg = [HOME[0] + (now.qc[0] - HOME[0]) * u, HOME[1] + (now.qc[1] - HOME[1]) * u];
+        arm(P, qg, { ghost: true });
+        arm(P, qx, { closed: u >= 1 && now.ok });
+        if (u >= 1) {
+          P.line(reachPath(now.qc, false), { w: 1.1, color: T.acc, dash: [1.5, 3] });
+          P.circle(now.aim, 2.4, { w: 1.2, color: T.acc, fill: T.bg });
+          arrow(P, now.aim, now.X, T.bad);                   // residual: executed vs commanded
+          if (now.ok) P.check(GRASP[0] + 16, GRASP[1] - 12, 1.1, { color: T.acc, w: 1.8 });
+          else P.cross(GRASP[0] + 16, GRASP[1] - 12, 1, { color: T.bad, w: 1.8 });
+        }
+        // the tries so far
+        const bs = P.small ? 11 : 8, x1 = W - 14;
+        list.forEach((p, i) => {
+          const x = x1 - (list.length - i) * (bs + 3), ok = state(p).ok, done = i < list.length - 1 || u >= 1;
+          P.rect(x, 12, bs, bs, { w: 1, color: done ? (ok ? T.acc : T.bad) : T.faint, fill: T.bg });
+          if (done) ok ? P.check(x + bs / 2, 12 + bs / 2, bs / 11, { color: T.acc, w: 1.3 }) : P.cross(x + bs / 2, 12 + bs / 2, bs / 13, { color: T.bad, w: 1.3 });
+        });
+        if (s.tries && s.tries.length === 1 && u >= 1) P.text('keep moving: it tries again', W - 14, 30, { size: 6, align: 'right', detail: true });
 
         // legend
         if (!P.small) {
@@ -375,15 +399,6 @@
           P.text('execution', 98, 16, { size: 6.5, color: T.ink });
           P.line([[152, 16], [164, 16]], { w: 1.3, color: T.bad });
           P.text('residual', 168, 16, { size: 6.5, color: T.bad });
-        }
-        // the adaptation scale, drawn only while scrubbing
-        if (!st.idle) {
-          const y = H - 8, x0 = 40, x1 = W - 40, xp = lerp(x0, x1, s.p);
-          P.line([[x0, y], [x1, y]], { w: 1, color: T.faint });
-          P.line([[x0, y], [xp, y]], { w: 1.6, color: T.acc });
-          P.circle([xp, y], 2.6, { fill: T.acc, w: 0 });
-          P.text('before', x0 - 4, y, { size: 6, align: 'right', detail: true });
-          P.text('online update', x1 + 4, y, { size: 6, detail: true });
         }
       },
     };
