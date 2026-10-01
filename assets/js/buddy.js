@@ -19,28 +19,34 @@ function start() {
 
   // ------------------------------------------------------------ lines
   const SECTION = {
-    news: 'Latest news!',
-    experience: 'Where Sohyun has worked and visited.',
-    education: 'Where Sohyun studied.',
-    publications: 'Papers! Hover a figure: it moves.',
-    services: 'Reviewing and service.',
-    honors: 'Awards and honors ✨',
+    news: 'Fresh news! 📰',
+    experience: 'Where Sohyun has worked and visited 🌍',
+    education: 'Where Sohyun studied 🎓',
+    publications: "Papers! Hover one and I'll act it out.",
+    services: 'Reviewing and service ✅',
+    honors: 'Awards and honors 🏆',
   };
   const NAV = { about: 'Back to the start.', publications: 'All the papers, by year.', gallery: 'Photos!', blog: 'Blog posts.', 'curriculum vitae': 'The CV.' };
   // one line per paper, short enough to fit the bubble
   const PAPER = {
-    lee2026selfcompensatingvla: 'Robots slip up. This one notices and fixes it mid-task!',
-    lee2025dicotta: 'Keeps adapting while test conditions keep changing.',
-    yoon2026metalens: 'A flat lens that sees past what is in the way.',
-    lee2026moga: 'Segmenting objects in video, even in rough conditions.',
-    lee2025garasam: 'Segment Anything, made ready for rain, fog and noise ☔',
-    lee2024frest: 'Restoring features so segmentation works in any weather.',
-    sehyun2023active: 'Smarter labeling: ask about several classes at once.',
-    lee2023pid: 'Finding human poses in near-total darkness 🌙',
-    sehyun2022combating: 'Adapting to a new domain when class frequencies shift.',
-    lee2022fifo: 'Seeing through fog by treating fog as a style 🌫️',
-    kang2022style: 'Always hunting for new styles to generalize better.',
+    lee2026selfcompensatingvla: "Robots don't move exactly as told. The VLA learns, on the job, to pre-compensate.",
+    lee2025dicotta: 'Adapts to ever-changing test domains, and stays ready for the next one.',
+    yoon2026metalens: 'A flat metalens that filters out nearby raindrops, fences and dust.',
+    lee2026moga: 'Promptable video segmentation that stays robust, frame after frame.',
+    lee2025garasam: 'A robust SAM: a gate picks how much adapter rank each input needs.',
+    lee2024frest: 'No clean labels needed: restores features hurt by adverse conditions.',
+    sehyun2023active: 'Cheaper labels: ask which classes are in a region, not where they are.',
+    lee2023pid: 'Human poses in extremely low light, with a new real dataset 🌙',
+    sehyun2022combating: 'Picks what to label so class proportions match across domains.',
+    lee2022fifo: 'Fog as a style: closing the fog gap for fog-invariant segmentation 🌫️',
+    kang2022style: 'Keeps inventing novel styles in training, to generalize to new domains.',
   };
+  // the section a hovered heading or block belongs to
+  const BLOCKS = '.news, .experience, .education, .services, .honors';
+  function sectionOf(spot) {
+    if (spot.matches('h2[id]')) return spot.id;
+    return ['news', 'experience', 'education', 'services', 'honors'].find((c) => spot.classList.contains(c)) || null;
+  }
   function lineFor(spot, el) {
     if (spot.matches('.publications ol.bibliography > li')) {
       const key = (spot.querySelector('[id]') || {}).id;
@@ -48,8 +54,7 @@ function start() {
       return PAPER[key] || (venue ? `A ${venue} paper!` : null);
     }
     if (spot.matches('#navbar .nav-link')) return NAV[spot.textContent.trim().toLowerCase()] || null;
-    if (spot.matches('h2[id]')) return SECTION[spot.id] || null;
-    return null;
+    return SECTION[sectionOf(spot)] || null;
   }
 
   // ------------------------------------------------------------ the bear
@@ -121,17 +126,25 @@ function start() {
 
   // what the bear acts out on each paper, after its idea
   const ACT = {
-    lee2026selfcompensatingvla: 'stumble',   // execution errors: trips, then catches itself
-    lee2025dicotta: 'weathers',              // continual shifts: the weather keeps changing, it stays steady
-    yoon2026metalens: 'peek',                // de-occluding: peeks around what is in the way
-    lee2026moga: 'track',                    // video segmentation: keeps its eyes on the target (the cursor)
-    lee2025garasam: 'rain',                  // robust SAM: rain, no problem
-    lee2024frest: 'shake',                   // restoration: gets rained on, shakes it off
-    sehyun2023active: 'ask',                 // active learning: hand up, asking
+    lee2026selfcompensatingvla: 'tame',      // execution errors: a jittery robot arm, calmed down
+    lee2025dicotta: 'tta',                   // continual TTA: the condition keeps changing; each time it is
+                                             // puzzled for a moment, then adapts (gears up for it)
+    yoon2026metalens: 'lens',                // metalens: looks through a flat lens
+    lee2026moga: 'film',                     // video segmentation: films the target (the cursor), recording
+    lee2025garasam: 'conditions',            // robust SAM: conditions keep changing, no problem
+    lee2024frest: 'restore',                 // restoration: rain, snow, fog, dark, shaking each one off
+    sehyun2023active: 'ask',                 // active learning: holds up a query card
     lee2023pid: 'night',                     // low-light pose: lights down, strikes poses
-    sehyun2022combating: 'balance',          // label shift: keeps its balance
+    sehyun2022combating: 'balance',          // label shift: balances a pole with uneven weights
     lee2022fifo: 'fog',                      // fog-invariant: fog rolls in, it looks around unbothered
     kang2022style: 'style',                  // novel styles: the coat keeps trying new colours
+    // and the page's sections
+    'sec:news': 'news',                      // reads the paper
+    'sec:experience': 'globe',               // spins a globe: places worked and visited
+    'sec:education': 'grad',                 // mortarboard, tossed in the air
+    'sec:publications': 'books',             // a stack of papers
+    'sec:services': 'review',                // a clipboard, ticking boxes
+    'sec:honors': 'trophy',                  // a trophy held high, confetti
   };
 
   // ------------------------------------------------------------ dom
@@ -159,6 +172,140 @@ function start() {
   camera.updateMatrixWorld();
   const { root, P } = makeBear();
   scene.add(root);
+
+  // props for the papers' acts
+  const pmat = (c, r = 0.5, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0, ...o });
+  const PR = {};
+  // a small robot arm that shows up beside it (self-compensation)
+  PR.robot = new THREE.Group(); PR.robot.position.set(1.55, 0, 0.35); root.add(PR.robot);
+  const grey = pmat(0xa7afb8, 0.45), blue = pmat(0x3b6fd8, 0.4);
+  const rb = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.2, 24), grey); rb.position.y = 0.1; PR.robot.add(rb);
+  const j1 = new THREE.Group(); j1.position.y = 0.22; PR.robot.add(j1);
+  j1.add(sphere(0.11, blue)); j1.add(capsule(0.075, 0.6, grey, [0, 0.36, 0]));
+  const j2 = new THREE.Group(); j2.position.y = 0.72; j1.add(j2);
+  j2.add(sphere(0.1, blue)); j2.add(capsule(0.065, 0.45, grey, [0, 0.28, 0]));
+  const grip = new THREE.Group(); grip.position.y = 0.58; j2.add(grip);
+  const fingers = [-1, 1].map((sg) => { const f = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.16, 0.08), blue); f.position.set(sg * 0.07, 0.08, 0); grip.add(f); return f; });
+  // a flat lens on a handle (metalens)
+  PR.lens = new THREE.Group(); P.body.add(PR.lens);
+  PR.lens.add(new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.045, 10, 36), M.dark));
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.015, 36), pmat(0xbfe3ff, 0.05, { transparent: true, opacity: 0.4 }));
+  glass.rotation.x = Math.PI / 2; PR.lens.add(glass);
+  for (let i = 1; i <= 3; i++) {                                                   // the flat lens's rings
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09 * i, 0.006, 6, 32), pmat(0x7fb4e8, 0.3)); PR.lens.add(ring);
+  }
+  PR.lens.add(capsule(0.04, 0.38, M.dark, [0, -0.6, 0]));
+  // a camcorder with a blinking light (video)
+  PR.cam = new THREE.Group(); P.body.add(PR.cam);
+  PR.cam.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.36, 0.5), pmat(0x3d434c, 0.5)));
+  const lensC = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.22, 20), pmat(0x22262b, 0.3)); lensC.rotation.x = Math.PI / 2; lensC.position.z = 0.34; PR.cam.add(lensC);
+  const recMat = pmat(0xff3b30, 0.3, { emissive: 0xff3b30, emissiveIntensity: 0.8 });
+  const rec = sphere(0.05, recMat, [1, 1, 1], [0.17, 0.2, 0.18]); PR.cam.add(rec);
+  // a query card held up high (active learning: one question, several classes)
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 176;
+  { const g = cv.getContext('2d');
+    g.fillStyle = '#fffaf2'; g.strokeStyle = '#2b201b'; g.lineWidth = 10;
+    g.beginPath(); g.roundRect(6, 6, 244, 164, 22); g.fill(); g.stroke();
+    g.fillStyle = '#2b201b'; g.font = 'bold 130px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 80, 96);
+    ['#e8735a', '#3b6fd8', '#6aa84f'].forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.roundRect(150, 26 + i * 44, 70, 32, 8); g.fill(); }); }
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  PR.card = new THREE.Group(); PR.card.position.set(1.05, 1.95, 0.4); P.body.add(PR.card);
+  PR.card.add(capsule(0.035, 0.9, M.paw, [0, 0.5, 0]));
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.88, 0.6), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, side: THREE.DoubleSide }));
+  plate.position.set(0, 1.25, 0.03); PR.card.add(plate);
+  // a balancing pole with uneven weights (label shift)
+  PR.pole = new THREE.Group(); PR.pole.position.set(0, 1.45, 0.62); P.body.add(PR.pole);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.7, 10), M.paw); rod.rotation.z = Math.PI / 2; PR.pole.add(rod);
+  PR.pole.add(sphere(0.3, pmat(0x3b6fd8, 0.4), [1, 1, 1], [-1.35, 0, 0]));
+  PR.pole.add(sphere(0.13, pmat(0xe8735a, 0.4), [1, 1, 1], [1.35, 0, 0]));
+  // card-like props drawn on a canvas
+  function cardTex(w, h, draw) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  }
+  const flat = (w, h, tex) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide }));
+  // a newspaper (news)
+  PR.paper = flat(1.05, 0.72, cardTex(256, 176, (g, w, h) => {
+    g.fillStyle = '#f4efe6'; g.fillRect(0, 0, w, h); g.fillStyle = '#2b201b';
+    g.font = 'bold 34px serif'; g.textAlign = 'center'; g.fillText('NEWS', w / 2, 40);
+    g.fillRect(14, 52, w - 28, 3);
+    for (let i = 0; i < 6; i++) { g.fillRect(14, 70 + i * 16, 104, 6); g.fillRect(138, 70 + i * 16, 104, 6); }
+  }));
+  P.body.add(PR.paper);
+  // a globe on a little stand (experience)
+  PR.globe = new THREE.Group(); P.body.add(PR.globe);
+  const ball = new THREE.Group(); PR.globe.add(ball);
+  ball.add(sphere(0.34, pmat(0x5fa0d8, 0.5)));
+  for (const [x, y, z, r] of [[0.15, 0.12, 0.25, 0.14], [-0.2, -0.05, 0.22, 0.12], [0.05, -0.2, -0.27, 0.13], [-0.1, 0.22, -0.2, 0.1]])
+    { const land = sphere(r, pmat(0x77b255, 0.6), [1, 0.7, 0.5], [x, y, z]); land.lookAt(0, 0, 0); ball.add(land); }
+  const meridian = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 6, 32, Math.PI), pmat(0xc9a227, 0.4)); meridian.rotation.z = Math.PI / 2; PR.globe.add(meridian);
+  PR.globe.add(capsule(0.03, 0.2, pmat(0xc9a227, 0.4), [0, -0.5, 0]));
+  // a mortarboard (education)
+  PR.cap = new THREE.Group(); P.head.add(PR.cap);
+  PR.cap.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.45, 0.22, 24), M.dark));
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 1.2), M.dark); board.position.y = 0.13; board.rotation.y = Math.PI / 4; PR.cap.add(board);
+  PR.cap.add(capsule(0.025, 0.35, pmat(0xe0b23a, 0.5), [0.5, -0.05, 0.3]));
+  PR.cap.add(sphere(0.05, pmat(0xe0b23a, 0.5), [1, 1, 1], [0, 0.17, 0]));
+  // a stack of papers (publications)
+  PR.books = new THREE.Group(); P.body.add(PR.books);
+  [0xe8735a, 0x3b6fd8, 0x6aa84f, 0xf3c331].forEach((c, i) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.8 - i * 0.04, 0.13, 0.55), pmat(c, 0.6)); b.position.set((i % 2 ? 0.04 : -0.03), i * 0.14, 0); b.rotation.y = (i % 2 ? 0.08 : -0.06); PR.books.add(b);
+  });
+  // a clipboard with ticks (services)
+  PR.clip = new THREE.Group(); P.body.add(PR.clip);
+  const ticks = [];
+  PR.clip.add(flat(0.62, 0.82, cardTex(150, 200, (g, w, h) => {
+    g.fillStyle = '#9c6b45'; g.fillRect(0, 0, w, h); g.fillStyle = '#fffaf2'; g.fillRect(12, 22, w - 24, h - 34);
+    g.fillStyle = '#5a5a5a'; g.fillRect(52, 6, 46, 22);
+    g.strokeStyle = '#2b201b'; g.lineWidth = 4;
+    for (let i = 0; i < 4; i++) { g.strokeRect(24, 44 + i * 36, 20, 20); g.fillStyle = '#bbb'; g.fillRect(54, 50 + i * 36, 70, 8); }
+  })));
+  for (let i = 0; i < 4; i++) {
+    const t = flat(0.13, 0.13, cardTex(64, 64, (g) => { g.strokeStyle = '#2f9e44'; g.lineWidth = 12; g.lineCap = 'round'; g.beginPath(); g.moveTo(10, 34); g.lineTo(26, 50); g.lineTo(56, 12); g.stroke(); }));
+    t.material.transparent = true; t.position.set(-0.17, 0.235 - i * 0.148, 0.01); PR.clip.add(t); ticks.push(t);
+  }
+  // a trophy held high, with confetti (honors)
+  PR.trophy = new THREE.Group(); P.body.add(PR.trophy);
+  const gold = pmat(0xe3b341, 0.25, { metalness: 0.6 });
+  const cupP = [[0.08, 0], [0.24, 0.02], [0.24, 0.06], [0.07, 0.1], [0.06, 0.28], [0.12, 0.33], [0.3, 0.45], [0.33, 0.75], [0.3, 0.76]].map(([r, y]) => new THREE.Vector2(r, y));
+  const cupM = new THREE.Mesh(new THREE.LatheGeometry(cupP, 28), gold); cupM.material.side = THREE.DoubleSide; PR.trophy.add(cupM);
+  for (const sg of [-1, 1]) { const hnd = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.025, 8, 20, Math.PI * 1.2), gold); hnd.position.set(sg * 0.33, 0.58, 0); hnd.rotation.z = sg > 0 ? -1.3 : Math.PI + 1.3; PR.trophy.add(hnd); }
+  const confetti = Array.from({ length: 18 }, (_, i) => {
+    const c = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.05), pmat([0xe8735a, 0x3b6fd8, 0x6aa84f, 0xf3c331, 0xd16ba5][i % 5], 0.6, { side: THREE.DoubleSide }));
+    c.position.set((Math.random() - 0.5) * 2.4, Math.random() * 4.2, (Math.random() - 0.3) * 1.2); c.visible = false; scene.add(c); return c;
+  });
+  // gear for each test domain (continual TTA)
+  PR.umbrella = new THREE.Group(); PR.umbrella.position.set(0.45, 1.95, 0.25); P.body.add(PR.umbrella);
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.95, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), pmat(0x3b6fd8, 0.5, { side: THREE.DoubleSide }));
+  canopy.scale.y = 0.45; canopy.position.y = 1.55; PR.umbrella.add(canopy);
+  PR.umbrella.add(capsule(0.03, 1.5, M.dark, [0, 0.8, 0]));
+  PR.scarf = new THREE.Group(); P.body.add(PR.scarf);
+  const knit = pmat(0xd64545, 0.9);
+  const sc = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.12, 10, 30), knit); sc.rotation.x = Math.PI / 2; sc.position.y = 2.0; PR.scarf.add(sc);
+  const tailS = capsule(0.1, 0.45, knit, [0.3, 1.65, 0.62]); tailS.rotation.z = 0.25; PR.scarf.add(tailS);
+  PR.lamp = new THREE.Group(); PR.lamp.position.set(0, 0.6, 0.62); P.head.add(PR.lamp);
+  PR.lamp.add(sphere(0.1, pmat(0xfff3b0, 0.3, { emissive: 0xfff3b0, emissiveIntensity: 1.2 })));
+  const beam = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.6, 20, 1, true), pmat(0xfff7c8, 1, { transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false }));
+  beam.rotation.x = -Math.PI / 2 - 0.2; beam.position.set(0, -0.15, 0.8); PR.lamp.add(beam);
+  PR.lantern = new THREE.Group(); PR.lantern.position.set(-0.75, 0.95, 0.85); P.body.add(PR.lantern);
+  PR.lantern.add(sphere(0.15, pmat(0xffd27a, 0.3, { emissive: 0xffc04d, emissiveIntensity: 1.6 })));
+  PR.lantern.add(new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.02, 6, 20), M.dark));
+  PR.lantern.add(capsule(0.02, 0.15, M.dark, [0, 0.25, 0]));
+  const glow = new THREE.PointLight(0xffc870, 2.5, 4, 1.5); PR.lantern.add(glow);
+  PR.phones = new THREE.Group(); P.head.add(PR.phones);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.05, 8, 30, Math.PI), M.dark); band.position.y = 0.05; PR.phones.add(band);
+  for (const sg of [-1, 1]) { const cupH = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.16, 20), pmat(0xd64545, 0.5)); cupH.rotation.z = Math.PI / 2; cupH.position.set(sg * 0.84, 0.02, 0); PR.phones.add(cupH); }
+  PR.shades = new THREE.Group(); PR.shades.position.set(0, 0.13, 0.78); P.head.add(PR.shades);
+  for (const sg of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 20), pmat(0x111111, 0.15)); l.rotation.x = Math.PI / 2; l.position.x = sg * 0.29; PR.shades.add(l); }
+  const bridge = capsule(0.02, 0.2, M.dark, [0, 0.03, 0]); bridge.rotation.z = Math.PI / 2; PR.shades.add(bridge);
+  const TTA = [
+    { w: 'rain', name: 'Rain', gear: 'umbrella' }, { w: 'snow', name: 'Snow', gear: 'scarf' },
+    { w: 'noise', name: 'Noise', gear: 'phones' }, { w: 'fog', name: 'Fog', gear: 'lamp' },
+    { w: 'night', name: 'Dark', gear: 'lantern' }, { w: 'bright', name: 'Glare', gear: 'shades' },
+  ];
+  for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
+  const ACTPROP = { tame: 'robot', lens: 'lens', film: 'cam', ask: 'card', balance: 'pole',
+    news: 'paper', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
   // weather props: a little cloud with rain or snow, and fog
   const cloud = new THREE.Group(); cloud.position.y = 4.05; scene.add(cloud);
   for (const [x, y, r] of [[-0.45, 0, 0.32], [0, 0.12, 0.42], [0.45, 0, 0.3], [0.2, -0.08, 0.3], [-0.2, -0.08, 0.3]]) cloud.add(sphere(r, M.cloud, [1, 0.8, 0.8], [x, y, 0]));
@@ -172,7 +319,13 @@ function start() {
   });
   const fogMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0, depthWrite: false });
   const fogs = [[-0.9, 0.7, 0.6], [0.9, 1.1, 0.4], [0.2, 0.4, 1.0], [-0.4, 1.6, 0.9]].map(([x, y, z]) => { const f = sphere(0.75, fogMat, [1.4, 0.7, 1], [x, y, z]); scene.add(f); return f; });
-  const W = { rain: 0, snow: 0, fog: 0 };
+  const W = { rain: 0, snow: 0, fog: 0, noise: 0 };
+  // gaussian noise: static that flickers around it
+  const NN = 90, noiseGeo = new THREE.BufferGeometry();
+  noiseGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NN * 3), 3));
+  noiseGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(Array.from({ length: NN * 3 }, () => 0.35 + Math.random() * 0.6)), 3));
+  const noise = new THREE.Points(noiseGeo, new THREE.PointsMaterial({ size: 3.2, sizeAttenuation: false, vertexColors: true, transparent: true }));
+  scene.add(noise);
   const box = new THREE.Box3(), corner = new THREE.Vector3();
   // the highest point of what is drawn, in canvas px from the top
   function topPx(objs) {
@@ -331,10 +484,10 @@ function start() {
     if (fixedMode()) return;
     const el = e.target instanceof Element ? e.target : null;
     st.onFig = !!(el && el.closest('.pub-fig'));
-    const spot = el && (el.closest('.publications ol.bibliography > li') || el.closest('#navbar .nav-link') || el.closest('h2[id]'));
+    const spot = el && (el.closest('.publications ol.bibliography > li') || el.closest('#navbar .nav-link') || el.closest('h2[id]') || el.closest(BLOCKS));
     if (spot && spot !== st.hover) {
       st.hover = spot;
-      const key = (spot.querySelector('[id]') || {}).id;
+      const key = spot.matches('li') ? (spot.querySelector('[id]') || {}).id : 'sec:' + sectionOf(spot);
       if (ACT[key] !== st.act) { st.act = ACT[key] || null; st.actT = 0; }
       if (!spot.closest('#navbar')) goTo(...besideOf(spot));
       say(lineFor(spot, el), 3800);
@@ -400,7 +553,7 @@ function start() {
     for (const s of [-1, 1]) {
       const el = document.createElement('div');
       el.className = 'buddy-print';
-      el.style.transform = `translate(${st.pos[0] - dy * s * 8}px, ${st.pos[1] + dx * s * 8}px) rotate(${ang}deg)`;
+      el.style.transform = `translate(${st.pos[0] - dy * s * 9}px, ${st.pos[1] + dx * s * 9}px) rotate(${ang + 90}deg)`;
       el.addEventListener('animationend', () => el.remove());
       document.body.appendChild(el); prints.push(el);
     }
@@ -487,7 +640,7 @@ function start() {
     P.body.rotation.z = 0; P.head.rotation.z = 0;
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
-    let hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0 };
+    let want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -497,30 +650,68 @@ function start() {
       case 'munch': P.armL.rotation.x = P.armR.rotation.x = -1.3; hx = Math.sin(T * 22) * 0.12; if (T > 1.3) st.idle = null; break;
     }
     switch (st.act) {
-      case 'stumble': {                                            // trip, wobble, recover
-        const c = A % 2.6, tip = c < 0.25 ? 0.6 * c / 0.25 : 0.6 * Math.exp(-3.5 * (c - 0.25)) * Math.cos(8 * (c - 0.25));
-        P.body.rotation.z = tip * still;
-        const fl = Math.min(1, Math.abs(tip) * 2) * still;
-        P.armL.rotation.z = -0.2 - 1.6 * fl; P.armR.rotation.z = 0.2 + 1.6 * fl;
-        P.legR.rotation.z = 0.35 * fl;
+      case 'tame': {                                               // a jittery arm, calmed down
+        const c = A % 4.4, wildK = c < 2.2 ? 1 - c / 2.4 : 0;
+        hyT = 0.65;
+        if (c < 2.2) {                                             // bear: easy there, a gentle pat
+          P.armR.rotation.z = 0.2 + 1.0 * still; P.armR.rotation.x = (-0.7 + Math.sin(A * 9) * 0.3) * still;
+          j1.rotation.z = 0.25 + wildK * (0.55 * Math.sin(A * 13) + 0.3 * Math.sin(A * 23));
+          j2.rotation.z = 0.7 + wildK * 0.7 * Math.sin(A * 17 + 1);
+          PR.robot.position.x = 1.55 + wildK * 0.05 * Math.sin(A * 31);
+        } else {                                                   // tamed: smooth and steady, a happy hop
+          const v = c - 2.2;
+          j1.rotation.z = 0.25 + 0.25 * Math.sin(v * 2.6); j2.rotation.z = 0.7 + 0.3 * Math.sin(v * 2.6 + 1);
+          PR.robot.position.x = 1.55;
+          if (v < 0.5) root.position.y += Math.sin(v / 0.5 * Math.PI) * 0.22 * still;
+          fingers.forEach((f, i) => (f.position.x = (i ? 1 : -1) * (0.05 + 0.03 * Math.abs(Math.sin(v * 5)))));
+        }
         break;
       }
-      case 'weathers': { const w = ['rain', 'snow', 'fog'][Math.floor(A / 1.6) % 3]; wx[w] = 1; break; }
-      case 'peek': { const p = Math.sin(A * 1.7); P.body.rotation.z = 0.3 * p * still; hyT = 0.7 * p; break; }
-      case 'track':
+      case 'tta': {
+        const D = TTA[Math.floor(A / 2.3) % TTA.length], c = A % 2.3;
+        if (D.w === 'night') light = 0.3; else if (D.w === 'bright') light = 1.75; else wx[D.w] = 1;
+        if (c < 0.6) { hyT = Math.sin(c * 28) * 0.35; P.head.rotation.z = 0.2 * still; }    // huh? a new domain
+        else {
+          want = D.gear;                                                                  // adapted, at test time
+          if (D !== st.ttaSaid) { st.ttaSaid = D; say(`${D.name} → adapted ✓`, 1700); }
+          if (D.gear === 'umbrella') { P.armR.rotation.z = 0.2 + 2.0 * still; P.armR.rotation.x = -0.3 * still; }
+          if (D.gear === 'lantern') P.armL.rotation.x = -0.9 * still;
+          if (c < 0.9) root.position.y += Math.sin((c - 0.6) / 0.3 * Math.PI) * 0.12 * still;
+        }
+        break;
+      }
+      case 'conditions': {                                         // one condition after another, quickly
+        const w = ['rain', 'fog', 'snow', 'night'][Math.floor(A / 1.1) % 4];
+        if (w === 'night') light = 0.3; else wx[w] = 1;
+        break;
+      }
+      case 'restore': {                                            // each condition, then shake it off
+        const c = A % 1.9, w = ['rain', 'snow', 'fog', 'night'][Math.floor(A / 1.9) % 4];
+        if (c < 1.25) { if (w === 'night') light = 0.3; else wx[w] = 1; }
+        else root.rotation.y += Math.sin(c * 45) * 0.45 * (1.9 - c) / 0.65 * still;
+        break;
+      }
+      case 'lens': {                                               // holds the flat lens up and looks through it
+        const p = Math.sin(A * 1.4);
+        P.armR.rotation.x = -1.5 * still; P.armR.rotation.z = 0.05;
+        PR.lens.position.set(0.28 + 0.12 * p, 2.25, 1.05); PR.lens.rotation.set(0, 0.25 * p, 0);
+        hyT = 0.25 * p; P.body.rotation.z = 0.08 * p * still;
+        break;
+      }
+      case 'film': {                                               // films the cursor; the light blinks
+        P.armL.rotation.x = P.armR.rotation.x = -1.35 * still;
         if (st.cursor && st.pos) {
           hyT = Math.max(-1, Math.min(1, (st.cursor[0] - st.pos[0]) / 220)) - root.rotation.y;
           hx = Math.max(-0.5, Math.min(0.4, (st.cursor[1] - st.pos[1] + 80) / 300));
         }
-        break;
-      case 'rain': wx.rain = 1; break;
-      case 'shake': {                                              // rained on, then a wet-dog shake
-        const c = A % 3;
-        if (c < 1.5) wx.rain = 1;
-        else if (c < 2.2) root.rotation.y += Math.sin(c * 45) * 0.45 * (2.2 - c) / 0.7 * still;
+        PR.cam.position.set(0, 1.65, 0.95); PR.cam.rotation.set(hx * 0.8, st.hy * 0.8, 0);
+        recMat.emissiveIntensity = Math.sin(A * 6) > 0 ? 1.2 : 0.05;
         break;
       }
-      case 'ask': P.armR.rotation.z = 0.2 + 2.5 * still; P.armR.rotation.x = Math.sin(A * 7) * 0.25; P.head.rotation.z = 0.15 * still; break;
+      case 'ask':                                                  // a query card held up high
+        P.armR.rotation.z = 0.2 + 2.3 * still; P.armR.rotation.x = 0;
+        PR.card.rotation.z = Math.sin(A * 5) * 0.08; P.head.rotation.z = 0.15 * still; hyT = 0.3;
+        break;
       case 'night': {                                              // lights down, strike a pose
         light = 0.35;
         const k2 = Math.floor(A / 0.9) % 3;
@@ -528,12 +719,58 @@ function start() {
         P.armL.rotation.z = -0.2 + (L[0] + 0.2) * still; P.armR.rotation.z = 0.2 + (L[1] - 0.2) * still; P.legR.rotation.z = L[2] * still;
         break;
       }
-      case 'balance': {                                            // arms out, on one foot, swaying
-        P.armL.rotation.z = -0.2 - 1.3 * still; P.armR.rotation.z = 0.2 + 1.3 * still;
-        P.body.rotation.z = Math.sin(A * 2.4) * 0.16 * still; P.legL.rotation.z = -0.55 * still; P.legL.rotation.x = -0.4 * still;
+      case 'balance': {                                            // uneven weights on a pole, kept level
+        P.armL.rotation.x = P.armR.rotation.x = -1.2 * still;
+        const tilt = 0.22 * Math.exp(-((A % 2.6) * 1.6)) * Math.cos((A % 2.6) * 7) + 0.03 * Math.sin(A * 2);
+        P.body.rotation.z = tilt * still; PR.pole.rotation.z = tilt * 0.6;
+        P.legR.rotation.z = 0.35 * still; hyT = -0.2;
         break;
       }
       case 'fog': wx.fog = 1; hyT = Math.sin(A * 1.3) * 0.6; break;
+      case 'news':                                                 // reads the paper, eyes left to right
+        P.armL.rotation.x = P.armR.rotation.x = -1.4 * still;
+        PR.paper.position.set(0, 1.95, 1.05); PR.paper.rotation.set(-0.15, 0, 0);
+        hyT = 0.35 * Math.sin(A * 2.2); hx = 0.25;
+        break;
+      case 'globe':                                                // spins the globe
+        P.armL.rotation.x = P.armR.rotation.x = -1.2 * still;
+        PR.globe.position.set(0, 1.75, 1.0); ball.rotation.y = A * 2.2; ball.rotation.z = 0.4;
+        hx = 0.2;
+        break;
+      case 'grad': {                                               // the cap goes up, spins, lands back
+        const c = A % 2.4, up = c < 1 ? Math.sin(c * Math.PI) : 0;
+        PR.cap.position.set(0, 0.62 + up * 1.4, -0.05); PR.cap.rotation.set(-0.15, up * Math.PI * 2, up * 0.4);
+        if (c < 1) { P.armR.rotation.z = 0.2 + 2.2 * still * Math.min(1, c * 3); hx = -0.3 * up; }
+        if (c > 1 && c < 1.4) root.position.y += Math.sin((c - 1) / 0.4 * Math.PI) * 0.15 * still;
+        break;
+      }
+      case 'books':
+        P.armL.rotation.x = P.armR.rotation.x = -1.15 * still;
+        PR.books.position.set(0, 1.5, 0.95); PR.books.rotation.z = Math.sin(A * 3) * 0.06;
+        hx = 0.15; hyT = 0.15 * Math.sin(A * 1.5);
+        break;
+      case 'review': {                                             // ticks the boxes, one by one
+        P.armL.rotation.x = -1.35 * still;
+        PR.clip.position.set(-0.15, 1.8, 1.0); PR.clip.rotation.set(-0.3, 0.15, 0);
+        const n = Math.floor(A / 0.55) % 6;
+        ticks.forEach((t, i) => (t.visible = i < n));
+        P.armR.rotation.x = (-1.2 + Math.abs(Math.sin(A * Math.PI / 0.55)) * 0.25) * still; P.armR.rotation.z = -0.25;
+        hx = 0.3; P.head.rotation.z = Math.sin(A * Math.PI / 0.55) * 0.05;
+        break;
+      }
+      case 'trophy': {                                             // up high, a little bounce, confetti
+        P.armL.rotation.z = -0.2 - 2.55 * still; P.armR.rotation.z = 0.2 + 2.55 * still;
+        P.armL.rotation.x = P.armR.rotation.x = -0.25 * still;
+        PR.trophy.position.set(0, 3.0, 0.2);
+        root.position.y += Math.abs(Math.sin(A * 4)) * 0.12 * still; hx = -0.3;
+        break;
+      }
+    }
+    // the act's prop pops in, the others pop out
+    for (const k in PR) {
+      const o = PR[k], on = want === k && !st.sleeping && !fixed;
+      o.userData.k += ((on ? 1 : 0) - o.userData.k) * Math.min(1, dt * 9);
+      o.visible = o.userData.k > 0.02; o.scale.setScalar(Math.max(0.001, o.userData.k));
     }
     // the coat tries new colours for the style paper, and settles back otherwise
     if (st.act === 'style') M.coat.color.setHSL((0.13 + A * 0.18) % 1, 0.7, 0.56);
@@ -551,12 +788,24 @@ function start() {
     for (const d of drops) {
       d.visible = W.rain > 0.5;
       d.position.y -= dt * 7;
-      if (d.position.y < 0.15) { d.position.y = 3.85; d.position.x = (Math.random() - 0.5) * 1.5; }
+      const shelter = PR.umbrella.visible && Math.abs(d.position.x - 0.45) < 0.95 && d.position.y < 3.55;
+      if (d.position.y < 0.15 || shelter) { d.position.y = 3.85; d.position.x = (Math.random() - 0.5) * 1.5; }
     }
     for (const f of flakes) {
       f.visible = W.snow > 0.5;
       f.position.y -= dt * 1.5; f.position.x += Math.sin(now / 300 + f.position.y * 3) * dt * 0.3;
       if (f.position.y < 0.1) { f.position.y = 3.85; f.position.x = (Math.random() - 0.5) * 1.5; }
+    }
+    for (const c of confetti) {
+      c.visible = st.act === 'trophy' && !fixed && !st.sleeping;
+      c.position.y -= dt * 1.3; c.rotation.x += dt * 6; c.rotation.y += dt * 4;
+      if (c.position.y < 0.1) { c.position.y = 4.4; c.position.x = (Math.random() - 0.5) * 2.4; }
+    }
+    noise.visible = W.noise > 0.05; noise.material.opacity = W.noise;
+    if (noise.visible) {
+      const a = noiseGeo.attributes.position.array;
+      for (let i = 0; i < NN; i++) { a[i * 3] = (Math.random() - 0.5) * 3.2; a[i * 3 + 1] = Math.random() * 3.8; a[i * 3 + 2] = (Math.random() - 0.3) * 1.6; }
+      noiseGeo.attributes.position.needsUpdate = true;
     }
     fogMat.opacity = 0.5 * W.fog;
     fogs.forEach((f, i) => { f.visible = W.fog > 0.02; f.position.x += Math.sin(now / 1500 + i * 2) * dt * 0.25; });
@@ -566,7 +815,7 @@ function start() {
     else if (now > st.blinkT) { ey = 0.1; if (now > st.blinkT + 130) st.blinkT = now + 2400 + Math.random() * 2800; }
     P.eyes.children.forEach((e) => (e.scale.y = ey));
     renderer.render(scene, camera);
-    const drawnTop = topPx(cloud.visible ? [root, cloud] : [root]);
+    const drawnTop = Math.min(topPx(cloud.visible ? [root, cloud] : [root]), st.act === 'trophy' ? (FY - 4.4 * PX) : CH);
     if (!fixed && st.pos) step(now, moving);
 
     // place it

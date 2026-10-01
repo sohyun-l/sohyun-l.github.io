@@ -1642,21 +1642,22 @@ html[data-theme="dark"] .buddy-shadow { background: radial-gradient(closest-side
 @media print { .buddy, .buddy-shadow { display: none; } }
 
 // Footprints the bear leaves behind; they fade on their own.
-.buddy-print {
+.buddy-print {                    // a bear's paw: a pad and four toes, toes forward
   position: absolute;
   left: 0;
   top: 0;
-  width: 13px;
-  height: 8px;
-  margin: -4px 0 0 -6px;
-  border-radius: 55% 45% 45% 55%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
   background: var(--global-text-color);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cellipse cx='10' cy='13.5' rx='5.6' ry='4.6'/%3E%3Cellipse cx='3.6' cy='7.6' rx='1.9' ry='2.4'/%3E%3Cellipse cx='7.6' cy='4.4' rx='1.9' ry='2.5'/%3E%3Cellipse cx='12.4' cy='4.4' rx='1.9' ry='2.5'/%3E%3Cellipse cx='16.4' cy='7.6' rx='1.9' ry='2.4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cellipse cx='10' cy='13.5' rx='5.6' ry='4.6'/%3E%3Cellipse cx='3.6' cy='7.6' rx='1.9' ry='2.4'/%3E%3Cellipse cx='7.6' cy='4.4' rx='1.9' ry='2.5'/%3E%3Cellipse cx='12.4' cy='4.4' rx='1.9' ry='2.5'/%3E%3Cellipse cx='16.4' cy='7.6' rx='1.9' ry='2.4'/%3E%3C/svg%3E") center / contain no-repeat;
   pointer-events: none;
   z-index: 1;
   animation: buddy-print 4s ease-in forwards;
 }
 @keyframes buddy-print {
-  0% { opacity: 0.2; }
+  0% { opacity: 0.22; }
   100% { opacity: 0; }
 }
 // The cursor is a little honey pot, the bear's favourite (desktop only).
