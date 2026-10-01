@@ -1578,50 +1578,7 @@ html.transition *:after {
   cursor: pointer;
 }
 
-// The panda guide (assets/js/panda.js): walks along the bottom of the
-// viewport, just above the fixed footer, with a speech bubble above it.
-.panda {
-  position: fixed;
-  left: 0;
-  bottom: 0;
-  z-index: 1500;
-  cursor: pointer;
-  line-height: 0;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  svg { display: block; overflow: visible; }
-  .p-shadow { fill: rgba(0, 0, 0, 0.12); }
-  .p-white { fill: #ffffff; stroke: #2a2422; stroke-width: 1.6; }
-  .p-black, .p-leg rect, .p-arm ellipse { fill: #2a2422; }
-  .p-eye { fill: #ffffff; }
-  .p-mouth { fill: none; stroke: #2a2422; stroke-width: 1.4; stroke-linecap: round; }
-  .p-blush { fill: #f4a6a6; opacity: 0.7; }
-  .p-sleep { fill: none; stroke: #ffffff; stroke-width: 1.6; stroke-linecap: round; display: none; }
-  .p-zzz {
-    position: absolute;
-    right: -6px;
-    top: -8px;
-    font: 700 14px/1 var(--panda-font, sans-serif);
-    color: var(--global-text-color-light);
-    display: none;
-    small { font-size: 10px; margin-left: 1px; }
-  }
-  &.sleeping {
-    .p-eyes { display: none; }
-    .p-sleep { display: inline; }
-    .p-zzz { display: block; animation: panda-zzz 2.4s ease-in-out infinite; }
-  }
-}
-html[data-theme="dark"] .panda {
-  .p-white { stroke: #ede4dd; }
-  .p-black, .p-leg rect, .p-arm ellipse { stroke: #cfc4bc; stroke-width: 1.2; }
-  .p-shadow { fill: rgba(0, 0, 0, 0.45); }
-}
-@keyframes panda-zzz {
-  0% { transform: translate(0, 4px); opacity: 0; }
-  30% { opacity: 1; }
-  100% { transform: translate(6px, -10px); opacity: 0; }
-}
+// The panda's speech bubble (assets/js/buddy.js).
 .panda-bubble {
   position: fixed;
   left: 0;
@@ -1654,4 +1611,33 @@ html[data-theme="dark"] .panda {
     transform: rotate(45deg);
   }
 }
-@media print { .panda, .panda-bubble { display: none; } }
+@media print { .panda-bubble { display: none; } }
+
+// The 3D panda (assets/js/buddy.js): walks around the page itself, between
+// the content blocks; positioned in document coordinates by the script.
+.buddy {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 120px;
+  z-index: 1500;
+  cursor: pointer;
+  opacity: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.buddy-shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 52px;
+  height: 12px;
+  z-index: 1499;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.18), transparent);
+  pointer-events: none;
+  opacity: 0;
+}
+html[data-theme="dark"] .buddy-shadow { background: radial-gradient(closest-side, rgba(0, 0, 0, 0.5), transparent); }
+.panda-bubble.buddy-bubble { top: 0; bottom: auto; }
+@media print { .buddy, .buddy-shadow { display: none; } }
