@@ -475,7 +475,7 @@ function start() {
   PR.stole = new THREE.Group(); P.body.add(PR.stole);
   for (const sg of [-1, 1]) { const st2 = new THREE.Mesh(new THREE.BoxGeometry(0.17, 1.15, 0.02), pmat(0xb22234, 0.5)); st2.position.set(sg * 0.3, 1.35, 0.95); st2.rotation.set(-0.12, 0, sg * 0.1); PR.stole.add(st2); }
   PR.pearls = new THREE.Group(); P.body.add(PR.pearls);
-  for (let i = 0; i < 15; i++) { const a = -1.5 + i * 3 / 14; PR.pearls.add(sphere(0.05, pmat(0xfbf7ef, 0.2), [1, 1, 1], [Math.sin(a) * 0.58, 1.86 - 0.1 * Math.cos(a), Math.cos(a) * 0.6])); }
+  for (let i = 0; i < 22; i++) { const a = i / 22 * Math.PI * 2; PR.pearls.add(sphere(0.05, pmat(0xfbf7ef, 0.2), [1, 1, 1], [Math.sin(a) * 0.62, 1.9 - 0.12 * (1 + Math.cos(a)) / 2, Math.cos(a) * 0.6])); }
   PR.swim = new THREE.Group(); P.body.add(PR.swim);                                        // striped swimsuit
   const swimTex = cardTex(256, 64, (g, w, h) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#2f7bd9'; g.fillRect(0, i * h / 8, w, h / 8 + 1); } });
   const swimBand = new THREE.Mesh(new THREE.CylinderGeometry(0.99, 1.03, 0.85, 36, 1, true), new THREE.MeshStandardMaterial({ map: swimTex, roughness: 0.7 }));
@@ -612,7 +612,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai'].includes(k) ? 0 : 1));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
@@ -821,28 +821,18 @@ function start() {
     const y = r.bottom + scrollY - 6, right = r.right + 46 < vw - 20;
     return [(right ? r.right + 42 : r.left - 42) + scrollX, y];
   }
-  // a straight move that ignores the page's layout: a walk if near, a leap in an arc
-  // (leaving a fading sparkle trail) if further, a burrow if far
+  // a straight walk that ignores the page's layout
   function goDirect(p) {
     if (!st.pos || reduce) { st.pos = p.slice(); return; }
     const d = Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]);
-    if (st.burrow || d > 1500) { burrowTo(p); return; }
-    if (st.leap) { st.leap.to = p.slice(); return; }
-    if (d < 140) { st.path = [p]; return; }
-    st.path = []; st.leap = { from: st.pos.slice(), to: p.slice(), t0: performance.now(), dur: 650 + d * 0.7, h: 90 + d * 0.2 };
+    if (st.burrow) { burrowTo(p); return; }
+    st.path = [p];                                              // just walk there, leaving paw prints
   }
   // phones: stand at the right edge, level with what is on screen
   function besideMobile(spot) {
     const r = spot.getBoundingClientRect(), vw = document.documentElement.clientWidth;
     const y = Math.max(innerHeight * 0.4, Math.min(innerHeight * 0.86, r.top + Math.min(r.height, 220)));
     return [scrollX + vw - 46, scrollY + y];
-  }
-  let lastSpark = null;
-  function spark(p) {
-    const el = document.createElement('div'); el.className = 'buddy-spark';
-    el.style.transform = `translate(${p[0]}px, ${p[1]}px)`;
-    el.addEventListener('animationend', () => el.remove());
-    document.body.appendChild(el);
   }
   function besideOf(el) {
     const r = el.getBoundingClientRect(), y = r.top + scrollY + Math.min(r.height, 60) + BODY_H * 0.5;
@@ -985,23 +975,13 @@ function start() {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
     const fixed = fixedMode();
 
-    // leaping in an arc, a trail of sparkles behind that fades from its tail
-    st.hanging = 0;
-    if (st.leap) {
-      const z = st.leap, u = Math.min(1, (now - z.t0) / z.dur), e = u * u * (3 - 2 * u);
-      st.pos = [z.from[0] + (z.to[0] - z.from[0]) * e, z.from[1] + (z.to[1] - z.from[1]) * e - z.h * 4 * e * (1 - e)];
-      st.hanging = Math.sin(u * Math.PI); st.yawT = Math.sign(z.to[0] - z.from[0]) * 0.6;
-      const kk = compact() ? 0.72 : 1, c = [st.pos[0], st.pos[1] - 40 * kk];
-      if (!lastSpark || Math.hypot(c[0] - lastSpark[0], c[1] - lastSpark[1]) > 16) { spark(c); lastSpark = c; }
-      if (u >= 1) { st.pos = z.to.slice(); st.leap = null; lastSpark = null; st.jumpT = -1; }
-    }
     // follow the path
     let moving = false;
     if (!fixed && st.pos && st.path.length) {
       const tgt = st.path[0], dx = tgt[0] - st.pos[0], dy = tgt[1] - st.pos[1], d = Math.hypot(dx, dy);
       let left = d;
       for (let i = 1; i < st.path.length; i++) left += Math.hypot(st.path[i][0] - st.path[i - 1][0], st.path[i][1] - st.path[i - 1][1]);
-      st.speed = Math.min(Math.max(240, Math.min(700, left / 1.4)), st.speed + 900 * dt);
+      st.speed = Math.min(Math.max(240, Math.min(900, left / 1.2)), st.speed + 1100 * dt);
       const step = st.speed * dt;
       if (d <= step) { st.pos = tgt.slice(); st.path.shift(); if (!st.path.length) st.speed = 0; }
       else { st.pos = [st.pos[0] + dx / d * step, st.pos[1] + dy / d * step]; }
@@ -1021,7 +1001,7 @@ function start() {
     }
     // little things it does on its own while standing: look around, tilt
     // its head, hop, wiggle, wave, spin, or wander off a bit
-    if (!moving && !st.leap && !st.sleeping && !st.act && !st.idle && now > st.nextIdle) {
+    if (!moving && !st.sleeping && !st.act && !st.idle && now > st.nextIdle) {
       const opts = fixed ? ['wander', 'look', 'tilt', 'hop', 'wiggle', 'wave', 'spin'] : ['wander', 'wander', 'look', 'tilt', 'hop', 'wiggle', 'wave', 'spin'];
       st.idle = opts[Math.floor(Math.random() * opts.length)]; st.idleT = 0;
       st.nextIdle = now + 3000 + Math.random() * 3500;
@@ -1382,12 +1362,6 @@ function start() {
       d.userData.v.y -= 9.8 * dt; d.position.addScaledVector(d.userData.v, dt);
       if (d.position.y < 0) d.visible = false;
     }
-    if (st.hanging > 0) {                                        // mid-leap: arms flung up, legs tucked, a little twirl
-      const h = st.hanging;
-      P.armL.rotation.z = -0.2 - 2.3 * h; P.armR.rotation.z = 0.2 + 2.3 * h; P.armL.rotation.x = P.armR.rotation.x = -0.3 * h;
-      P.legL.rotation.x = P.legR.rotation.x = -0.9 * h;
-      root.rotation.y += Math.sin(h * Math.PI) * 0.6; want = null;
-    }
     // the venue's accessories, held in the left paw when they need one
     if (st.act && st.venue === 'vancouver') wx.leaves = 1;                // autumn leaves in Vancouver
     const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || [], st.act ? st.photoExtra || [] : [], st.act && st.outfit ? st.outfit.wear : []);
@@ -1521,7 +1495,7 @@ function start() {
     const jx = st.vfx === 'motion' ? Math.sin(now / 18) * 5 : 0;                    // motion blur: a fast shake
     canvas.style.transform = `translate(${left + jx}px, ${top}px) scale(${(0.6 + 0.4 * pop) * k})`;
     shadow.style.transform = `translate(${pos[0] - 32}px, ${pos[1] - 7}px) scale(${Math.max(0.35, 1 - lift * 0.4) * k})`;
-    shadow.style.opacity = String(pop * 0.9 * (1 - sink) * (1 - st.hanging));
+    shadow.style.opacity = String(pop * 0.9 * (1 - sink));
     if (holeK > 0.01 && holeAt && !fixed) {
       hole.style.display = 'block';
       hole.style.transform = `translate(${holeAt[0]}px, ${holeAt[1]}px) scale(${holeK})`;
