@@ -148,12 +148,12 @@ function start() {
     'sec:honors': 'trophy',                  // a trophy held high, confetti
     // gallery: a pose after each photo
     'gal:accv_wicv.jpg': 'speech', 'gal:cvpr22_workshop.jpg': 'speech', 'gal:cvpr22.jpg': 'speech',
-    'gal:accv_wicv_2.jpg': 'cheese', 'gal:eccv24_2.jpg': 'cheese', 'gal:eccv22.jpg': 'cheese', 'gal:tubingen2.jpg': 'cheese',
+    'gal:accv_wicv_2.jpg': 'cheese', 'gal:eccv24_2.jpg': 'cheese', 'gal:eccv22.jpg': 'cheese', 'gal:tubingen2.jpg': 'flagDE',
     'gal:cvpr23.jpg': 'point', 'gal:cvpr26.jpg': 'point', 'gal:eccv22_presentation.jpg': 'point', 'gal:eccv24.jpg': 'point',
     'gal:neurips23.jpg': 'point', 'gal:neurips25_3.jpg': 'point',
-    'gal:cvpr26_dc.jpg': 'peace', 'gal:zurich.jpg': 'peace', 'gal:neurips25_2.jpg': 'selfie', 'gal:neurips25.jpg': 'tada',
+    'gal:cvpr26_dc.jpg': 'peace', 'gal:zurich.jpg': 'flagCH', 'gal:neurips25_2.jpg': 'selfie', 'gal:neurips25.jpg': 'tada',
     'gal:cvpr22_fifo.jpg': 'fifo', 'gal:graduation.jpg': 'grad', 'gal:dissertation_award.jpg': 'trophy',
-    'gal:swiss.jpg': 'kick', 'gal:tubingen.jpg': 'type',
+    'gal:swiss.jpg': 'kickCH', 'gal:tubingen.jpg': 'flagDE',
   };
 
   // ------------------------------------------------------------ dom
@@ -363,6 +363,24 @@ function start() {
     g.add(new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.03, 8, 20), M.dark));
     PR.prompts.add(g); return g;
   });
+  // a little flag on a pole that waves (Switzerland, Germany)
+  const flagTex = (draw) => cardTex(192, 128, draw);
+  const FLAGS = {
+    CH: flagTex((g, w, h) => { g.fillStyle = '#d52b1e'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff'; g.fillRect(w / 2 - 12, h / 2 - 40, 24, 80); g.fillRect(w / 2 - 40, h / 2 - 12, 80, 24); }),
+    DE: flagTex((g, w, h) => { ['#000000', '#dd0000', '#ffce00'].forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * h / 3, w, h / 3 + 1); }); }),
+  };
+  PR.flag = new THREE.Group(); P.body.add(PR.flag);
+  PR.flag.add(capsule(0.03, 1.7, pmat(0x8a5a2b, 0.5), [0, 0.85, 0]));
+  PR.flag.add(sphere(0.06, pmat(0xe3b341, 0.3), [1, 1, 1], [0, 1.75, 0]));
+  const flagGeo = new THREE.PlaneGeometry(0.9, 0.6, 12, 1); flagGeo.translate(0.45, 0, 0);
+  const flagBase = flagGeo.attributes.position.array.slice();
+  const flagMat = new THREE.MeshStandardMaterial({ map: FLAGS.CH, roughness: 0.8, side: THREE.DoubleSide });
+  const cloth = new THREE.Mesh(flagGeo, flagMat); cloth.position.set(0.02, 1.38, 0); PR.flag.add(cloth);
+  function waveFlag(t) {
+    const a = flagGeo.attributes.position.array;
+    for (let i = 0; i < a.length; i += 3) { const x = flagBase[i]; a[i + 2] = Math.sin(x * 7 - t * 8) * 0.08 * x / 0.9; }
+    flagGeo.attributes.position.needsUpdate = true;
+  }
   // snow: it turns into a snowman (carrot nose, top hat)
   PR.snowman = new THREE.Group(); P.head.add(PR.snowman);
   const carrot = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 14), pmat(0xf08a24, 0.5)); carrot.rotation.x = Math.PI / 2; carrot.position.set(0, -0.12, 1.15); PR.snowman.add(carrot);
@@ -400,7 +418,7 @@ function start() {
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
-  const ACTPROP = { conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
+  const ACTPROP = { flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
     news: 'paper', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
   // weather props: a little cloud with rain or snow, and fog
   const cloud = new THREE.Group(); cloud.position.y = 4.65; scene.add(cloud);
@@ -925,6 +943,19 @@ function start() {
         P.armL.rotation.x = P.armR.rotation.x = -0.6 * still;
         if (A % 2 < 0.4) root.position.y += Math.sin((A % 2) / 0.4 * Math.PI) * 0.18 * still;
         break;
+      case 'flagCH': case 'flagDE': case 'kickCH': {                // waves the country's flag (and kicks in the meadow)
+        const tex = st.act === 'flagDE' ? FLAGS.DE : FLAGS.CH;
+        if (flagMat.map !== tex) { flagMat.map = tex; flagMat.needsUpdate = true; }
+        P.armR.rotation.z = 0.2 + 2.1 * still; P.armR.rotation.x = -0.2 * still;
+        PR.flag.position.set(1.0, 1.95, 0.4); PR.flag.rotation.set(0, -root.rotation.y, -0.35 + 0.12 * Math.sin(A * 3));
+        waveFlag(A);
+        if (st.act === 'kickCH') {
+          const k = Math.max(0, Math.sin(A * 3));
+          P.legR.rotation.z = 0.9 * k * still; P.legR.rotation.x = -0.4 * k * still;
+          P.armL.rotation.z = -0.2 - 1.3 * still; P.body.rotation.z = -0.15 * k * still; root.position.y += 0.1 * k * still;
+        } else { P.head.rotation.z = -0.12 * still; wink = Math.sin(A * 2) > 0.6 ? 1 : 0; }
+        break;
+      }
       case 'kick': {                                               // a happy kick in the meadow
         const k = Math.max(0, Math.sin(A * 3));
         P.legR.rotation.z = 0.9 * k * still; P.legR.rotation.x = -0.4 * k * still;
