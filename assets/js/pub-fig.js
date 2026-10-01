@@ -352,7 +352,7 @@
         // every touch is one more try: the cursor's travel over the figure
         // triggers the next attempt, and each attempt's residual updates the
         // policy, so the command pre-compensates a bit more every time
-        const t = st.t, REACH = 0.7;
+        const t = st.t, REACH = 0.9;
         if (st.idle) { s.tries = null; s.last = null; }
         else {
           if (!s.tries) { s.tries = [0]; s.t0 = t; s.travel = 0; }
@@ -365,16 +365,30 @@
         const list = s.tries || STEPS;                       // still: the whole story
         const u = s.tries ? ease(clamp((t - s.t0) / REACH, 0, 1)) : 1;
         const now = state(list[list.length - 1]);
+        // an untamed arm is unruly: it shakes on the way and overshoots on
+        // arrival; each update calms it, until it moves steadily
+        const wild = 1 - list[list.length - 1], tau = s.tries ? t - s.t0 - REACH : 9;
+        const shake = s.tries ? wild * (u < 1 ? Math.sin(u * Math.PI) : 0) : 0;
+        const over = tau > 0 ? wild * 0.16 * Math.exp(-4 * tau) * Math.cos(15 * tau) : 0;
+        const dq = [shake * (0.1 * Math.sin(t * 31) + 0.05 * Math.sin(t * 53)), shake * 0.13 * Math.sin(t * 41 + 1) + over];
         // earlier tries, faint, each with where it landed
         list.slice(0, -1).forEach((p, i) => {
           const o = state(p);
-          P.line(reachPath(o.qc, true), { w: 1, color: T.ink, alpha: 0.18 + 0.08 * i });
+          // their paths shake as much as they did: wild early, calmer later
+          const wob = (1 - p) * 3.2;
+          P.line(reachPath(o.qc, true).map((q, j) => [q[0], q[1] + wob * Math.sin(j * 2.1) * Math.sin(j / 28 * Math.PI)]), { w: 1, color: T.ink, alpha: 0.18 + 0.08 * i });
           P.cross(o.X[0], o.X[1], 0.8, { color: T.bad, w: 1.3, alpha: 0.45 + 0.15 * i });
         });
         cup(P, u >= 1 && now.ok);
-        const qx = executed(now.qc, u), qg = [HOME[0] + (now.qc[0] - HOME[0]) * u, HOME[1] + (now.qc[1] - HOME[1]) * u];
+        const qx0 = executed(now.qc, u), qx = [qx0[0] + dq[0], qx0[1] + dq[1]], qg = [HOME[0] + (now.qc[0] - HOME[0]) * u, HOME[1] + (now.qc[1] - HOME[1]) * u];
         arm(P, qg, { ghost: true });
-        arm(P, qx, { closed: u >= 1 && now.ok });
+        const K = arm(P, qx, { closed: u >= 1 && now.ok });
+        // shake marks while it is being unruly
+        const jolt = Math.abs(dq[0]) + Math.abs(dq[1]);
+        if (jolt > 0.03) for (const sg of [-1, 1]) {
+          const c = [K.ee[0] + sg * 11, K.ee[1] - 4];
+          P.line([[c[0], c[1] - 4], [c[0] + sg * 2.5, c[1]], [c[0], c[1] + 4]], { w: 1.1, color: T.bad, alpha: Math.min(1, jolt * 8) });
+        }
         if (u >= 1) {
           P.line(reachPath(now.qc, false), { w: 1.1, color: T.acc, dash: [1.5, 3] });
           P.circle(now.aim, 2.4, { w: 1.2, color: T.acc, fill: T.bg });
@@ -390,6 +404,9 @@
           if (done) ok ? P.check(x + bs / 2, 12 + bs / 2, bs / 11, { color: T.acc, w: 1.3 }) : P.cross(x + bs / 2, 12 + bs / 2, bs / 13, { color: T.bad, w: 1.3 });
         });
         if (s.tries && s.tries.length === 1 && u >= 1) P.text('keep moving: it tries again', W - 14, 30, { size: 6, align: 'right', detail: true });
+        // how tame it is so far
+        const tame = now.ok;
+        P.text(tame ? 'tamed' : 'wild', x1 - list.length * (bs + 3) - 5, 12 + bs / 2, { size: P.small ? 9 : 7, align: 'right', bold: true, color: tame ? T.acc : T.bad });
 
         // legend
         if (!P.small) {
