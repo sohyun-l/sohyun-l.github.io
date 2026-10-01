@@ -808,7 +808,12 @@ function start() {
   let scrollTimer = 0, lastMid = 0;
   // phones: whatever sits in the middle of the screen is what it acts out
   function midSpot() {
-    const el = document.elementFromPoint(innerWidth / 2, innerHeight * 0.45), spot = spotOf(el);
+    let el = document.elementFromPoint(innerWidth / 2, innerHeight * 0.45), spot = spotOf(el);
+    // at the very bottom the last sections can never reach the middle: take the visitor map if it is on screen
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 40) {
+      const v = document.querySelector('.mapmyvisitors-widget'), r = v && v.getBoundingClientRect();
+      if (r && r.top < innerHeight && r.bottom > 0) { el = v; spot = v; }
+    }
     if (spot && spot !== st.hover && !spot.closest('#navbar')) { showSpot(spot, el); st.fxT = 60 + Math.random() * (document.documentElement.clientWidth - 120); }
   }
   addEventListener('scroll', () => {
