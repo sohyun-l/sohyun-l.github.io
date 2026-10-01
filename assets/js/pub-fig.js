@@ -182,7 +182,7 @@
   // A small photo of one scene (sky, sun, hill, house, tree) under a
   // corruption, rendered once off screen and cached. The corruptions are
   // applied pixel by pixel the way the benchmarks' corruptions look.
-  const PHOTO_W = 120, PHOTO_H = 70, photos = new Map();
+  const PHOTO_W = 240, PHOTO_H = 140, PS = PHOTO_W / 120, photos = new Map();
   // the house in the photo, in 0..1 photo coordinates (for masks)
   const HOUSE = { wall: [0.3, 0.44, 0.28, 0.26], roof: [[0.26, 0.46], [0.44, 0.26], [0.62, 0.46]] };
   function photo(name) {
@@ -209,7 +209,7 @@
     for (let i = 0; i < px.length; i += 4) {
       const y = Math.floor(i / 4 / PW) / PH;
       let r = px[i], gg = px[i + 1], b = px[i + 2];
-      if (name === 'gaussian') { r += 42 * gauss(); gg += 42 * gauss(); b += 42 * gauss(); }
+      if (name === 'gaussian') { r += 46 * gauss(); gg += 46 * gauss(); b += 46 * gauss(); }
       if (name === 'shot') { r += 12 * gauss(); gg += 12 * gauss(); b += 12 * gauss(); }
       if (name === 'fog') { const a = 0.5 + 0.3 * (1 - y) + 0.08 * Math.sin(i * 0.0007 + y * 9); r = lerp(r, 214, a); gg = lerp(gg, 220, a); b = lerp(b, 226, a); }
       if (name === 'snow') { r = r * 0.75 + 20; gg = gg * 0.78 + 24; b = b * 0.82 + 34; }
@@ -219,31 +219,31 @@
       if (name === 'blur') {                       // horizontal motion blur
         const x = (i / 4) % PW, row = i - x * 4;
         let sr = 0, sg = 0, sb = 0, n = 0;
-        for (let k = -7; k <= 7; k++) { const xx = clamp(x + k, 0, PW - 1), j = row + xx * 4; sr += src[j]; sg += src[j + 1]; sb += src[j + 2]; n++; }
+        for (let k = -7 * PS; k <= 7 * PS; k++) { const xx = clamp(x + k, 0, PW - 1), j = row + xx * 4; sr += src[j]; sg += src[j + 1]; sb += src[j + 2]; n++; }
         r = sr / n; gg = sg / n; b = sb / n;
       }
       px[i] = clamp(r, 0, 255); px[i + 1] = clamp(gg, 0, 255); px[i + 2] = clamp(b, 0, 255);
     }
     g.putImageData(img, 0, 0);
     if (name === 'shot') {                        // sparse, saturated photon speckles
-      for (let k = 0; k < 150; k++) {
-        const hue = Math.floor(rand() * 360), sz = 1.5 + rand() * 1.5;
+      for (let k = 0; k < 150 * PS * PS; k++) {
+        const hue = Math.floor(rand() * 360), sz = (1.5 + rand() * 1.5) * PS;
         g.fillStyle = rand() < 0.3 ? '#111' : `hsl(${hue},95%,${55 + rand() * 25}%)`;
         g.fillRect(rand() * PW, rand() * PH, sz, sz);
       }
     }
     if (name === 'rain') {                        // long, thin, slanted streaks
-      g.strokeStyle = 'rgba(235,240,255,.75)'; g.lineWidth = 0.8;
-      for (let k = 0; k < 120; k++) { const x0 = rand() * PW * 1.2 - 10, y0 = rand() * PH, l = 7 + rand() * 9; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.28, y0 + l); g.stroke(); }
+      g.strokeStyle = 'rgba(235,240,255,.75)'; g.lineWidth = 0.8 * PS;
+      for (let k = 0; k < 120 * PS; k++) { const x0 = rand() * PW * 1.2 - 10 * PS, y0 = rand() * PH, l = (7 + rand() * 9) * PS; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.28, y0 + l); g.stroke(); }
     }
     if (name === 'snow') {
-      g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1;
-      for (let k = 0; k < 90; k++) { const x0 = rand() * PW, y0 = rand() * PH, l = 2 + rand() * 4; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.45, y0 + l); g.stroke(); }
+      g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = PS;
+      for (let k = 0; k < 90 * PS; k++) { const x0 = rand() * PW, y0 = rand() * PH, l = (2 + rand() * 4) * PS; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.45, y0 + l); g.stroke(); }
       g.fillStyle = '#ffffff';
-      for (let k = 0; k < 70; k++) { g.beginPath(); g.arc(rand() * PW, rand() * PH, 0.7 + rand() * 1.3, 0, TAU); g.fill(); }
+      for (let k = 0; k < 70 * PS; k++) { g.beginPath(); g.arc(rand() * PW, rand() * PH, (0.7 + rand() * 1.3) * PS, 0, TAU); g.fill(); }
     }
     if (name === 'pixelate') {                     // heavy pixelation
-      const bs = 10, im2 = g.getImageData(0, 0, PW, PH), q = im2.data;
+      const bs = 10 * PS, im2 = g.getImageData(0, 0, PW, PH), q = im2.data;
       for (let by = 0; by < PH; by += bs) for (let bx = 0; bx < PW; bx += bs) {
         const j = ((by + bs / 2 | 0) * PW + (bx + bs / 2 | 0)) * 4;
         g.fillStyle = `rgb(${q[j]},${q[j + 1]},${q[j + 2]})`; g.fillRect(bx, by, bs, bs);
@@ -492,11 +492,10 @@
 
   // ---------------------------------------------------------------- garasam
   // GaRA-SAM, after the paper's Fig. 1a. Left: the input with its point
-  // prompt and GaRA-SAM's mask drawn on it. Right: SAM's image encoder -
-  // frozen weights W0 plus the GaRA adapter. A gate reads the input,
-  // (1) activates a subset of rank-1 components (hourglasses) and
-  // (2) combines them, so the adapter's rank follows the input: fog 2,
-  // noise 5, an unseen corruption 3 via learned components (as in the
+  // prompt and GaRA-SAM's mask drawn on it. Right: GaRA's rank-1
+  // components (hourglasses); a gate reads the input and lights the ones
+  // it needs, so the adapter's rank - how many are lit - follows the
+  // input: fog 2, noise 5, an unseen corruption 3 (as in the paper's
   // figure; the other counts are illustrative). The cursor's x picks the
   // input's corruption.
   function garasamScene() {
@@ -509,8 +508,7 @@
       { name: 'unseen', photo: 'blur', on: [1, 3, 4] },
     ];
     const N = INS.length, K = 8;
-    const IMG = { x: 12, y: 24, w: 130, h: 130 * PHOTO_H / PHOTO_W };
-    const ENC = { x: 158, y: 20, w: 150, h: 134 };
+    const IMG = { x: 12, y: 38, w: 142, h: 142 * PHOTO_H / PHOTO_W };
     const s = { i: 2, glow: new Array(K).fill(0), rank: 5 };
 
     function hourglass(P, c, r, o = {}) {
@@ -521,11 +519,6 @@
         tri(-1); ctx.fill(); tri(1); ctx.fill(); ctx.restore();
       }
       P.line([[x - r, y - r], [x + r, y - r], [x - r, y + r], [x + r, y + r], [x - r, y - r]], { w: 1.2, color: o.on ? T.acc : T.mute, alpha: o.on ? 1 : 0.45 });
-    }
-    function lock(P, x, y) {
-      const T = P.T;
-      P.rect(x - 3, y - 1, 6, 5, { w: 0, fill: T.mute });
-      P.ctx.save(); P.ctx.strokeStyle = T.mute; P.ctx.lineWidth = 1.1; P.ctx.beginPath(); P.ctx.arc(x, y - 1, 2.1, Math.PI, 0); P.ctx.stroke(); P.ctx.restore();
     }
 
     return {
@@ -557,43 +550,26 @@
         P.text(inp.name, IMG.x + 8 + N * 10 + 4, dy, { size: P.small ? 10 : 8, color: T.ink, bold: true });
         P.text('mask', IMG.x + IMG.w, dy, { size: 6, color: T.acc, align: 'right', detail: true });
 
-        // ---- SAM's image encoder: frozen W0 + GaRA
-        P.rect(ENC.x, ENC.y, ENC.w, ENC.h, { w: 1.2, color: T.ink });
-        P.text('sam image encoder', ENC.x + 5, ENC.y - 7, { size: 6, detail: true });
-        // frozen weights
-        P.rect(ENC.x + 8, ENC.y + 10, 30, 30, { w: 1, color: T.mute, fill: T.faint, fillAlpha: 0.6 });
-        P.text('W₀', ENC.x + 23, ENC.y + 25, { size: P.small ? 10 : 8, align: 'center', color: T.ink, keepCase: true });
-        lock(P, ENC.x + 34, ENC.y + 15);
-        P.text('+', ENC.x + 47, ENC.y + 25, { size: 12, align: 'center', color: T.ink, keepCase: true });
-        // the adapter: (1) activate components
-        const AX = ENC.x + 56, AY = ENC.y + 8, AW = 88, AH = 52;
-        P.rect(AX, AY, AW, AH, { w: 1.2, color: T.acc, dash: [3, 2] });
-        
+        // ---- GaRA: rank-1 components; the gate lights the ones this input needs
+        const AX = 176, AW = 132, AY = 46, AH = 62;
+        P.text('gara', AX, AY - 8, { size: P.small ? 10 : 7.5, color: T.acc, bold: true });
+        P.text('rank-1 components', AX + AW, AY - 8, { size: 6, align: 'right', detail: true });
+        P.rect(AX, AY, AW, AH, { w: 1.2, color: T.acc, dash: [3, 2.5] });
         for (let k = 0; k < K; k++) {
-          const c = [AX + 13 + (k % 4) * 20.5, AY + 15 + Math.floor(k / 4) * 22];
-          hourglass(P, c, 6.5, { on: inp.on.includes(k), glow: s.glow[k] });
+          const c = [AX + 18 + (k % 4) * 32, AY + 17 + Math.floor(k / 4) * 28];
+          hourglass(P, c, 9, { on: inp.on.includes(k), glow: s.glow[k] });
         }
-        P.text('gara', AX + AW / 2, AY + AH + 8, { size: P.small ? 9 : 7, align: 'center', color: T.acc, bold: true });
-        // (2) combine: lit components merge into one, as wide as the rank
-        const cy = ENC.y + 98, cx = AX + AW / 2;
-        for (let k = 0; k < K; k++) if (s.glow[k] > 0.05) {
-          const c = [AX + 13 + (k % 4) * 20.5, AY + 15 + Math.floor(k / 4) * 22 + 7];
-          P.line([c, [cx, cy - 12]], { w: 0.9, color: T.acc, alpha: 0.35 * s.glow[k] });
-        }
-        const rw = 4 + s.rank * 3.2;
-        ctx.save(); ctx.fillStyle = T.acc; ctx.globalAlpha = 0.9;
-        ctx.beginPath(); ctx.moveTo(cx - rw, cy - 11); ctx.lineTo(cx + rw, cy - 11); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(cx - rw, cy + 11); ctx.lineTo(cx + rw, cy + 11); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill();
-        ctx.restore();
-        P.text(`rank ${inp.on.length}`, cx, cy + 22, { size: P.small ? 10 : 8, align: 'center', color: T.acc, bold: true });
-        P.text('activate', ENC.x + 8, AY + AH / 2 + 28, { size: 5.8, detail: true });
-        P.text('combine', ENC.x + 8, cy, { size: 5.8, detail: true });
+        // rank = how many are lit
+        const GY = AY + AH + 14, gw = AW / K;
+        for (let k = 0; k < K; k++) P.rect(AX + k * gw + 1.5, GY, gw - 3, 7, { w: 0, fill: k < s.rank - 0.5 ? T.acc : T.faint });
+        P.text('rank', AX, GY + 19, { size: P.small ? 10 : 7.5, color: T.mute });
+        P.text(String(inp.on.length), AX + AW, GY + 19, { size: P.small ? 12 : 10, align: 'right', color: T.acc, bold: true, keepCase: true });
 
         // the gate: the input decides
-        const gy = IMG.y + IMG.h / 2;
-        P.line([[IMG.x + IMG.w + 2, gy], [AX - 4, gy]], { w: 1.1, color: T.ink, dash: [3, 2] });
-        P.head([AX - 2, gy], 0, { head: 5 });
-        P.text('gate', (IMG.x + IMG.w + ENC.x) / 2, gy - 6, { size: 5.8, align: 'center', detail: true });
+        const gy = AY + AH / 2;
+        P.line([[IMG.x + IMG.w + 3, gy], [AX - 5, gy]], { w: 1.2, color: T.ink });
+        P.head([AX - 2, gy], 0, { head: 5.5 });
+        P.text('gate', (IMG.x + IMG.w + AX) / 2, gy - 7, { size: 6, align: 'center', detail: true });
       },
     };
   }
