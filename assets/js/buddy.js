@@ -27,6 +27,7 @@ function start() {
     services: 'Reviewing and service ✅',
     honors: 'Awards and honors 🏆',
     visitors: 'Thanks for visiting!',
+    about: "That's Sohyun! Welcome 👋",
   };
   const NAV = { about: 'Back to the start.', publications: 'All the papers, by year.', gallery: 'Photos!', blog: 'Blog posts.', 'curriculum vitae': 'The CV.' };
   // one line per paper, short enough to fit the bubble
@@ -44,10 +45,11 @@ function start() {
     kang2022style: 'Keeps inventing novel styles in training, to generalize to new domains.',
   };
   // the section a hovered heading or block belongs to
-  const BLOCKS = '.news, .experience, .education, .services, .honors, .mapmyvisitors-widget';
+  const BLOCKS = '.hero-header, .hero-bio, .news, .experience, .education, .services, .honors, .mapmyvisitors-widget';
   function sectionOf(spot) {
     if (spot.matches('h2[id]')) return spot.id;
     if (spot.classList.contains('mapmyvisitors-widget')) return 'visitors';
+    if (spot.classList.contains('hero-header') || spot.classList.contains('hero-bio')) return 'about';
     return ['news', 'experience', 'education', 'services', 'honors'].find((c) => spot.classList.contains(c)) || null;
   }
   function lineFor(spot, el) {
@@ -152,6 +154,7 @@ function start() {
     'sec:publications': 'books',             // a stack of papers
     'sec:services': 'review',                // a clipboard, ticking boxes
     'sec:honors': 'trophy',                  // a trophy held high, confetti
+    'sec:about': 'greet',                    // a friendly wave hello
     'sec:visitors': 'hearts',                // a finger heart, hearts floating out
     // gallery: a pose after each photo
     'gal:accv_wicv.jpg': 'speech', 'gal:cvpr22_workshop.jpg': 'speech', 'gal:cvpr22.jpg': 'speech',
@@ -190,7 +193,7 @@ function start() {
   };
   // the about and publications pages: dressed for each section and paper (weather papers keep the raincoat)
   const SPOTOUTFIT = {
-    'sec:education': 'grad', 'sec:honors': 'award', 'sec:services': 'suit', 'sec:experience': 'casual',
+    'sec:about': 'suit', 'sec:education': 'grad', 'sec:honors': 'award', 'sec:services': 'suit', 'sec:experience': 'casual',
     'sec:publications': 'casual', 'sec:news': 'casual', 'sec:visitors': 'casual',
     lee2026selfcompensatingvla: 'lab', yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
     lee2023pid: 'pajama',
@@ -844,8 +847,8 @@ function start() {
   // gallery photos: stand right beside the photo, by its lower corner, even over the next one
   function besidePhoto(el) {
     const r = el.getBoundingClientRect(), vw = document.documentElement.clientWidth;
-    const y = r.bottom + scrollY - 6, right = r.right + 46 < vw - 20;
-    return [(right ? r.right + 42 : r.left - 42) + scrollX, y];
+    const y = r.bottom + scrollY - 6, right = r.right + 120 < vw;           // enough room on the right for it (and its props)?
+    return [(right ? r.right + 40 : r.left - 40) + scrollX, y];
   }
   // a straight walk that ignores the page's layout
   function goDirect(p) {
@@ -859,7 +862,7 @@ function start() {
   function besideMobile(spot) {
     const r = spot.getBoundingClientRect(), vw = document.documentElement.clientWidth;
     const y = Math.max(innerHeight * 0.4, Math.min(innerHeight * 0.86, r.top + Math.min(r.height, 220)));
-    return [scrollX + vw - 46, scrollY + y];
+    return [scrollX + vw - 68, scrollY + y];
   }
   function besideOf(el) {
     const r = el.getBoundingClientRect(), y = r.top + scrollY + Math.min(r.height, 60) + BODY_H * 0.5;
@@ -919,7 +922,7 @@ function start() {
       if (r && r.top < innerHeight && r.bottom > 0) { el = v; spot = v; }
     }
     if (spot && spot !== st.hover && !spot.closest('#navbar')) { showSpot(spot, el); goDirect(besideMobile(spot)); }
-    else if (st.pos && (st.pos[1] < scrollY + 80 || st.pos[1] > scrollY + innerHeight - 20)) goDirect([scrollX + document.documentElement.clientWidth - 46, scrollY + innerHeight * 0.7]);
+    else if (st.pos && (st.pos[1] < scrollY + 80 || st.pos[1] > scrollY + innerHeight - 20)) goDirect([scrollX + document.documentElement.clientWidth - 68, scrollY + innerHeight * 0.7]);
   }
   addEventListener('scroll', () => {
     wake();
@@ -932,7 +935,11 @@ function start() {
       }
       if (!st.pos) return;
       const vy0 = scrollY + 90, vy1 = scrollY + innerHeight - 60;
-      if (st.pos[1] < vy0 || st.pos[1] > vy1) goTo([st.pos[0], scrollY + innerHeight * 0.62]);
+      if (st.pos[1] < vy0 || st.pos[1] > vy1) {
+        const mid = document.querySelector('.gallery-grid') && spotOf(document.elementFromPoint(innerWidth / 2, innerHeight * 0.5));
+        if (mid && mid.matches('.gallery-item')) { showSpot(mid, mid); goDirect(besidePhoto(mid)); }   // the photo in view
+        else goTo([st.pos[0], scrollY + innerHeight * 0.62]);
+      }
       if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) say('You made it to the end, thanks for visiting!', 3000);
     }, 260);
   }, { passive: true });
@@ -951,7 +958,7 @@ function start() {
   // first appearance: beside the top of the content
   setTimeout(() => {
     if (compact()) {                                         // phones: pop out by the right edge
-      st.pos = [scrollX + document.documentElement.clientWidth - 46, scrollY + innerHeight * 0.72];
+      st.pos = [scrollX + document.documentElement.clientWidth - 68, scrollY + innerHeight * 0.72];
       st.burrow = { from: null, to: st.pos, t0: performance.now() - DIG };
     } else {
       buildGrid();
@@ -1283,6 +1290,11 @@ function start() {
         wx.snow = 0.6;
         break;
       }
+      case 'greet':                                                // hello! a big wave and a little hop
+        P.armR.rotation.z = 0.2 + 2.3 * still; P.armR.rotation.x = Math.sin(A * 9) * 0.35 * still;
+        P.head.rotation.z = -0.12 * still;
+        if ((A % 2) < 0.35) root.position.y += Math.sin((A % 2) / 0.35 * Math.PI) * 0.12 * still;
+        break;
       case 'hearts': {                                             // thanks for visiting: a finger heart by the cheek, hearts floating out
         P.armR.rotation.x = -1.75 * still; P.armR.rotation.z = -0.15 * still;
         P.armL.rotation.z = -0.2 - (0.5 + 0.2 * Math.sin(A * 5)) * still;
