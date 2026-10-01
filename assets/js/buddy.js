@@ -25,7 +25,7 @@ function start() {
     publications: "Papers! Hover one and I'll act it out.",
     services: 'Reviewing and service ✅',
     honors: 'Awards and honors 🏆',
-    visitors: 'Thanks for visiting! ♥',
+    visitors: 'Thanks for visiting!',
   };
   const NAV = { about: 'Back to the start.', publications: 'All the papers, by year.', gallery: 'Photos!', blog: 'Blog posts.', 'curriculum vitae': 'The CV.' };
   // one line per paper, short enough to fit the bubble
@@ -471,17 +471,18 @@ function start() {
   for (let i = 0; i < 8; i++) parasol.add(new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.45, 8, 1, true, i * Math.PI / 4, Math.PI / 4), pmat(i % 2 ? 0xffffff : 0xe5484d, 0.6, { side: THREE.DoubleSide })).translateY(2.7));
   // San Diego: a surfboard under its feet, and a wave curling behind
   PR.surf = new THREE.Group(); root.add(PR.surf);
-  PR.surf.add(sphere(1, pmat(0x3fb4c9, 0.3), [1.7, 0.07, 0.42], [0, -0.02, 0.05]));
-  PR.surf.add(sphere(1, pmat(0xffffff, 0.3), [1.65, 0.075, 0.05], [0, -0.01, 0.05]));
+  PR.surf.add(sphere(1, pmat(0xffcf33, 0.3), [1.7, 0.07, 0.42], [0, -0.02, 0.05]));
+  PR.surf.add(sphere(1, pmat(0xe5484d, 0.3), [1.65, 0.075, 0.05], [0, -0.01, 0.05]));
   PR.wave = new THREE.Group(); PR.wave.position.set(-1.9, 0, -0.4); scene.add(PR.wave);
   const water = pmat(0x2f8fd6, 0.25, { transparent: true, opacity: 0.85, side: THREE.DoubleSide });
   // the wave, seen side-on: it rises on the left and curls over toward the bear, its lip foaming
   const WR = 1.15;
   const sheet = new THREE.Mesh(new THREE.CylinderGeometry(WR, WR, 1.6, 40, 1, true, Math.PI / 2 + 0.35, Math.PI * 1.5 - 0.35), water);
   sheet.rotation.x = Math.PI / 2; sheet.position.y = WR; PR.wave.add(sheet);
-  const lip = [WR * Math.sin(Math.PI / 2 + 0.35), WR - WR * Math.cos(Math.PI / 2 + 0.35)];
-  for (let i = 0; i < 6; i++) PR.wave.add(sphere(0.17 + (i % 2) * 0.05, pmat(0xffffff, 0.6), [1, 0.8, 1], [lip[0] + 0.05, lip[1] + 0.02, -0.7 + i * 0.28]));
-  for (let i = 0; i < 5; i++) PR.wave.add(sphere(0.09, pmat(0xffffff, 0.6), [1, 1, 1], [lip[0] + 0.25 + i * 0.12, lip[1] - 0.3 - i * 0.22, 0.2]));   // spray
+    const foam = new THREE.Mesh(new THREE.CylinderGeometry(WR + 0.03, WR + 0.03, 1.64, 40, 1, true, Math.PI / 2 + 0.35, 0.9), pmat(0xffffff, 0.7, { side: THREE.DoubleSide }));
+  foam.rotation.x = Math.PI / 2; foam.position.y = WR; PR.wave.add(foam);                               // white water along the crest
+  const inner = new THREE.Mesh(new THREE.CylinderGeometry(WR - 0.04, WR - 0.04, 1.58, 40, 1, true, Math.PI / 2 + 0.35, Math.PI * 1.5 - 0.35), pmat(0x7cc4f0, 0.3, { side: THREE.BackSide }));
+  inner.rotation.x = Math.PI / 2; inner.position.y = WR; PR.wave.add(inner);                            // the lighter inside of the curl
   const sea = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40), pmat(0x56a9e3, 0.3)); sea.rotation.x = -Math.PI / 2; sea.position.set(1.5, 0.0, 0.6); sea.scale.set(1.3, 0.75, 1); PR.wave.add(sea);
   // Milan: the runway, a designer handbag and camera flashes
   PR.bag = new THREE.Group(); PR.bag.position.set(0, -0.72, 0.12); P.armL.add(PR.bag);
@@ -573,8 +574,11 @@ function start() {
     { vfx: 'unseen', unseen: true },                                                        // never seen in training
   ];
   // falling petals (spring) and leaves (autumn)
+  const MAPLE = [[0, -34], [6, -22], [14, -26], [11, -10], [24, -16], [20, -6], [30, -4], [18, 6], [21, 14], [4, 10], [3, 22], [-3, 22], [-4, 10], [-21, 14], [-18, 6], [-30, -4], [-20, -6], [-24, -16], [-11, -10], [-14, -26], [-6, -22]];
+  const leafShape = new THREE.Shape(); MAPLE.forEach(([x, y], i) => (i ? leafShape.lineTo(x / 300, -y / 300) : leafShape.moveTo(x / 300, -y / 300)));
+  const LEAFGEO = new THREE.ShapeGeometry(leafShape), PETALGEO = new THREE.CircleGeometry(0.08, 10);
   const fallers = Array.from({ length: 16 }, (_, i) => {
-    const m = new THREE.Mesh(new THREE.CircleGeometry(0.08, 6), new THREE.MeshStandardMaterial({ color: 0xf6a6c1, roughness: 0.8, side: THREE.DoubleSide }));
+    const m = new THREE.Mesh(PETALGEO, new THREE.MeshStandardMaterial({ color: 0xf6a6c1, roughness: 0.8, side: THREE.DoubleSide }));
     m.scale.set(1, 0.6, 1); m.position.set((Math.random() - 0.5) * 3, Math.random() * 4.4, (Math.random() - 0.3) * 1.4); m.visible = false; scene.add(m); return m;
   });
   const LEAF = [0xd9622b, 0xe8a33a, 0xb5402a], PETAL = [0xf6a6c1, 0xfbd3e0, 0xf18fb0];
@@ -1316,7 +1320,8 @@ function start() {
       f.visible = fk > 0.4;
       if (!f.visible) return;
       f.material.color.setHex((fall === 'petals' ? PETAL : LEAF)[i % 3]);
-      f.scale.setScalar(fall === 'petals' ? 1 : 1.8); f.scale.y *= 0.6;
+      f.geometry = fall === 'petals' ? PETALGEO : LEAFGEO;
+      f.scale.setScalar(fall === 'petals' ? 1 : 1.5); if (fall === 'petals') f.scale.y *= 0.6;
       f.position.y -= dt * (fall === 'petals' ? 0.9 : 1.3); f.position.x += Math.sin(now / 400 + i) * dt * 0.5;
       f.rotation.x += dt * 3; f.rotation.z += dt * 2;
       if (f.position.y < 0.1) { f.position.y = 4.4; f.position.x = (Math.random() - 0.5) * 3; }
