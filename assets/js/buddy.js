@@ -164,6 +164,8 @@ function start() {
   const VACT = { nola: 'trumpet', telaviv: 'sunbed', milan: 'runway', sandiego: 'surf', denver: 'ski' };
   const VACC = { vancouver: ['maple'], telaviv: ['shades'], milan: ['shades'], sandiego: ['shades'], denver: ['goggles'], hanoi: ['nonla'] };
   const HANDHELD = { maple: 'up' };
+  // visiting-researcher photos: round glasses
+  const PHOTOEXTRA = { 'zurich.jpg': ['glasses'], 'tubingen.jpg': ['glasses'], 'tubingen2.jpg': ['glasses'] };
   const ACTEXTRA = { surf: ['wave'], ski: ['poleL', 'poleR', 'rockies'], runway: ['bag'] };
 
   // ------------------------------------------------------------ dom
@@ -504,6 +506,12 @@ function start() {
     const cupH = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.24, 24), pmat(0xd64545, 0.4)); cupH.rotation.z = Math.PI / 2; cupH.position.set(sg * 1.0, 0.0, 0.05); PR.phones.add(cupH);
     const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 20), pmat(0x2b2b33, 0.6)); pad.rotation.z = Math.PI / 2; pad.position.set(sg * 1.14, 0.0, 0.05); PR.phones.add(pad);
   }
+  PR.glasses = new THREE.Group(); PR.glasses.position.set(0, 0.13, 0.8); P.head.add(PR.glasses);   // round researcher glasses
+  for (const sg of [-1, 1]) {
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.022, 8, 28), M.dark); rim.position.x = sg * 0.29; PR.glasses.add(rim);
+    const lensG = new THREE.Mesh(new THREE.CircleGeometry(0.16, 24), pmat(0xd8ecff, 0.05, { transparent: true, opacity: 0.25 })); lensG.position.x = sg * 0.29; PR.glasses.add(lensG);
+  }
+  const gBridge = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.018, 6, 12, Math.PI), M.dark); gBridge.position.y = 0.02; PR.glasses.add(gBridge);
   PR.shades = new THREE.Group(); PR.shades.position.set(0, 0.13, 0.78); P.head.add(PR.shades);
   for (const sg of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 20), pmat(0x111111, 0.15)); l.rotation.x = Math.PI / 2; l.position.x = sg * 0.29; PR.shades.add(l); }
   const bridge = capsule(0.02, 0.2, M.dark, [0, 0.03, 0]); bridge.rotation.z = Math.PI / 2; PR.shades.add(bridge);
@@ -740,6 +748,7 @@ function start() {
       : 'sec:' + sectionOf(spot);
     st.venue = key.startsWith('gal:') ? VENUE[Object.keys(VENUE).find((v) => key.slice(4).startsWith(v))] || null : null;
     // a city's motion replaces the generic poses (poster, group photo, talk); special photos keep theirs
+    st.photoExtra = key.startsWith('gal:') ? PHOTOEXTRA[key.slice(4)] || [] : [];
     const act = (st.venue && VACT[st.venue] && ['point', 'cheese', 'speech', 'tada'].includes(ACT[key]) ? VACT[st.venue] : ACT[key]) || null;
     if (act !== st.act) { st.act = act; st.actT = 0; }
     say(lineFor(spot, el) + (st.venue ? ` · ${VNAME[st.venue]}` : ''), 3800);
@@ -1226,7 +1235,7 @@ function start() {
       if (d.position.y < 0) d.visible = false;
     }
     // the venue's accessories, held in the left paw when they need one
-    const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || []);
+    const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || [], st.act ? st.photoExtra || [] : []);
     for (const k of extra) {
       if (HANDHELD[k] === 'up') { P.armL.rotation.z = -0.2 - 2.1 * still; P.armL.rotation.x = -0.2 * still; }
       if (HANDHELD[k] === 'front') { P.armL.rotation.x = -1.1 * still; P.armL.rotation.z = -0.35; }
