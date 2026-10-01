@@ -67,6 +67,7 @@ function start() {
     coat: mat(0xf3c331, 0.42), trim: mat(0xdca91c, 0.5), boot: mat(0x2f4a6d, 0.4), cloud: mat(0xeef1f5, 0.9),
     drop: new THREE.MeshStandardMaterial({ color: 0x6fa8e0, roughness: 0.2, transparent: true, opacity: 0.85 }) };
   M.coat.side = THREE.DoubleSide;
+  const _c = new THREE.Color(), _c2 = new THREE.Color(), BOOTC = M.boot.color.clone();
   const COAT = M.coat.color.clone(), FUR = M.fur.color.clone(), LIGHT = M.light.color.clone(), SNOW = new THREE.Color(0xf3f5f8), GREY = new THREE.Color(0x8d8a86);
   const sphere = (r, m, s = [1, 1, 1], p = [0, 0, 0]) => {
     const o = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m);
@@ -86,7 +87,8 @@ function start() {
     const coat = new THREE.Mesh(new THREE.LatheGeometry(prof, 36), M.coat); coat.scale.z = 0.93; P.body.add(coat);
     const hem = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.05, 8, 40), M.trim); hem.rotation.x = Math.PI / 2; hem.position.y = 0.7; hem.scale.y = 0.93; P.body.add(hem);
     const collar = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.08, 8, 30), M.coat); collar.rotation.x = Math.PI / 2; collar.position.y = 2.0; P.body.add(collar);
-    for (const [y, z] of [[1.6, 0.92], [1.3, 0.95], [1.0, 0.97]]) P.body.add(sphere(0.06, M.boot, [1, 1, 0.6], [0, y, z]));
+    P.shell = [coat, hem, collar];
+    for (const [y, z] of [[1.6, 0.92], [1.3, 0.95], [1.0, 0.97]]) { const b = sphere(0.06, M.boot, [1, 1, 0.6], [0, y, z]); P.body.add(b); P.shell.push(b); }
     // legs with long feet
     for (const [k, s] of [['legL', -1], ['legR', 1]]) {
       P[k] = new THREE.Group(); P[k].position.set(s * 0.42, 0.55, 0.05);
@@ -109,7 +111,7 @@ function start() {
     P.head.add(sphere(0.36, M.light, [1.15, 0.8, 0.85], [0, -0.22, 0.62]));   // pale teddy muzzle
     // the hood: a shell around the back of the head, open at the face
     const hood = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 20, Math.PI / 2 + 1.05, Math.PI * 2 - 2.1, 0, Math.PI * 0.78), M.coat);
-    hood.position.set(0, 0.02, -0.06); P.head.add(hood);
+    hood.position.set(0, 0.02, -0.06); P.head.add(hood); P.hood = hood;
     for (const s of [-1, 1]) {
       P.head.add(sphere(0.26, M.fur, [1, 1, 0.6], [s * 0.52, 0.76, -0.08]));          // round ears, poking out of the hood
       P.head.add(sphere(0.16, M.light, [1, 1, 0.4], [s * 0.52, 0.76, 0.03]));
@@ -167,6 +169,25 @@ function start() {
   const VACT = { nola: 'trumpet', telaviv: 'sunbed', milan: 'runway', sandiego: 'surf', denver: 'ski' };
   const VACC = { vancouver: ['maple'], telaviv: ['shades'], milan: ['shades'], sandiego: ['shades'], denver: ['goggles'], hanoi: ['nonla'] };
   const HANDHELD = { maple: 'up' };
+  // gallery outfits instead of the raincoat: coat colour (null = none, just fur), boots, a conference badge
+  const OUTFIT = {
+    conference: { coat: 0x2f3e5c, boots: 0x2b2b33, badge: true },        // a navy blazer and a lanyard
+    grad: { coat: 0x8f1d2c, boots: 0x2b2b33 },                            // a crimson gown
+    award: { coat: 0x1f1f26, boots: 0x2b2b33 },                           // a black suit
+    beach: { coat: null, boots: 'fur' },                                  // just the bear, sunbathing
+    surf: { coat: 0x16181d, boots: 0x16181d },                            // a wetsuit
+    runway: { coat: 0xd64f8f, boots: 0x2b2b33 },                          // something pink
+    ski: { coat: 0xe5484d, boots: 0x2b2b33 },                             // a ski jacket
+    jazz: { coat: 0x5b2a86, boots: 0x2b2b33 },                            // a purple suit
+    hike: { coat: 0x4f8a4b, boots: 0x7a5536 },                            // a hiking jacket
+    visit: { coat: 0xb5835a, boots: 0x7a5536 },                           // a cardigan
+    aodai: { coat: 0xf2efe6, boots: 0x2b2b33, badge: true },              // light and airy
+  };
+  function outfitFor(file, act, venue) {
+    if (venue === 'hanoi') return OUTFIT.aodai;
+    const byAct = { grad: 'grad', trophy: 'award', sunbed: 'beach', surf: 'surf', runway: 'runway', ski: 'ski', trumpet: 'jazz', kickCH: 'hike', flagCH: 'visit', flagDE: 'visit' }[act];
+    return OUTFIT[byAct || 'conference'];
+  }
   // visiting-researcher photos: round glasses
   const PHOTOEXTRA = { 'zurich.jpg': ['glasses'], 'tubingen.jpg': ['glasses'], 'tubingen2.jpg': ['glasses'] };
   const ACTEXTRA = { surf: ['wave'], ski: ['poleL', 'poleR', 'rockies'], runway: ['bag'] };
@@ -178,6 +199,9 @@ function start() {
   canvas.setAttribute('aria-label', 'A bear guide');
   const shadow = document.createElement('div'); shadow.className = 'buddy-shadow';
   const hole = document.createElement('div'); hole.className = 'buddy-hole'; document.body.appendChild(hole);
+  // the gallery zipline: a rope from photo to photo
+  const rope = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); rope.setAttribute('class', 'buddy-rope');
+  const ropePath = document.createElementNS('http://www.w3.org/2000/svg', 'path'); rope.appendChild(ropePath); document.body.appendChild(rope);
   const bubble = document.createElement('div'); bubble.className = 'buddy-bubble'; bubble.setAttribute('aria-live', 'polite');
   document.body.append(shadow, canvas, bubble);
 
@@ -440,6 +464,10 @@ function start() {
   });
   PR.hearts = new THREE.Group(); P.body.add(PR.hearts);
   const hearts = Array.from({ length: 6 }, (_, i) => { const h = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: heartTex, transparent: true, depthWrite: false })); h.userData.ph = i / 6; PR.hearts.add(h); return h; });
+  // a conference badge on a lanyard
+  PR.badge = new THREE.Group(); P.body.add(PR.badge);
+  for (const sg of [-1, 1]) { const cord = capsule(0.018, 0.75, pmat(0x3b6fd8, 0.5), [sg * 0.2, 1.62, 0.88]); cord.rotation.z = sg * 0.32; cord.rotation.x = -0.25; PR.badge.add(cord); }
+  PR.badge.add(flat(0.36, 0.48, cardTex(72, 96, (g, w, h) => { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#3b6fd8'; g.fillRect(0, 0, w, 26); g.fillStyle = '#2b201b'; g.fillRect(12, 44, 48, 8); g.fillRect(12, 60, 34, 6); })).translateY(1.18).translateZ(1.0));
   // venue accessories
   PR.maple = new THREE.Group(); PR.maple.position.set(0, -0.6, 0.12); P.armL.add(PR.maple);   // a Canadian flag in the left paw
   PR.maple.add(capsule(0.025, 1.0, pmat(0x8a5a2b, 0.5), [0, -0.5, 0]));
@@ -757,8 +785,19 @@ function start() {
   function goDirect(p) {
     if (fixedMode()) return;
     if (!st.pos || reduce) { st.pos = p.slice(); return; }
-    if (st.burrow || Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]) > 900) { burrowTo(p); return; }
-    st.path = [p];
+    const d = Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]);
+    if (st.burrow || d > 1500) { burrowTo(p); return; }
+    if (st.zip) { st.zip.to = p.slice(); return; }
+    if (d < 140) { st.path = [p]; return; }
+    st.path = []; st.zip = { from: st.pos.slice(), to: p.slice(), t0: performance.now(), dur: 900 + d * 1.6 };   // zip across on a rope
+  }
+  // the rope runs above both spots, sagging a little; the bear hangs below it by its paws
+  const HANG = 72, RAISE = 70;
+  function ropeAt(z, u) {
+    const A = [z.from[0], z.from[1] - HANG - RAISE], B = [z.to[0], z.to[1] - HANG - RAISE];
+    const C = [(A[0] + B[0]) / 2, Math.max(A[1], B[1]) + 34];
+    const v = 1 - u;
+    return { A, B, C, p: [v * v * A[0] + 2 * v * u * C[0] + u * u * B[0], v * v * A[1] + 2 * v * u * C[1] + u * u * B[1]] };
   }
   function besideOf(el) {
     const r = el.getBoundingClientRect(), y = r.top + scrollY + Math.min(r.height, 60) + BODY_H * 0.5;
@@ -780,8 +819,10 @@ function start() {
     st.venue = key.startsWith('gal:') ? VENUE[Object.keys(VENUE).find((v) => key.slice(4).startsWith(v))] || null : null;
     // a city's motion replaces the generic poses (poster, group photo, talk); special photos keep theirs
     st.photoExtra = key.startsWith('gal:') ? PHOTOEXTRA[key.slice(4)] || [] : [];
+    st.outfit = null;
     const act = (st.venue && VACT[st.venue] && ['point', 'cheese', 'speech', 'tada'].includes(ACT[key]) ? VACT[st.venue] : ACT[key]) || null;
     if (act !== st.act) { st.act = act; st.actT = 0; }
+    if (key.startsWith('gal:')) st.outfit = outfitFor(key.slice(4), act, st.venue);
     say(lineFor(spot, el) + (st.venue ? ` · ${VNAME[st.venue]}` : ''), 3800);
   }
   document.addEventListener('pointermove', (e) => {
@@ -895,6 +936,26 @@ function start() {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
     const fixed = fixedMode();
 
+    // on the zipline (gallery): jump up and grab, slide along, drop off
+    st.hanging = 0;
+    if (st.zip && !fixed) {
+      const z = st.zip, u = (now - z.t0) / z.dur, R0 = ropeAt(z, 0);
+      const ease = (x) => x * x * (3 - 2 * x);
+      let fade = 1;
+      if (u < 0.15) { const k = ease(u / 0.15); st.pos = [z.from[0], z.from[1] + (R0.p[1] + HANG - z.from[1]) * k]; st.hanging = k; }
+      else if (u < 0.85) { const r = ropeAt(z, ease((u - 0.15) / 0.7)); st.pos = [r.p[0], r.p[1] + HANG]; st.hanging = 1; st.yawT = Math.sign(z.to[0] - z.from[0]) * 0.5; }
+      else if (u < 1) { const k = ease((u - 0.85) / 0.15), B = ropeAt(z, 1).p; st.pos = [z.to[0], B[1] + HANG + (z.to[1] - B[1] - HANG) * k]; st.hanging = 1 - k; }
+      else { st.pos = z.to.slice(); st.zip = null; fade = 0; }
+      if (st.zip) {
+        const { A, B, C } = ropeAt(z, 0), x0 = Math.min(A[0], B[0]) - 12, y0 = Math.min(A[1], B[1]) - 12;
+        rope.style.display = 'block';
+        rope.style.transform = `translate(${x0}px, ${y0}px)`;
+        rope.setAttribute('width', Math.abs(B[0] - A[0]) + 24); rope.setAttribute('height', Math.max(A[1], B[1]) + 60 - y0);
+        ropePath.setAttribute('d', `M${A[0] - x0},${A[1] - y0} Q${C[0] - x0},${C[1] - y0} ${B[0] - x0},${B[1] - y0}`);
+        rope.style.opacity = String(Math.min(1, u * 8, (1.15 - u) * 6));
+      }
+      if (!fade) rope.style.display = 'none';
+    }
     // follow the path
     let moving = false;
     if (!fixed && st.pos && st.path.length) {
@@ -921,7 +982,7 @@ function start() {
     }
     // little things it does on its own while standing: look around, tilt
     // its head, hop, wiggle, wave, spin, or wander off a bit
-    if (!moving && !st.sleeping && !st.act && !st.idle && now > st.nextIdle) {
+    if (!moving && !st.zip && !st.sleeping && !st.act && !st.idle && now > st.nextIdle) {
       const opts = fixed ? ['wander', 'look', 'tilt', 'hop', 'wiggle', 'wave', 'spin'] : ['wander', 'wander', 'look', 'tilt', 'hop', 'wiggle', 'wave', 'spin'];
       st.idle = opts[Math.floor(Math.random() * opts.length)]; st.idleT = 0;
       st.nextIdle = now + 3000 + Math.random() * 3500;
@@ -1282,9 +1343,16 @@ function start() {
       d.userData.v.y -= 9.8 * dt; d.position.addScaledVector(d.userData.v, dt);
       if (d.position.y < 0) d.visible = false;
     }
+    if (st.hanging > 0) {                                        // hanging from the rope by both paws, legs swinging
+      const h = st.hanging;
+      P.armL.rotation.z = -0.2 - 2.75 * h; P.armR.rotation.z = 0.2 + 2.75 * h; P.armL.rotation.x = P.armR.rotation.x = 0;
+      P.legL.rotation.x = Math.sin(now / 160) * 0.5 * h; P.legR.rotation.x = -Math.sin(now / 160) * 0.5 * h;
+      P.body.rotation.z = Math.sin(now / 240) * 0.08 * h; want = null;
+    }
     // the venue's accessories, held in the left paw when they need one
     if (st.act && st.venue === 'vancouver') wx.leaves = 1;                // autumn leaves in Vancouver
-    const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || [], st.act ? st.photoExtra || [] : []);
+    if (st.act && st.outfit && st.outfit.badge) wx.badge = 1;
+    const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || [], st.act ? st.photoExtra || [] : [], wx.badge ? ['badge'] : []);
     for (const k of extra) {
       if (HANDHELD[k] === 'up') { P.armL.rotation.z = -0.2 - 2.1 * still; P.armL.rotation.x = -0.2 * still; }
       if (HANDHELD[k] === 'front') { P.armL.rotation.x = -1.1 * still; P.armL.rotation.z = -0.35; }
@@ -1297,7 +1365,13 @@ function start() {
     }
     // the coat tries new colours for the style paper, and settles back otherwise
     if (st.act === 'style') M.coat.color.setHSL((0.13 + A * 0.18) % 1, 0.7, 0.56);
-    else M.coat.color.lerp(snowy ? SNOW : COAT, Math.min(1, dt * 4));
+    else {
+      const of = st.act && st.outfit;
+      M.coat.color.lerp(snowy ? SNOW : of ? (of.coat == null ? FUR : _c.setHex(of.coat)) : COAT, Math.min(1, dt * 6));
+      M.boot.color.lerp(of ? (of.boots === 'fur' ? FUR : _c2.setHex(of.boots)) : BOOTC, Math.min(1, dt * 6));
+      P.hood.visible = !of;
+      P.shell.forEach((o) => (o.visible = !of || of.coat != null));
+    }
     M.fur.color.lerp(snowy ? SNOW : FUR, Math.min(1, dt * 4));
     maskMat.opacity = 0.62 * maskK;
     placeKeypoints(dark > 0 && !st.sleeping);
@@ -1408,7 +1482,7 @@ function start() {
     const jx = st.vfx === 'motion' ? Math.sin(now / 18) * 5 : 0;                    // motion blur: a fast shake
     canvas.style.transform = `translate(${left + jx}px, ${top}px) scale(${(0.6 + 0.4 * pop) * k})`;
     shadow.style.transform = `translate(${pos[0] - 32}px, ${pos[1] - 7}px) scale(${Math.max(0.35, 1 - lift * 0.4) * k})`;
-    shadow.style.opacity = String(pop * 0.9 * (1 - sink));
+    shadow.style.opacity = String(pop * 0.9 * (1 - sink) * (1 - st.hanging));
     if (holeK > 0.01 && holeAt && !fixed) {
       hole.style.display = 'block';
       hole.style.transform = `translate(${holeAt[0]}px, ${holeAt[1]}px) scale(${holeK})`;

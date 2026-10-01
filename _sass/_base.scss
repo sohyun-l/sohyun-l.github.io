@@ -1694,3 +1694,14 @@ html, body { overflow-x: clip; }
   transition: opacity 0.4s ease;
   &.on { opacity: 1; }
 }
+// the rope the bear zips along between gallery photos
+.buddy-rope {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1499;
+  pointer-events: none;
+  overflow: visible;
+  display: none;
+  path { fill: none; stroke: #8a6a45; stroke-width: 3.5; stroke-linecap: round; }
+}
