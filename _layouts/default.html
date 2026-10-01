@@ -53,5 +53,6 @@ layout: parse
     {% include scripts/misc.html %}
     {% include scripts/mathjax.html %}
     {% include scripts/analytics.html %}
+    <script defer src="{{ '/assets/js/panda.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
   </body>
 </html>
