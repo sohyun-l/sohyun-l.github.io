@@ -4,7 +4,7 @@
 // <canvas data-fig-scene="...">; each scene draws on a 320x180 board that
 // is letterboxed into the canvas. Figures hold still and move only under
 // the cursor.
-//   scenes: selfcomp, testdg
+//   scenes: selfcomp, testdg, garasam
 (function () {
   if (window.__pubFig) return;
   window.__pubFig = true;
@@ -142,6 +142,18 @@
       P.line([[c[0] - e, c[1]], [c[0] + e, c[1]]], { w: 1, color: col });
       P.line([[c[0], c[1] - e], [c[0], c[1] + e]], { w: 1, color: col });
     };
+    P.star = (c, r, o = {}) => {
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+        i ? ctx.lineTo(c[0] + rr * Math.cos(a), c[1] + rr * Math.sin(a)) : ctx.moveTo(c[0] + rr * Math.cos(a), c[1] + rr * Math.sin(a));
+      }
+      ctx.closePath();
+      ctx.fillStyle = o.fill || T.bg; ctx.fill();
+      ctx.strokeStyle = o.color || T.ink; ctx.lineWidth = lw(o.w ?? 1.2); ctx.lineJoin = 'round'; ctx.stroke();
+      ctx.restore();
+    };
     P.check = (x, y, s, o = {}) => P.line([[x - 4 * s, y], [x - 1.2 * s, y + 3 * s], [x + 4.5 * s, y - 4 * s]], { w: 1.6, ...o });
     P.cross = (x, y, s, o = {}) => {
       P.line([[x - 3.2 * s, y - 3.2 * s], [x + 3.2 * s, y + 3.2 * s]], { w: 1.6, ...o });
@@ -164,6 +176,76 @@
       }
     };
     return P;
+  }
+
+  // ---------------------------------------------------------------- photos
+  // A small photo of one scene (sky, sun, hill, house, tree) under a
+  // corruption, rendered once off screen and cached. The corruptions are
+  // applied pixel by pixel the way the benchmarks' corruptions look.
+  const PHOTO_W = 120, PHOTO_H = 70, photos = new Map();
+  // the house in the photo, in 0..1 photo coordinates (for masks)
+  const HOUSE = { wall: [0.3, 0.44, 0.28, 0.26], roof: [[0.26, 0.46], [0.44, 0.26], [0.62, 0.46]] };
+  function photo(name) {
+    if (photos.has(name)) return photos.get(name);
+    const PW = PHOTO_W, PH = PHOTO_H;
+    let seed = 1234;
+    for (const ch of name) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483647;
+    const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+    const gauss = () => { const u = Math.max(1e-6, rand()), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); };
+    const c = document.createElement('canvas'); c.width = PW; c.height = PH;
+    const g = c.getContext('2d');
+    const sky = g.createLinearGradient(0, 0, 0, PH * 0.7); sky.addColorStop(0, '#8fc3ee'); sky.addColorStop(1, '#dcefff');
+    g.fillStyle = sky; g.fillRect(0, 0, PW, PH);
+    g.fillStyle = '#ffd35a'; g.beginPath(); g.arc(PW * 0.82, PH * 0.2, PH * 0.1, 0, TAU); g.fill();
+    g.fillStyle = '#8cc56f'; g.beginPath(); g.moveTo(0, PH * 0.72); g.quadraticCurveTo(PW * 0.35, PH * 0.52, PW, PH * 0.66); g.lineTo(PW, PH); g.lineTo(0, PH); g.fill();
+    g.fillStyle = '#5f9e4c'; g.beginPath(); g.moveTo(0, PH * 0.86); g.quadraticCurveTo(PW * 0.6, PH * 0.74, PW, PH * 0.84); g.lineTo(PW, PH); g.lineTo(0, PH); g.fill();
+    const [wx, wy, ww, wh] = HOUSE.wall;
+    g.fillStyle = '#f3e7d2'; g.fillRect(PW * wx, PH * wy, PW * ww, PH * wh);
+    g.fillStyle = '#c8553d'; g.beginPath(); HOUSE.roof.forEach(([fx, fy], i) => (i ? g.lineTo(PW * fx, PH * fy) : g.moveTo(PW * fx, PH * fy))); g.fill();
+    g.fillStyle = '#6b4f3a'; g.fillRect(PW * 0.41, PH * 0.56, PW * 0.07, PH * 0.14);
+    g.fillStyle = '#7a5a3c'; g.fillRect(PW * 0.72, PH * 0.5, PW * 0.025, PH * 0.16);
+    g.fillStyle = '#3f7d3a'; g.beginPath(); g.arc(PW * 0.733, PH * 0.44, PH * 0.12, 0, TAU); g.fill();
+    const img = g.getImageData(0, 0, PW, PH), px = img.data, src = name === 'blur' ? new Uint8ClampedArray(px) : null;
+    for (let i = 0; i < px.length; i += 4) {
+      const y = Math.floor(i / 4 / PW) / PH;
+      let r = px[i], gg = px[i + 1], b = px[i + 2];
+      if (name === 'gaussian') { r += 42 * gauss(); gg += 42 * gauss(); b += 42 * gauss(); }
+      if (name === 'shot') { r += 12 * gauss(); gg += 12 * gauss(); b += 12 * gauss(); }
+      if (name === 'fog') { const a = 0.5 + 0.3 * (1 - y) + 0.08 * Math.sin(i * 0.0007 + y * 9); r = lerp(r, 214, a); gg = lerp(gg, 220, a); b = lerp(b, 226, a); }
+      if (name === 'snow') { r = r * 0.75 + 20; gg = gg * 0.78 + 24; b = b * 0.82 + 34; }
+      if (name === 'bright') { r = 120 + r * 0.6; gg = 120 + gg * 0.6; b = 120 + b * 0.6; }
+      if (name === 'night') { r = r * 0.22 + 8 * gauss(); gg = gg * 0.26 + 8 * gauss(); b = b * 0.4 + 10 + 8 * gauss(); }
+      if (name === 'blur') {                       // horizontal motion blur
+        const x = (i / 4) % PW, row = i - x * 4;
+        let sr = 0, sg = 0, sb = 0, n = 0;
+        for (let k = -7; k <= 7; k++) { const xx = clamp(x + k, 0, PW - 1), j = row + xx * 4; sr += src[j]; sg += src[j + 1]; sb += src[j + 2]; n++; }
+        r = sr / n; gg = sg / n; b = sb / n;
+      }
+      px[i] = clamp(r, 0, 255); px[i + 1] = clamp(gg, 0, 255); px[i + 2] = clamp(b, 0, 255);
+    }
+    g.putImageData(img, 0, 0);
+    if (name === 'shot') {                        // sparse, saturated photon speckles
+      for (let k = 0; k < 150; k++) {
+        const hue = Math.floor(rand() * 360), sz = 1.5 + rand() * 1.5;
+        g.fillStyle = rand() < 0.3 ? '#111' : `hsl(${hue},95%,${55 + rand() * 25}%)`;
+        g.fillRect(rand() * PW, rand() * PH, sz, sz);
+      }
+    }
+    if (name === 'snow') {
+      g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1;
+      for (let k = 0; k < 90; k++) { const x0 = rand() * PW, y0 = rand() * PH, l = 2 + rand() * 4; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.45, y0 + l); g.stroke(); }
+      g.fillStyle = '#ffffff';
+      for (let k = 0; k < 70; k++) { g.beginPath(); g.arc(rand() * PW, rand() * PH, 0.7 + rand() * 1.3, 0, TAU); g.fill(); }
+    }
+    if (name === 'pixelate') {                     // heavy pixelation
+      const bs = 10, im2 = g.getImageData(0, 0, PW, PH), q = im2.data;
+      for (let by = 0; by < PH; by += bs) for (let bx = 0; bx < PW; bx += bs) {
+        const j = ((by + bs / 2 | 0) * PW + (bx + bs / 2 | 0)) * 4;
+        g.fillStyle = `rgb(${q[j]},${q[j + 1]},${q[j + 2]})`; g.fillRect(bx, by, bs, bs);
+      }
+    }
+    photos.set(name, c);
+    return c;
   }
 
   // ---------------------------------------------------------------- selfcomp
@@ -338,71 +420,11 @@
       return clamp(base + (d ? (mine ? 0.05 : 0.3) * Math.exp(-f / 0.2) : 0), 0, 1);
     }
 
-    // small photos of one scene under each corruption, rendered once off
-    // screen: a house on a hill under the sky, then the corruption applied
-    // pixel by pixel the way the benchmark's corruptions look
-    let photos = null;
-    function makePhotos() {
-      const PW = 120, PH = 70, out = [];
-      let seed = 1;
-      const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-      const gauss = () => { const u = Math.max(1e-6, rand()), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); };
-      DOMS.forEach((name, d) => {
-        seed = 1234 + d * 977;
-        const c = document.createElement('canvas'); c.width = PW; c.height = PH;
-        const g = c.getContext('2d');
-        const sky = g.createLinearGradient(0, 0, 0, PH * 0.7); sky.addColorStop(0, '#8fc3ee'); sky.addColorStop(1, '#dcefff');
-        g.fillStyle = sky; g.fillRect(0, 0, PW, PH);
-        g.fillStyle = '#ffd35a'; g.beginPath(); g.arc(PW * 0.82, PH * 0.2, PH * 0.1, 0, TAU); g.fill();
-        g.fillStyle = '#8cc56f'; g.beginPath(); g.moveTo(0, PH * 0.72); g.quadraticCurveTo(PW * 0.35, PH * 0.52, PW, PH * 0.66); g.lineTo(PW, PH); g.lineTo(0, PH); g.fill();
-        g.fillStyle = '#5f9e4c'; g.beginPath(); g.moveTo(0, PH * 0.86); g.quadraticCurveTo(PW * 0.6, PH * 0.74, PW, PH * 0.84); g.lineTo(PW, PH); g.lineTo(0, PH); g.fill();
-        g.fillStyle = '#f3e7d2'; g.fillRect(PW * 0.3, PH * 0.44, PW * 0.28, PH * 0.26);
-        g.fillStyle = '#c8553d'; g.beginPath(); g.moveTo(PW * 0.26, PH * 0.46); g.lineTo(PW * 0.44, PH * 0.26); g.lineTo(PW * 0.62, PH * 0.46); g.fill();
-        g.fillStyle = '#6b4f3a'; g.fillRect(PW * 0.41, PH * 0.56, PW * 0.07, PH * 0.14);
-        g.fillStyle = '#7a5a3c'; g.fillRect(PW * 0.72, PH * 0.5, PW * 0.025, PH * 0.16);
-        g.fillStyle = '#3f7d3a'; g.beginPath(); g.arc(PW * 0.733, PH * 0.44, PH * 0.12, 0, TAU); g.fill();
-        const img = g.getImageData(0, 0, PW, PH), px = img.data;
-        for (let i = 0; i < px.length; i += 4) {
-          const y = Math.floor(i / 4 / PW) / PH;
-          let r = px[i], gg = px[i + 1], b = px[i + 2];
-          if (name === 'gaussian') { r += 42 * gauss(); gg += 42 * gauss(); b += 42 * gauss(); }
-          if (name === 'shot') { r += 12 * gauss(); gg += 12 * gauss(); b += 12 * gauss(); }
-          if (name === 'fog') { const a = 0.5 + 0.3 * (1 - y) + 0.08 * Math.sin(i * 0.0007 + y * 9); r = lerp(r, 214, a); gg = lerp(gg, 220, a); b = lerp(b, 226, a); }
-          if (name === 'snow') { r = r * 0.75 + 20; gg = gg * 0.78 + 24; b = b * 0.82 + 34; }
-          if (name === 'bright') { r = 120 + r * 0.6; gg = 120 + gg * 0.6; b = 120 + b * 0.6; }
-          px[i] = clamp(r, 0, 255); px[i + 1] = clamp(gg, 0, 255); px[i + 2] = clamp(b, 0, 255);
-        }
-        g.putImageData(img, 0, 0);
-        if (name === 'shot') {                      // sparse, saturated photon speckles
-          for (let k = 0; k < 150; k++) {
-            const hue = Math.floor(rand() * 360), sz = 1.5 + rand() * 1.5;
-            g.fillStyle = rand() < 0.3 ? '#111' : `hsl(${hue},95%,${55 + rand() * 25}%)`;
-            g.fillRect(rand() * PW, rand() * PH, sz, sz);
-          }
-        }
-        if (name === 'snow') {
-          g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1;
-          for (let k = 0; k < 90; k++) { const x0 = rand() * PW, y0 = rand() * PH, l = 2 + rand() * 4; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.45, y0 + l); g.stroke(); }
-          g.fillStyle = '#ffffff';
-          for (let k = 0; k < 70; k++) { g.beginPath(); g.arc(rand() * PW, rand() * PH, 0.7 + rand() * 1.3, 0, TAU); g.fill(); }
-        }
-        if (name === 'unseen') {                    // never-seen corruption: heavy pixelation
-          const bs = 10, im2 = g.getImageData(0, 0, PW, PH), q = im2.data;
-          for (let by = 0; by < PH; by += bs) for (let bx = 0; bx < PW; bx += bs) {
-            const j = ((by + bs / 2 | 0) * PW + (bx + bs / 2 | 0)) * 4;
-            g.fillStyle = `rgb(${q[j]},${q[j + 1]},${q[j + 2]})`; g.fillRect(bx, by, bs, bs);
-          }
-        }
-        out.push(c);
-      });
-      return out;
-    }
     function tile(P, x, y, w, h, d, hot) {
       const T = P.T, ctx = P.ctx;
-      photos = photos || makePhotos();
       ctx.save();
       ctx.imageSmoothingEnabled = DOMS[d] !== 'unseen';
-      ctx.drawImage(photos[d], x, y, w, h);
+      ctx.drawImage(photo(DOMS[d] === 'unseen' ? 'pixelate' : DOMS[d]), x, y, w, h);
       ctx.restore();
       const col = d === N - 1 ? T.ink : T.pig[d];
       P.rect(x, y, w, h, { w: hot ? 2 : 1.2, color: col, dash: d === N - 1 ? [2.5, 2] : null, alpha: hot ? 1 : 0.85 });
@@ -463,7 +485,125 @@
     };
   }
 
-  const SCENES = { selfcomp: selfcompScene, testdg: testdgScene };
+  // ---------------------------------------------------------------- garasam
+  // GaRA-SAM: robustifying SAM with gated-rank adaptation (the paper's
+  // teaser). A frozen SAM carries lightweight adapters made of rank-1
+  // components; a learned gate looks at the input and switches on only the
+  // components this corruption needs, so the adapter's effective rank
+  // follows the input: none for a clean image, a few for fog, more for
+  // noise, and a combination of learned ones for an unseen corruption.
+  // Frozen SAM's mask breaks up under corruption; GaRA-SAM's holds. The
+  // cursor picks the input along the top strip.
+  function garasamScene() {
+    const INS = [
+      { name: 'clean', photo: 'clean', on: [], deg: 0 },
+      { name: 'fog', photo: 'fog', on: [1, 4], deg: 0.55 },
+      { name: 'noise', photo: 'gaussian', on: [0, 2, 3, 5, 7], deg: 0.85 },
+      { name: 'snow', photo: 'snow', on: [1, 3, 6], deg: 0.7 },
+      { name: 'night', photo: 'night', on: [0, 4, 5, 6], deg: 0.8 },
+      { name: 'unseen', photo: 'blur', on: [1, 3, 4], deg: 0.75 },
+    ];
+    const N = INS.length, K = 8, X0 = 16, X1 = W - 16, SEG = (X1 - X0) / N;
+    const TY = 9, TW = SEG - 6, TH = 24;
+    const IMG = { x: 14, y: 62, w: 104, h: 104 * PHOTO_H / PHOTO_W };
+    const ADX = 128, ADW = 72, ADY = 62, ADH = 92;
+    const OUT = [{ y: 52, name: 'sam' }, { y: 119, name: 'gara-sam' }], OX = 216, OW = 86, OH = 86 * PHOTO_H / PHOTO_W;
+    const PROMPT = [0.47, 0.5];                             // the click on the house, photo coords
+    const s = { i: 3, glow: new Array(K).fill(0) };
+
+    // is a photo-space point inside the house?
+    function inHouse(fx, fy) {
+      const [wx, wy, ww, wh] = HOUSE.wall;
+      if (fx >= wx && fx <= wx + ww && fy >= wy && fy <= wy + wh) return true;
+      const [a, b, c] = HOUSE.roof;
+      const sgn = (p, q, r) => (p[0] - r[0]) * (q[1] - r[1]) - (q[0] - r[0]) * (p[1] - r[1]);
+      const p = [fx, fy], d1 = sgn(p, a, b), d2 = sgn(p, b, c), d3 = sgn(p, c, a);
+      return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+    }
+    // a mask as a grid of cells; deg breaks it up (holes, spill), seed fixes the pattern
+    function mask(P, x, y, w, h, deg, seed, color) {
+      const n = 30, m = Math.round(n * h / w), cw = w / n, ch = h / m;
+      P.ctx.save();
+      P.ctx.fillStyle = color;
+      for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
+        const fx = (i + 0.5) / n, fy = (j + 0.5) / m, r = hash(seed * 7777 + j * 131 + i);
+        const blob = 0.5 + 0.5 * Math.sin(i * 0.9 + seed) * Math.cos(j * 0.8 - seed);   // spatially coherent damage
+        const keep = inHouse(fx, fy) ? r > deg * (0.35 + 0.65 * blob) : r < deg * 0.06 * blob;
+        if (!keep) continue;
+        P.ctx.globalAlpha = 0.55;
+        P.ctx.fillRect(x + i * cw, y + j * ch, cw + 0.3, ch + 0.3);
+      }
+      P.ctx.restore();
+    }
+    // one rank-1 component, drawn as an hourglass (as in the paper)
+    function comp(P, c, s, on, glow) {
+      const T = P.T, [x, y] = c;
+      const pts = [[x - s, y - s], [x + s, y - s], [x - s, y + s], [x + s, y + s], [x - s, y - s]];
+      if (glow > 0.02) {
+        P.ctx.save(); P.ctx.globalAlpha = 0.85 * glow; P.ctx.fillStyle = T.acc;
+        P.ctx.beginPath(); P.ctx.moveTo(x - s, y - s); P.ctx.lineTo(x + s, y - s); P.ctx.lineTo(x, y); P.ctx.closePath(); P.ctx.fill();
+        P.ctx.beginPath(); P.ctx.moveTo(x - s, y + s); P.ctx.lineTo(x + s, y + s); P.ctx.lineTo(x, y); P.ctx.closePath(); P.ctx.fill();
+        P.ctx.restore();
+      }
+      P.line(pts, { w: 1.1, color: on ? T.acc : T.mute, alpha: on ? 1 : 0.5 });
+    }
+
+    return {
+      sticky: true,
+      idle: () => null,
+      draw(P, st) {
+        const T = P.T;
+        P.marks();
+        if (!st.idle) s.i = clamp(Math.floor((st.ptr[0] - X0) / SEG), 0, N - 1);
+        const inp = INS[s.i], dt = st.dt || 0.016;
+        for (let k = 0; k < K; k++) s.glow[k] = lerp(s.glow[k], inp.on.includes(k) ? 1 : 0, approach(dt, 10));
+
+        // the inputs
+        INS.forEach((it, i) => {
+          const x = X0 + i * SEG + 3, hot = i === s.i;
+          P.ctx.drawImage(photo(it.photo), x, TY, TW, TH);
+          P.rect(x, TY, TW, TH, { w: hot ? 2 : 1, color: hot ? T.acc : T.ink, alpha: hot ? 1 : 0.6, dash: it.name === 'unseen' ? [2.5, 2] : null });
+          P.text(it.name, x + TW / 2, TY + TH + 6, { size: 5.8, align: 'center', color: hot ? T.ink : T.mute, detail: true });
+        });
+
+        // the chosen input with its prompt point
+        P.ctx.drawImage(photo(inp.photo), IMG.x, IMG.y, IMG.w, IMG.h);
+        P.rect(IMG.x, IMG.y, IMG.w, IMG.h, { w: 1.2, color: T.ink });
+        const pp = [IMG.x + PROMPT[0] * IMG.w, IMG.y + PROMPT[1] * IMG.h];
+        P.star(pp, 4.2, { fill: '#ffd35a', color: '#1b1b1b', w: 1 });
+        P.text('input + prompt', IMG.x, IMG.y - 6, { size: 6, detail: true });
+
+        // the adapter inside frozen SAM: components, gated by the input
+        P.rect(ADX, ADY, ADW, ADH, { w: 1.1, color: T.ink, dash: [3, 2] });
+        P.text('frozen sam', ADX + ADW / 2, ADY - 6, { size: 6, align: 'center', detail: true });
+        P.text('gara', ADX + ADW / 2, ADY + 10, { size: P.small ? 9 : 7, align: 'center', color: T.acc, bold: true });
+        for (let k = 0; k < K; k++) {
+          const c = [ADX + 14 + (k % 4) * 15, ADY + 32 + Math.floor(k / 4) * 22];
+          comp(P, c, 5, inp.on.includes(k), s.glow[k]);
+        }
+        const rank = inp.on.length;
+        P.text(rank ? `rank ${rank}` : 'off', ADX + ADW / 2, ADY + ADH - 10, { size: P.small ? 9 : 7, align: 'center', color: rank ? T.acc : T.mute });
+        // input -> gate -> adapter
+        P.line([[IMG.x + IMG.w + 2, IMG.y + IMG.h / 2], [ADX - 3, IMG.y + IMG.h / 2]], { w: 1, color: T.ink });
+        P.head([ADX - 1, IMG.y + IMG.h / 2], 0, { head: 5 });
+        P.text('gate', (IMG.x + IMG.w + ADX) / 2, IMG.y + IMG.h / 2 - 6, { size: 5.8, align: 'center', detail: true });
+
+        // masks: frozen SAM vs GaRA-SAM
+        OUT.forEach((o, oi) => {
+          const mine = oi === 1, deg = mine ? inp.deg * 0.06 : inp.deg;
+          P.ctx.save(); P.ctx.globalAlpha = 0.35; P.ctx.drawImage(photo(inp.photo), OX, o.y, OW, OH); P.ctx.restore();
+          mask(P, OX, o.y, OW, OH, deg, s.i * 3 + oi + 1, mine || deg < 0.3 ? T.acc : T.bad);
+          P.rect(OX, o.y, OW, OH, { w: 1.1, color: T.ink });
+          P.text(o.name, OX, o.y - 6, { size: P.small ? 8.5 : 6.5, color: mine ? T.acc : T.mute, bold: mine });
+          const good = deg < 0.3;
+          if (good) P.check(OX + OW - 8, o.y - 6, 0.75, { color: T.acc, w: 1.6 });
+          else P.cross(OX + OW - 8, o.y - 6, 0.75, { color: T.bad, w: 1.6 });
+        });
+      },
+    };
+  }
+
+  const SCENES = { selfcomp: selfcompScene, testdg: testdgScene, garasam: garasamScene };
   const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
   // ---------------------------------------------------------------- mount
