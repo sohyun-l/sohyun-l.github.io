@@ -15,7 +15,7 @@ if (!window.__buddy) {
 function start() {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fixedMode = () => matchMedia('(hover: none)').matches || innerWidth < 980;
-  const CW = 180, CH = 230;                          // canvas size, css px: room above for hops
+  const CW = 320, CH = 230;                          // canvas size, css px: room above for hops
 
   // ------------------------------------------------------------ lines
   const SECTION = {
@@ -162,6 +162,7 @@ function start() {
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'A bear guide');
   const shadow = document.createElement('div'); shadow.className = 'buddy-shadow';
+  const hole = document.createElement('div'); hole.className = 'buddy-hole'; document.body.appendChild(hole);
   const bubble = document.createElement('div'); bubble.className = 'buddy-bubble'; bubble.setAttribute('aria-live', 'polite');
   document.body.append(shadow, canvas, bubble);
 
@@ -171,6 +172,7 @@ function start() {
   const dpr = Math.min(devicePixelRatio || 1, 2);
   renderer.setPixelRatio(dpr);
   renderer.autoClear = false;
+  renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 1, 0), 0.12)];   // nothing shows below the ground: it can dig in
   renderer.setSize(CW, CH, false);
   const scene = new THREE.Scene();
   const hemi = new THREE.HemisphereLight(0xffffff, 0xd9c8bd, 1.25); scene.add(hemi);
@@ -435,6 +437,8 @@ function start() {
   // fog sits behind and around it, never in front, so the bear and its props stay solid
   const fogs = [[-1.25, 0.7, -0.5], [1.25, 1.1, -0.6], [0, 0.6, -1.1], [-0.7, 1.8, -0.9], [0.9, 2.2, -1.0]].map(([x, y, z]) => { const f = sphere(0.75, fogMat, [1.4, 0.7, 1], [x, y, z]); f.renderOrder = -1; scene.add(f); return f; });
   const W = { rain: 0, snow: 0, fog: 0, noise: 0, dust: 0 };
+  // dirt kicked up while digging
+  const dirt = Array.from({ length: 14 }, () => { const d = sphere(0.07, pmat(0x7a5536, 0.9)); d.visible = false; d.userData.v = new THREE.Vector3(); scene.add(d); return d; });
   // sparkles while it restores itself
   const sparkles = Array.from({ length: 10 }, () => { const sp = sphere(0.05, pmat(0xffe27a, 0.3, { emissive: 0xffd34d, emissiveIntensity: 1 })); sp.visible = false; scene.add(sp); return sp; });
   // GaRA-SAM: rank-1 components above its head; the input decides how many light up
@@ -572,8 +576,10 @@ function start() {
   const pathLen = (pts, from) => pts.reduce((a, q, i) => a + Math.hypot(q[0] - (i ? pts[i - 1] : from)[0], q[1] - (i ? pts[i - 1] : from)[1]), 0);
   // walk to p (or to the first of several spots with a sensible route);
   // when every route is a long detour, pop over instead
+  const p0 = (spots) => spots[0];
   function goTo(...spots) {
     if (fixedMode()) return;
+    if (st.burrow) { burrowTo(nearestFree(p0(spots)) ? centre(...nearestFree(p0(spots))) : st.burrow.to); return; }
     if (!grid || performance.now() - gridAt > 2500) buildGrid();
     let first = null;
     for (const p of spots) {
@@ -587,7 +593,13 @@ function start() {
       if (path && pathLen(path, st.pos) < 1.5 * direct + 240) { st.path = path.slice(1); return; }
     }
     if (!first) return;
-    st.pos = centre(...first); st.path = []; st.poof = performance.now();
+    burrowTo(centre(...first));
+  }
+  // too far to walk: it digs a hole, goes underground and pops up out of another
+  const DIG = 750, UNDER = 200, RISE = 650;
+  function burrowTo(p) {
+    if (st.burrow) { if (performance.now() - st.burrow.t0 < DIG) st.burrow.to = p; return; }
+    st.path = []; st.burrow = { from: st.pos.slice(), to: p, t0: performance.now() };
   }
   // stand beside an element, on the side nearer the cursor
   function besideOf(el) {
@@ -671,7 +683,7 @@ function start() {
       const box = document.querySelector('.container .post') || document.querySelector('.container');
       const r = box.getBoundingClientRect();
       const g = nearestFree([r.left + scrollX - 60, scrollY + innerHeight * 0.55]);
-      if (g) { st.pos = centre(...g); st.poof = performance.now(); }
+      if (g) { st.pos = centre(...g); st.burrow = { from: null, to: st.pos, t0: performance.now() - DIG }; }   // pops out of a hole
     }
     say(fixedMode() ? "Hi! I'm Sohyun's bear 🧸 Tap a paper and I'll act it out!" : "Hi! I'm Sohyun's bear 🧸 I follow the honey. Hover a paper and I'll act it out!", 5000);
   }, 700);
@@ -680,6 +692,12 @@ function start() {
   function front(o, y, d, tilt = -0.15) {
     const th = root.rotation.y;
     o.position.set(-d * Math.sin(th), y, d * Math.cos(th)); o.rotation.set(tilt, -th, 0);
+  }
+
+  function spray() {
+    const d = dirt.find((o) => !o.visible); if (!d) return;
+    d.visible = true; d.position.set((Math.random() - 0.5) * 0.8, 0.1, 0.3 + Math.random() * 0.4);
+    d.userData.v.set((Math.random() - 0.5) * 3, 3 + Math.random() * 2.5, 0.5 + Math.random());
   }
 
   // ------------------------------------------------------------ footprints
@@ -782,6 +800,27 @@ function start() {
     P.armL.rotation.x = P.armR.rotation.x = -air * 0.9;
     if (st.waveT > 0) { const w = (now - st.waveT) / 1200; if (w < 1) { P.armR.rotation.z = 0.25 + 2.3 * Math.sin(Math.min(1, w * 3) * Math.PI / 2); P.armR.rotation.x = Math.sin(w * 18) * 0.3; } else { st.waveT = -1; P.armR.rotation.z = 0.25; } }
     root.position.y = lift;
+    // burrowing: dig in (wiggle, sink), underground, rise out of the new hole
+    let sink = 0, holeK = 0, holeAt = st.pos;
+    if (st.burrow && !fixed) {
+      const b = st.burrow, t = now - b.t0;
+      if (b.from && t < DIG) {
+        const u = t / DIG; holeAt = b.from; holeK = Math.min(1, u * 4);
+        sink = Math.max(0, (u - 0.25) / 0.75); sink *= sink;
+        P.armL.rotation.x = P.armR.rotation.x = (-1.4 + 0.5 * Math.sin(t / 40)) * (1 - sink);   // paws digging
+        P.body.rotation.x = 0.35; root.rotation.y = st.yaw + Math.sin(t / 60) * 0.25;
+        if (Math.random() < 0.5) spray();
+      } else if (t < DIG + UNDER) { sink = 1; holeK = 0; st.pos = b.to.slice(); }
+      else if (t < DIG + UNDER + RISE) {
+        const u = (t - DIG - UNDER) / RISE; st.pos = b.to.slice(); holeAt = b.to; holeK = 1;
+        sink = 1 - Math.min(1, u * 1.35); sink = sink * sink;
+        if (u > 0.74) root.position.y += Math.sin((u - 0.74) / 0.26 * Math.PI) * 0.35;      // and a little hop out
+        if (u < 0.5 && Math.random() < 0.4) spray();
+        P.armL.rotation.z = -0.2 - 1.6 * (1 - sink); P.armR.rotation.z = 0.2 + 1.6 * (1 - sink);
+      } else if (t < DIG + UNDER + RISE + 450) { holeAt = b.to; holeK = 1 - (t - DIG - UNDER - RISE) / 450; }
+      else st.burrow = null;
+      root.position.y -= sink * 3.6;
+    }
     root.scale.set(1 + squash * 0.6, 1 - squash, 1 + squash * 0.6);
     P.body.rotation.x = st.amp * 0.18;                                          // lean into the hop
     if (st.jumpT < 0) root.rotation.y = st.yaw;
@@ -1008,6 +1047,11 @@ function start() {
         break;
       }
     }
+    for (const d of dirt) {
+      if (!d.visible) continue;
+      d.userData.v.y -= 9.8 * dt; d.position.addScaledVector(d.userData.v, dt);
+      if (d.position.y < 0) d.visible = false;
+    }
     // the act's prop pops in, the others pop out
     for (const k in PR) {
       const o = PR[k], on = want === k && !st.sleeping;
@@ -1103,7 +1147,11 @@ function start() {
     canvas.style.opacity = String(pop);
     canvas.style.transform = `translate(${left}px, ${top}px) scale(${(0.6 + 0.4 * pop) * k})`;
     shadow.style.transform = `translate(${pos[0] - 32}px, ${pos[1] - 7}px) scale(${Math.max(0.35, 1 - lift * 0.4) * k})`;
-    shadow.style.opacity = String(pop * 0.9);
+    shadow.style.opacity = String(pop * 0.9 * (1 - sink));
+    if (holeK > 0.01 && holeAt && !fixed) {
+      hole.style.display = 'block';
+      hole.style.transform = `translate(${holeAt[0]}px, ${holeAt[1]}px) scale(${holeK})`;
+    } else hole.style.display = 'none';
     if (now > st.bubbleUntil) bubble.classList.remove('on');
     const bw = bubble.offsetWidth || 160, vw = document.documentElement.clientWidth;
     const bxv = Math.min(vw - bw - 8, Math.max(8, (fixed ? pos[0] : pos[0] - scrollX) - bw / 2));
