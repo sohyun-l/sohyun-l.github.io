@@ -147,7 +147,7 @@ function start() {
     lee2023pid: 'night',                     // low-light pose: lights down, strikes poses
     sehyun2022combating: 'balance',          // label shift: target class proportions brought to match the source
     lee2022fifo: 'fifo',                     // fog-pass filter: the fog is pulled into a filter; foggy or clear, it can't tell
-    kang2022style: 'style',                  // novel styles: the coat keeps trying new colours
+    kang2022style: 'style',                  // novel styles: an artist painting, the coat keeps trying new colours
     // and the page's sections
     'sec:news': 'news',                      // reads the paper
     'sec:experience': 'globe',               // spins a globe: places worked and visited
@@ -192,10 +192,11 @@ function start() {
     ringmaster: { coat: 0xc0392b, boots: 0x1a1a1f, wear: ['tophat', 'baton', 'shirt', 'bowtie'] },   // the tamer: a ringmaster
     robobear: { coat: null, boots: 0x8a929c, wear: ['antenna', 'panel'], robot: true },   // taming: it turns into a robot bear
     hero: { coat: 0x2f6fd8, boots: 0xc0392b, wear: ['cape', 'emblem'] },                     // robust: a superhero
-    mechanic: { coat: 0x3b5a8a, boots: 0x5a3d2a, wear: ['mcap'] },                           // restoration: a mechanic in overalls
+    mechanic: { coat: 0x3b5a8a, boots: 0x5a3d2a, wear: ['mcap', 'wrench'] },                           // restoration: a mechanic in overalls
     detective: { coat: 0xc8a874, boots: 0x5a3d2a, wear: ['deerstalker'] },                   // through the fog: a detective
-    director: { coat: 0x1f1f26, boots: 0x1f1f26, wear: ['beret'] },                          // video: a film director
-    artist: { coat: 0xd64f8f, boots: 0x2b2b33, wear: ['beret'] },                            // new styles: an artist
+    director: { coat: 0x1f1f26, boots: 0x1f1f26, wear: ['beret', 'clapper'] },                          // video: a film director
+    artist: { coat: 0xd64f8f, boots: 0x2b2b33, wear: ['beret', 'palette', 'brush'] },
+    mocap: { coat: 0x15161a, boots: 0x15161a, wear: ['mocapcap'] },                         // pose estimation: a motion-capture suit                            // new styles: an artist
     tta: { coat: 0x3b8bd6, boots: 0x2b2b33, wear: [] },                                      // TestDG: a coat that adapts its colour
     suit: { coat: 0x2f3e5c, boots: 0x2b2b33, wear: ['shirt', 'tie'] },                       // a blazer and tie
     casual: { coat: 0xb5835a, boots: 0x7a5536, wear: ['shirt', 'glasses'] },                 // a cardigan and glasses
@@ -205,7 +206,7 @@ function start() {
     'sec:about': 'suit', 'sec:education': 'grad', 'sec:honors': 'award', 'sec:services': 'suit', 'sec:experience': 'casual',
     'sec:publications': 'casual', 'sec:news': 'casual', 'sec:visitors': 'casual',
     yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
-    lee2023pid: 'pajama', lee2025dicotta: 'tta',
+    lee2023pid: 'mocap', lee2025dicotta: 'tta',
     lee2026selfcompensatingvla: 'robobear', lee2025garasam: 'hero', lee2024frest: 'mechanic',
     lee2022fifo: 'detective', lee2026moga: 'director', kang2022style: 'artist',
   };
@@ -547,6 +548,25 @@ function start() {
   PR.panel = new THREE.Group(); PR.panel.position.set(0, 1.25, 0.9); PR.panel.rotation.x = -0.12; P.body.add(PR.panel);
   PR.panel.add(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.42, 0.04), pmat(0x5d6670, 0.3, { metalness: 0.6 })));
   const panelLights = [0, 1, 2].map((i) => { const m = pmat(0x3be37a, 0.3, { emissive: 0x3be37a, emissiveIntensity: 1 }); PR.panel.add(sphere(0.055, m, [1, 1, 0.5], [-0.17 + i * 0.17, 0.05, 0.03])); return m; });
+  // FREST: a wrench; RobustPVOS: a clapperboard; Style Neophile: a palette and a brush; ExLPose: a mocap cap
+  PR.wrench = new THREE.Group(); PR.wrench.position.set(0, -0.62, 0.15); P.armR.add(PR.wrench);
+  const steel = pmat(0xaab2bc, 0.25, { metalness: 0.6 });
+  PR.wrench.add(new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.62, 0.05), steel).translateY(-0.3));
+  const jaw = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.04, 8, 16, Math.PI * 1.5), steel); jaw.position.y = -0.66; jaw.rotation.z = -Math.PI / 4; PR.wrench.add(jaw);
+  PR.clapper = new THREE.Group(); PR.clapper.position.set(0, -0.68, 0.18); P.armL.add(PR.clapper);
+  PR.clapper.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.34, 0.04), pmat(0x1f1f26, 0.5)).translateY(-0.2));
+  const clapTex = cardTex(64, 16, (g, w, h) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#1f1f26'; g.beginPath(); g.moveTo(i * 8, 0); g.lineTo(i * 8 + 8, 0); g.lineTo(i * 8 + 4, h); g.lineTo(i * 8 - 4, h); g.fill(); } });
+  const clapArm = new THREE.Group(); clapArm.position.set(-0.25, -0.02, 0); PR.clapper.add(clapArm);
+  clapArm.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.045), new THREE.MeshStandardMaterial({ map: clapTex, roughness: 0.6 })).translateX(0.25));
+  PR.palette = new THREE.Group(); PR.palette.position.set(0, -0.68, 0.2); P.armL.add(PR.palette);
+  PR.palette.add(sphere(0.34, pmat(0xd9b27c, 0.7), [1, 0.08, 0.75]));
+  [0xe5484d, 0x3b6fd8, 0xffd23f, 0x3be37a, 0xd64f8f].forEach((c, i) => PR.palette.add(sphere(0.05, pmat(c, 0.4), [1, 0.5, 1], [Math.cos(i * 1.1) * 0.2, 0.03, Math.sin(i * 1.1) * 0.14])));
+  PR.palette.rotation.x = Math.PI / 2;
+  PR.brush = new THREE.Group(); PR.brush.position.set(0, -0.62, 0.15); P.armR.add(PR.brush);
+  PR.brush.add(capsule(0.025, 0.55, pmat(0x8a5a2b, 0.5), [0, -0.3, 0]));
+  const brushTip = pmat(0xd64f8f, 0.5); PR.brush.add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 10), brushTip).rotateX(Math.PI).translateY(0.66));
+  PR.mocapcap = new THREE.Group(); PR.mocapcap.position.set(0, 0.42, 0); P.head.add(PR.mocapcap);
+  PR.mocapcap.add(new THREE.Mesh(new THREE.SphereGeometry(0.85, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), pmat(0x15161a, 0.8)));
   PR.tophat = new THREE.Group(); PR.tophat.position.y = 0.78; P.head.add(PR.tophat);    // a ringmaster's top hat
   const thm = pmat(0x1a1a1f, 0.4);
   PR.tophat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 32), thm));
@@ -557,7 +577,7 @@ function start() {
   PR.baton.add(sphere(0.06, pmat(0xe3b341, 0.3, { metalness: 0.6 }), [1, 1, 1], [0, -0.78, 0.38]));
   PR.cape = new THREE.Group(); P.body.add(PR.cape);                                           // a superhero's cape
   const capeM = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.25, 1.7, 24, 1, true, Math.PI * 0.62, Math.PI * 0.76), pmat(0xc0392b, 0.6, { side: THREE.DoubleSide }));
-  capeM.position.y = 1.05; PR.cape.add(capeM);
+  capeM.position.y = 1.05; PR.cape.add(capeM); PR.cape.userData.m = capeM;
   PR.emblem = new THREE.Group(); PR.emblem.position.set(0, 1.45, 0.98); PR.emblem.rotation.x = -0.15; P.body.add(PR.emblem);   // a star on the chest
   { const st5 = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.09 : 0.22, a = Math.PI / 2 + i * Math.PI / 5; i ? st5.lineTo(Math.cos(a) * r, Math.sin(a) * r) : st5.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
     PR.emblem.add(new THREE.Mesh(new THREE.CircleGeometry(0.3, 28), pmat(0xffd23f, 0.4)));
@@ -685,7 +705,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna'].includes(k) ? 0 : 1));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
@@ -1228,7 +1248,8 @@ function start() {
         if (w === 'night') light = 1 - 0.7 * on; else wx[w] = on;
         degrade = c < 1.0 ? Math.min(1, c / 0.6) : Math.max(0, 1 - (c - 1.0) / 1.2);
         if (c >= 1.0 && c < 2.3) {                                 // polishing: the paw goes round and round
-          P.armR.rotation.x = (-1.2 + 0.35 * Math.sin(A * 12)) * still; P.armR.rotation.z = 0.2 + 0.35 * Math.cos(A * 12) * still;
+          P.armR.rotation.x = (-1.2 + 0.35 * Math.sin(A * 12)) * still; P.armR.rotation.z = 0.2 + 0.35 * Math.cos(A * 12) * still;   // working the wrench
+          PR.wrench.rotation.y = Math.sin(A * 12) * 0.6;
           sparkle = 1; hx = 0.25;
         }
         if (c >= 2.3 && c < 2.7) root.position.y += Math.sin((c - 2.3) / 0.4 * Math.PI) * 0.15 * still;
@@ -1245,6 +1266,7 @@ function start() {
       case 'film': {                                               // keeps filming steadily as conditions change frame to frame
         // corruptions, then the seasons, then one it has never seen: it keeps filming through all of them
         const F = FILM[Math.floor(A / 1.0) % FILM.length], fc = A % 1.0;
+        clapArm.rotation.z = fc < 0.12 ? 0.5 * (1 - fc / 0.12) : fc > 0.85 ? 0.5 * (fc - 0.85) / 0.15 : 0;   // clap! each new condition, a new take
         if (F.vfx) vfx = F.vfx;
         if (F.w) wx[F.w] = 1;
         if (F.light) light = F.light;
@@ -1468,7 +1490,11 @@ function start() {
       o.visible = o.userData.k > 0.02; o.scale.setScalar(Math.max(0.001, o.userData.k) * (o.userData.s || 1));
     }
     // the coat tries new colours for the style paper, and settles back otherwise
-    if (st.act === 'style') M.coat.color.setHSL((0.13 + A * 0.18) % 1, 0.7, 0.56);
+    if (st.act === 'style') {                                  // the artist paints; the coat (and brush) keep trying new colours
+      M.coat.color.setHSL((0.13 + A * 0.18) % 1, 0.7, 0.56); brushTip.color.setHSL((0.13 + A * 0.18 + 0.5) % 1, 0.7, 0.5);
+      P.armL.rotation.x = -1.0 * still; P.armL.rotation.z = -0.35;
+      P.armR.rotation.x = (-1.25 + 0.3 * Math.sin(A * 6)) * still; P.armR.rotation.z = 0.2 + 0.25 * Math.sin(A * 3) * still; hx = 0.2;
+    }
     else {
       const of = st.act && st.outfit;
       M.coat.metalness = 0.3 * (st.robo || 0);
@@ -1486,6 +1512,7 @@ function start() {
     M.light.color.lerp(robo ? METAL2 : LIGHT, Math.min(1, dt * 4)); M.ear.color.lerp(robo ? METAL3 : EARC, Math.min(1, dt * 4));
     M.eye.color.lerp(robo ? _c3.setHex(0x7cf0ff) : EYEC, Math.min(1, dt * 4)); M.eye.emissive.setHex(0x3cc8ff); M.eye.emissiveIntensity = 1.2 * st.robo;
     maskMat.opacity = 0.62 * maskK;
+    if (PR.cape.visible) PR.cape.userData.m.rotation.x = -0.12 - 0.12 * Math.sin(now / 260) - st.amp * 0.3;   // the cape flutters
     placeKeypoints(dark > 0 && !st.sleeping);
     dimmer.classList.toggle('on', dark > 0 && !st.sleeping);
     if (degrade > 0) { M.fur.color.copy(FUR).lerp(GREY, degrade * 0.75); M.coat.color.copy(st.outfit && st.outfit.coat != null ? _c.setHex(st.outfit.coat) : COAT).lerp(GREY, degrade * 0.75); M.light.color.copy(LIGHT).lerp(GREY, degrade * 0.75); }
