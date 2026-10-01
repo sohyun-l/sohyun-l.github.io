@@ -136,7 +136,7 @@ function start() {
   // what the bear acts out on each paper, after its idea
   const ACT = {
     lee2026selfcompensatingvla: 'tame',      // execution errors: a jittery robot arm, calmed down
-    lee2025dicotta: 'tta',                   // continual TTA: the condition keeps changing; each time it is
+    lee2025dicotta: 'tta',                   // continual TTA: the same bear while the domain keeps changing; each time it is
                                              // puzzled for a moment, then adapts (gears up for it)
     yoon2026metalens: 'lens',                // metalens: drops and dust on the lens, still a clear view
     lee2026moga: 'film',                     // robust video segmentation: films steadily through video corruptions (motion blur,
@@ -206,7 +206,7 @@ function start() {
     'sec:about': 'suit', 'sec:education': 'grad', 'sec:honors': 'award', 'sec:services': 'suit', 'sec:experience': 'casual',
     'sec:publications': 'casual', 'sec:news': 'casual', 'sec:visitors': 'casual',
     yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
-    lee2023pid: 'pajama', lee2025dicotta: 'tta',
+    lee2023pid: 'pajama',
     lee2026selfcompensatingvla: 'robobear', lee2025garasam: 'gara', lee2024frest: 'mechanic',
     lee2022fifo: 'detective', lee2026moga: 'director', kang2022style: 'artist',
   };
@@ -705,6 +705,14 @@ function start() {
   PR.shades = new THREE.Group(); PR.shades.position.set(0, 0.13, 0.78); P.head.add(PR.shades);
   for (const sg of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 20), pmat(0x111111, 0.15)); l.rotation.x = Math.PI / 2; l.position.x = sg * 0.29; PR.shades.add(l); }
   const bridge = capsule(0.02, 0.2, M.dark, [0, 0.03, 0]); bridge.rotation.z = Math.PI / 2; PR.shades.add(bridge);
+  // TestDG: the stream of test domains above its head; the ones it has adapted to stay lit (nothing forgotten)
+  const domTex = (ch) => cardTex(64, 64, (g) => { g.fillStyle = '#fffaf2'; g.beginPath(); g.arc(32, 32, 30, 0, 7); g.fill(); g.strokeStyle = '#2b201b'; g.lineWidth = 3; g.stroke(); g.font = '34px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 32, 35); });
+  const stream = new THREE.Group(); stream.position.y = 3.85; stream.visible = false; scene.add(stream);
+  const streamIcons = ['☔', '❄️', '📺', '🌫️', '🌙', '☀️'].map((ch, i) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: domTex(ch), transparent: true, depthWrite: false }));
+    m.position.x = (i - 2.5) * 0.47; m.layers.set(1); stream.add(m); return m;
+  });
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.14, 3), new THREE.MeshBasicMaterial({ color: 0x2b201b })); arrow.rotation.z = Math.PI; arrow.layers.set(1); stream.add(arrow);
   const GARA = [                                                  // components lit per input (fog 2, noise 5, unseen 3)
     { w: 'rain', on: [0, 5, 6] }, { w: 'fog', on: [1, 4] }, { w: 'noise', on: [0, 2, 3, 5, 7] },
     { w: 'snow', on: [1, 3, 6, 7] }, { w: 'night', on: [0, 2, 4, 6] }, { w: 'dust', on: [1, 3, 4], unseen: true },
@@ -1190,7 +1198,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let garaOn = null, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
+    let ttaNow = -1, ttaSeen = 0, garaOn = null, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -1225,22 +1233,15 @@ function start() {
         }
         break;
       }
-      case 'tta': {
-        const D = TTA[Math.floor(A / 2.3) % TTA.length], c = A % 2.3;
-        if (c >= 0.6) ttaCol = D.col;                                                     // the coat adapts too
+      case 'tta': {                                                // continual TTA: same bear, the world keeps changing
+        const n = Math.floor(A / 2.3), D = TTA[n % TTA.length], c = A % 2.3;
         if (D.w === 'night') light = 0.3; else if (D.w === 'bright') light = 1.75; else wx[D.w] = 1;
+        ttaNow = n % TTA.length; ttaSeen = Math.min(TTA.length, n + (c >= 0.6 ? 1 : 0));
         if (c < 0.6) { hyT = Math.sin(c * 28) * 0.35; P.head.rotation.z = 0.2 * still; }    // huh? a new domain
-        else {
-          want = D.gear;                                                                  // adapted, at test time
-          if (D !== st.ttaSaid) { st.ttaSaid = D; say(`${D.name} → adapted ✓`, 1700); }
-          if (D.gear === 'umbrella') { P.armR.rotation.z = 0.2 + 2.0 * still; P.armR.rotation.x = -0.3 * still; }
-          if (D.gear === 'fan') {                                                         // fans the fog away
-            P.armR.rotation.x = -1.3 * still; PR.fan.rotation.set(0, -root.rotation.y, Math.sin(A * 14) * 0.5);
-            wx.fog = Math.max(0.12, 1 - (c - 0.6) * 1.1);
-          }
-          if (D.gear === 'snowman') snowy = 1;
-          if (D.gear === 'lantern') P.armL.rotation.x = -0.9 * still;
-          if (c < 0.9) root.position.y += Math.sin((c - 0.6) / 0.3 * Math.PI) * 0.12 * still;
+        else {                                                                            // adapted, at test time: a nod and a sparkle
+          if (D !== st.ttaSaid) { st.ttaSaid = D; say(`Domain ${n + 1}: ${D.name} → adapted ✓`, 1700); }
+          if (c < 0.9) { root.position.y += Math.sin((c - 0.6) / 0.3 * Math.PI) * 0.12 * still; sparkle = 1; }
+          hx = c < 1.1 ? 0.25 * Math.sin((c - 0.6) / 0.5 * Math.PI) : 0;
         }
         break;
       }
@@ -1526,6 +1527,13 @@ function start() {
     M.light.color.lerp(robo ? METAL2 : LIGHT, Math.min(1, dt * 4)); M.ear.color.lerp(robo ? METAL3 : EARC, Math.min(1, dt * 4));
     M.eye.color.lerp(robo ? _c3.setHex(0x7cf0ff) : EYEC, Math.min(1, dt * 4)); M.eye.emissive.setHex(0x3cc8ff); M.eye.emissiveIntensity = 1.2 * st.robo;
     maskMat.opacity = 0.62 * maskK;
+    stream.visible = ttaNow >= 0 && !st.sleeping;
+    if (stream.visible) streamIcons.forEach((m, i) => {
+      const cur = i === ttaNow, seen = i < ttaSeen;
+      m.material.opacity = cur || seen ? 1 : 0.28;
+      m.scale.setScalar(cur ? 1.2 + 0.06 * Math.sin(now / 150) : 1);
+      if (cur) arrow.position.set(m.position.x, -0.32, 0);
+    });
     mods.forEach((m, i) => {                                     // modules snap on and off with a little pop
       const on = garaOn && garaOn.includes(i) && !st.sleeping ? 1 : 0;
       m.userData.k += (on - m.userData.k) * Math.min(1, dt * 12);
@@ -1618,7 +1626,7 @@ function start() {
     }
     renderer.clearDepth();
     camera.layers.set(1); renderer.render(scene, camera);
-    const drawnTop = Math.min(topPx([root, cloud, rankDots, PR.robot].filter((o) => o.visible)), st.act === 'trophy' ? (FY - 4.4 * PX) : CH);
+    const drawnTop = Math.min(topPx([root, cloud, rankDots, PR.robot, stream].filter((o) => o.visible)), st.act === 'trophy' ? (FY - 4.4 * PX) : CH);
     if (!fixed && st.pos) step(now, moving);
 
     // place it
