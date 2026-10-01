@@ -156,6 +156,12 @@ function start() {
     'gal:swiss.jpg': 'kickCH', 'gal:tubingen.jpg': 'flagDE',
   };
 
+  // where each conference was, and what the bear wears or holds there
+  const VENUE = { cvpr22: 'nola', neurips23: 'nola', cvpr23: 'vancouver', eccv22: 'telaviv', eccv24: 'milan', neurips25: 'sandiego', cvpr26: 'denver', accv: 'hanoi' };
+  const VNAME = { nola: 'New Orleans 🎷', vancouver: 'Vancouver 🍁', telaviv: 'Tel Aviv 🏖️', milan: 'Milan 🍕', sandiego: 'San Diego 🏄', denver: 'Denver 🤠', hanoi: 'Hanoi 🇻🇳' };
+  const VACC = { nola: ['beads'], vancouver: ['maple'], telaviv: ['shades', 'ball'], milan: ['pizza'], sandiego: ['shades', 'surf'], denver: ['cowboy'], hanoi: ['nonla'] };
+  const HANDHELD = { maple: 'up', ball: 'front', pizza: 'front' };
+
   // ------------------------------------------------------------ dom
   const canvas = document.createElement('canvas');
   canvas.className = 'buddy';
@@ -383,6 +389,35 @@ function start() {
     for (let i = 0; i < a.length; i += 3) { const x = flagBase[i]; a[i + 2] = Math.sin(x * 7 - t * 8) * 0.08 * x / 0.9; }
     flagGeo.attributes.position.needsUpdate = true;
   }
+  // venue accessories
+  PR.beads = new THREE.Group(); PR.beads.position.y = 1.95; P.body.add(PR.beads);            // Mardi Gras beads
+  for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2; PR.beads.add(sphere(0.06, pmat([0x7b3fbf, 0x2e9e4f, 0xe3b341][i % 3], 0.25, { metalness: 0.4 }), [1, 1, 1], [Math.sin(a) * 0.62, -0.18 - 0.22 * (1 + Math.cos(a)) / 2, Math.cos(a) * 0.6])); }
+  PR.maple = new THREE.Group(); PR.maple.position.set(0, -0.6, 0.12); P.armL.add(PR.maple);   // a Canadian flag in the left paw
+  PR.maple.add(capsule(0.025, 1.0, pmat(0x8a5a2b, 0.5), [0, -0.5, 0]));
+  const caTex = flagTex((g, w, h) => {
+    g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#d52b1e'; g.fillRect(0, 0, w / 4, h); g.fillRect(w * 3 / 4, 0, w / 4, h);
+    const cx = w / 2, cy = h / 2 + 4, k = 1.25;                                                // a simple maple leaf
+    const pts = [[0, -34], [6, -22], [14, -26], [11, -10], [24, -16], [20, -6], [30, -4], [18, 6], [21, 14], [4, 10], [3, 22], [-3, 22], [-4, 10], [-21, 14], [-18, 6], [-30, -4], [-20, -6], [-24, -16], [-11, -10], [-14, -26], [-6, -22]];
+    g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(cx + x * k, cy + y * k) : g.moveTo(cx + x * k, cy + y * k))); g.closePath(); g.fill();
+  });
+  const caFlag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), new THREE.MeshStandardMaterial({ map: caTex, roughness: 0.8, side: THREE.DoubleSide }));
+  caFlag.position.set(-0.3, -0.85, 0); caFlag.rotation.z = Math.PI; PR.maple.add(caFlag);
+  PR.ball = new THREE.Group(); PR.ball.position.set(0, -0.75, 0.15); P.armL.add(PR.ball);       // a beach ball
+  [0xe5484d, 0xffffff, 0x3b6fd8, 0xffd35a, 0xffffff, 0x2e9e4f].forEach((c, i) => PR.ball.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12, i * Math.PI / 3, Math.PI / 3), pmat(c, 0.35))));
+  PR.pizza = new THREE.Group(); PR.pizza.position.set(0, -0.7, 0.2); P.armL.add(PR.pizza);     // a slice of pizza
+  const slice = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.05, 20, 1, false, -0.35, 0.7), pmat(0xf6c95b, 0.6)); slice.rotation.x = Math.PI / 2; slice.position.y = -0.3; PR.pizza.add(slice);
+  const crust = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 6, 12, 0.7), pmat(0xc98a3a, 0.6)); crust.rotation.z = Math.PI / 2 - 0.35; crust.position.y = -0.3; PR.pizza.add(crust);
+  for (const [x, y] of [[0.05, -0.55], [-0.08, -0.72], [0.1, -0.75]]) PR.pizza.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 12), pmat(0xc0392b, 0.5)).rotateX(Math.PI / 2).translateX(x).translateZ(-y).translateY(0.035));
+  PR.surf = new THREE.Group(); PR.surf.position.set(-1.6, 0, 0.6); PR.surf.rotation.set(0, 0.3, 0.1); scene.add(PR.surf);   // a surfboard beside it
+  PR.surf.add(sphere(1, pmat(0x3fb4c9, 0.3), [0.34, 1.5, 0.07], [0, 1.5, 0]));
+  PR.surf.add(sphere(1, pmat(0xffffff, 0.3), [0.05, 1.45, 0.075], [0, 1.5, 0]));
+  PR.cowboy = new THREE.Group(); PR.cowboy.position.y = 0.8; P.head.add(PR.cowboy);            // a cowboy hat
+  const hatB = pmat(0x9b6a3c, 0.6);
+  const cbrim = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.05, 32), hatB); cbrim.scale.z = 0.85; PR.cowboy.add(cbrim);
+  PR.cowboy.add(sphere(0.5, hatB, [1, 0.62, 0.85], [0, 0.18, 0]));
+  const cband = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 24), pmat(0x3a2418, 0.5)); cband.scale.z = 0.85; cband.position.y = 0.08; PR.cowboy.add(cband);
+  PR.nonla = new THREE.Group(); PR.nonla.position.y = 0.72; P.head.add(PR.nonla);              // a nón lá
+  PR.nonla.add(new THREE.Mesh(new THREE.ConeGeometry(1.05, 0.62, 32, 1, true), pmat(0xe6cf8f, 0.75, { side: THREE.DoubleSide })).translateY(0.28));
   // snow: it turns into a snowman (carrot nose, top hat)
   PR.snowman = new THREE.Group(); P.head.add(PR.snowman);
   const carrot = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.45, 14), pmat(0xf08a24, 0.5)); carrot.rotation.x = Math.PI / 2; carrot.position.set(0, -0.12, 1.15); PR.snowman.add(carrot);
@@ -417,7 +452,7 @@ function start() {
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   for (const k in PR) PR[k].traverse((o) => o.layers.set(1));
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
-  Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
+  Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.surf.userData, { s: 1.0 }); Object.assign(PR.pizza.userData, { s: 1.7 }); Object.assign(PR.ball.userData, { s: 1.2 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
   const ACTPROP = { flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
@@ -603,8 +638,10 @@ function start() {
   }
   // stand beside an element, on the side nearer the cursor
   function besideOf(el) {
-    const r = el.getBoundingClientRect(), y = r.top + scrollY + Math.min(r.height, 60) + BODY_H * 0.5;
-    const L = [r.left + scrollX - BODY_W - 26, y], R = [r.right + scrollX + BODY_W + 26, y];
+    // photos sit in a grid: stand in the page margin, level with the photo
+    const r = el.getBoundingClientRect(), band = (el.closest('.gallery-grid') || el).getBoundingClientRect();
+    const y = r.top + scrollY + Math.min(el.matches('.gallery-item') ? r.height * 0.55 : r.height, 60) + BODY_H * 0.5;
+    const L = [band.left + scrollX - BODY_W - 26, y], R = [band.right + scrollX + BODY_W + 26, y];
     const ref = st.cursor || st.pos;
     if (!ref) return [L, R];
     return Math.abs(L[0] - ref[0]) <= Math.abs(R[0] - ref[0]) ? [L, R] : [R, L];
@@ -620,7 +657,8 @@ function start() {
       : spot.matches('.gallery-item') ? 'gal:' + ((spot.querySelector('img') || {}).getAttribute?.('src') || '').split('/').pop().split('?')[0]
       : 'sec:' + sectionOf(spot);
     if (ACT[key] !== st.act) { st.act = ACT[key] || null; st.actT = 0; }
-    say(lineFor(spot, el), 3800);
+    st.venue = key.startsWith('gal:') ? VENUE[Object.keys(VENUE).find((v) => key.slice(4).startsWith(v))] || null : null;
+    say(lineFor(spot, el) + (st.venue ? ` · ${VNAME[st.venue]}` : ''), 3800);
   }
   document.addEventListener('pointermove', (e) => {
     st.cursor = [e.clientX + scrollX, e.clientY + scrollY];
@@ -642,14 +680,19 @@ function start() {
       }, 260);
     }
   }, { passive: true });
-  let scrollTimer = 0;
+  let scrollTimer = 0, lastMid = 0;
+  // phones: whatever sits in the middle of the screen is what it acts out
+  function midSpot() {
+    const el = document.elementFromPoint(innerWidth / 2, innerHeight * 0.45), spot = spotOf(el);
+    if (spot && spot !== st.hover && !spot.closest('#navbar')) { showSpot(spot, el); st.fxT = 60 + Math.random() * (document.documentElement.clientWidth - 120); }
+  }
   addEventListener('scroll', () => {
     wake();
+    if (fixedMode() && performance.now() - lastMid > 450) { lastMid = performance.now(); midSpot(); }
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => {
       if (fixedMode()) {                                     // phones: act out what is in the middle of the screen
-        const el = document.elementFromPoint(innerWidth / 2, innerHeight * 0.45), spot = spotOf(el);
-        if (spot && spot !== st.hover && !spot.closest('#navbar')) showSpot(spot, el);
+        midSpot();
         return;
       }
       if (!st.pos) return;
@@ -668,13 +711,7 @@ function start() {
     wake(); st.jumpT = performance.now(); st.waveT = performance.now();
     say(['Hi! ♥', 'Thanks for visiting!', '♥ ♥', 'Hehe, that tickles.'][Math.floor(Math.random() * 4)], 2000);
   });
-  // phones: a tap on a paper or section, and it hops over and acts it out
-  document.addEventListener('click', (e) => {
-    if (!fixedMode() || performance.now() - (st.tapBear || 0) < 400) return;
-    const el = e.target instanceof Element ? e.target : null, spot = spotOf(el);
-    if (!spot || spot.closest('#navbar')) return;
-    wake(); showSpot(spot, el); st.fxT = e.clientX;
-  });
+
 
   // first appearance: beside the top of the content
   setTimeout(() => {
@@ -685,7 +722,8 @@ function start() {
       const g = nearestFree([r.left + scrollX - 60, scrollY + innerHeight * 0.55]);
       if (g) { st.pos = centre(...g); st.burrow = { from: null, to: st.pos, t0: performance.now() - DIG }; }   // pops out of a hole
     }
-    say(fixedMode() ? "Hi! I'm Sohyun's bear 🧸 Tap a paper and I'll act it out!" : "Hi! I'm Sohyun's bear 🧸 I follow the honey. Hover a paper and I'll act it out!", 5000);
+    if (fixedMode()) setTimeout(midSpot, 4800);
+    say(fixedMode() ? "Hi! I'm Sohyun's bear 🧸 Scroll, and I'll act out what you see!" : "Hi! I'm Sohyun's bear 🧸 I follow the honey. Hover a paper and I'll act it out!", 5000);
   }, 700);
 
   // hold a prop d in front of it (toward the viewer) at height y, facing the viewer
@@ -1052,9 +1090,15 @@ function start() {
       d.userData.v.y -= 9.8 * dt; d.position.addScaledVector(d.userData.v, dt);
       if (d.position.y < 0) d.visible = false;
     }
+    // the venue's accessories, held in the left paw when they need one
+    const extra = st.act && st.venue ? VACC[st.venue] : [];
+    for (const k of extra) {
+      if (HANDHELD[k] === 'up') { P.armL.rotation.z = -0.2 - 2.1 * still; P.armL.rotation.x = -0.2 * still; }
+      if (HANDHELD[k] === 'front') { P.armL.rotation.x = -1.1 * still; P.armL.rotation.z = -0.35; }
+    }
     // the act's prop pops in, the others pop out
     for (const k in PR) {
-      const o = PR[k], on = want === k && !st.sleeping;
+      const o = PR[k], on = (want === k || extra.includes(k)) && !st.sleeping;
       o.userData.k += ((on ? 1 : 0) - o.userData.k) * Math.min(1, dt * 9);
       o.visible = o.userData.k > 0.02; o.scale.setScalar(Math.max(0.001, o.userData.k) * (o.userData.s || 1));
     }
