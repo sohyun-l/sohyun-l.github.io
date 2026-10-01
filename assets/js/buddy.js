@@ -131,7 +131,8 @@ function start() {
     lee2025dicotta: 'tta',                   // continual TTA: the condition keeps changing; each time it is
                                              // puzzled for a moment, then adapts (gears up for it)
     yoon2026metalens: 'lens',                // metalens: drops and dust on the lens, still a clear view
-    lee2026moga: 'film',                     // robust video segmentation: films steadily while conditions change frame to frame
+    lee2026moga: 'film',                     // robust video segmentation: films steadily through video corruptions
+                                             // (motion blur, noise, defocus, compression, low contrast) that change frame to frame
     lee2025garasam: 'conditions',            // robust SAM: rank components lit per input, even an unseen one
     lee2024frest: 'restore',                 // restoration: rain, snow, fog, dark, shaking each one off
     sehyun2023active: 'ask',                 // active learning: a superpixel is queried, every class in it ticked, then its pixels sorted out
@@ -903,7 +904,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0 };
+    let vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -982,7 +983,8 @@ function start() {
         break;
       }
       case 'film': {                                               // keeps filming steadily as conditions change frame to frame
-        { const w = ['rain', 'noise', 'fog', 'snow', 'night'][Math.floor(A / 0.8) % 5]; if (w === 'night') light = 0.35; else wx[w] = 1; }
+        vfx = ['motion', 'noise', 'defocus', 'pixel', 'contrast'][Math.floor(A / 0.9) % 5];
+        if (vfx === 'noise') wx.noise = 1;
         P.armL.rotation.x = P.armR.rotation.x = -1.35 * still;
         if (st.cursor && st.pos) {
           hyT = Math.max(-1, Math.min(1, (st.cursor[0] - st.pos[0]) / 220)) - root.rotation.y;
@@ -1201,6 +1203,13 @@ function start() {
     if (st.sleeping) ey = 0.12;
     else if (now > st.blinkT) { ey = 0.1; if (now > st.blinkT + 130) st.blinkT = now + 2400 + Math.random() * 2800; }
     P.eyes.children.forEach((e, i) => (e.scale.y = wink && i === 0 && !st.sleeping ? 0.12 : ey));
+    // video corruptions: the frame itself degrades (blur, blocks, washed-out colours)
+    if (vfx !== st.vfx) {
+      st.vfx = vfx;
+      renderer.setPixelRatio(vfx === 'pixel' ? 0.16 : dpr);
+      canvas.style.imageRendering = vfx === 'pixel' ? 'pixelated' : '';
+      canvas.style.filter = { motion: 'blur(1.6px)', defocus: 'blur(3px)', contrast: 'contrast(0.45) saturate(0.5) brightness(1.15)' }[vfx] || '';
+    }
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
     if (maskMat.opacity > 0.01) {                               // the mask: the whole bear, in one flat colour
@@ -1229,7 +1238,8 @@ function start() {
     st.at = { fixed, foot: [pos[0], pos[1], fixed ? 0.72 : 1] };
     const pop = st.poof ? Math.min(1, (now - st.poof) / 260) : 1, k = fixed ? 0.72 : 1;
     canvas.style.opacity = String(pop);
-    canvas.style.transform = `translate(${left}px, ${top}px) scale(${(0.6 + 0.4 * pop) * k})`;
+    const jx = st.vfx === 'motion' ? Math.sin(now / 18) * 5 : 0;                    // motion blur: a fast shake
+    canvas.style.transform = `translate(${left + jx}px, ${top}px) scale(${(0.6 + 0.4 * pop) * k})`;
     shadow.style.transform = `translate(${pos[0] - 32}px, ${pos[1] - 7}px) scale(${Math.max(0.35, 1 - lift * 0.4) * k})`;
     shadow.style.opacity = String(pop * 0.9 * (1 - sink));
     if (holeK > 0.01 && holeAt && !fixed) {
