@@ -997,7 +997,8 @@ function start() {
     if (!moving) {
       // at rest: turn to face the visitor, glancing toward the cursor
       st.yawT = -0.35;                               // a three-quarter view shows off the snout
-      if (st.cursor && st.pos && !fixed) st.yawT = Math.max(-0.6, Math.min(0.6, (st.cursor[0] - st.pos[0]) / 400)) || -0.35;
+      if (compact()) st.yawT = -0.65;                // phones: it stands at the right edge, so it looks left, at the page
+      else if (st.cursor && st.pos && !fixed) st.yawT = Math.max(-0.6, Math.min(0.6, (st.cursor[0] - st.pos[0]) / 400)) || -0.35;
     }
     // little things it does on its own while standing: look around, tilt
     // its head, hop, wiggle, wave, spin, or wander off a bit
@@ -1088,19 +1089,22 @@ function start() {
     }
     switch (st.act) {
       case 'tame': {                                               // a jittery arm, calmed down
-        const c = A % 4.4, wildK = c < 2.2 ? 1 - c / 2.4 : 0;
-        root.rotation.y = st.yaw + (0.75 - st.yaw) * Math.min(1, A * 3);   // turns to the robot
+        // the robot stands on the side with room: its right on a computer, its left on a phone (it is at the right edge)
+        const c = A % 4.4, wildK = c < 2.2 ? 1 - c / 2.4 : 0, sd = compact() ? -1 : 1, RX = 1.65 * sd;
+        root.rotation.y = st.yaw + (0.75 * sd - st.yaw) * Math.min(1, A * 3);   // turns to the robot
+        PR.robot.rotation.y = -0.3 * sd;
         blue.color.setHex(wildK > 0.05 ? 0xe5484d : 0x3b6fd8);
         blue.emissive.setHex(wildK > 0.05 && Math.sin(A * 20) > 0 ? 0x7a1010 : 0x000000);
         if (c < 2.2) {                                             // bear: easy there, a gentle pat
-          P.armR.rotation.z = 0.2 + 0.5 * still; P.armR.rotation.x = (-1.3 + Math.sin(A * 9) * 0.3) * still;   // easy there: a pat
-          j1.rotation.z = -0.25 - wildK * (0.55 * Math.sin(A * 13) + 0.3 * Math.sin(A * 23));
-          j2.rotation.z = -0.7 - wildK * 0.7 * Math.sin(A * 17 + 1);
-          PR.robot.position.x = 1.65 + wildK * 0.05 * Math.sin(A * 31);
+          const pat = sd > 0 ? P.armR : P.armL;                     // easy there: a pat, with the paw on the robot's side
+          pat.rotation.z = sd * (0.2 + 0.5 * still); pat.rotation.x = (-1.3 + Math.sin(A * 9) * 0.3) * still;
+          j1.rotation.z = sd * (-0.25 - wildK * (0.55 * Math.sin(A * 13) + 0.3 * Math.sin(A * 23)));
+          j2.rotation.z = sd * (-0.7 - wildK * 0.7 * Math.sin(A * 17 + 1));
+          PR.robot.position.x = RX + wildK * 0.05 * Math.sin(A * 31);
         } else {                                                   // tamed: smooth and steady, a happy hop
           const v = c - 2.2;
-          j1.rotation.z = -0.25 - 0.25 * Math.sin(v * 2.6); j2.rotation.z = -0.7 - 0.3 * Math.sin(v * 2.6 + 1);
-          PR.robot.position.x = 1.65;
+          j1.rotation.z = sd * (-0.25 - 0.25 * Math.sin(v * 2.6)); j2.rotation.z = sd * (-0.7 - 0.3 * Math.sin(v * 2.6 + 1));
+          PR.robot.position.x = RX;
           if (v < 0.5) root.position.y += Math.sin(v / 0.5 * Math.PI) * 0.22 * still;
           fingers.forEach((f, i) => (f.position.x = (i ? 1 : -1) * (0.05 + 0.03 * Math.abs(Math.sin(v * 5)))));
         }
