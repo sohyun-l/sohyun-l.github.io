@@ -1613,16 +1613,16 @@ html.transition *:after {
 }
 @media print { .panda-bubble { display: none; } }
 
-// The 3D panda (assets/js/buddy.js): walks around the page itself, between
+// The 3D quokka (assets/js/buddy.js): walks around the page itself, between
 // the content blocks; positioned in document coordinates by the script.
 .buddy {
   position: absolute;
   left: 0;
   top: 0;
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 190px;
   z-index: 1500;
-  cursor: pointer;
+  pointer-events: none;
   opacity: 0;
   -webkit-tap-highlight-color: transparent;
 }
