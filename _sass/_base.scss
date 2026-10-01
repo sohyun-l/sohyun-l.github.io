@@ -1694,14 +1694,33 @@ html, body { overflow-x: clip; }
   transition: opacity 0.4s ease;
   &.on { opacity: 1; }
 }
-// the rope the bear zips along between gallery photos
-.buddy-rope {
+// the sparkle trail a leap leaves behind; each fades on its own, so the tail goes first
+.buddy-spark {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 1499;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6c9 0%, #f5b73b 55%, rgba(245, 183, 59, 0) 72%);
   pointer-events: none;
-  overflow: visible;
-  display: none;
-  path { fill: none; stroke: #8a6a45; stroke-width: 3.5; stroke-linecap: round; }
+  z-index: 1499;
+  animation: buddy-spark 1.3s ease-in forwards;
+}
+@keyframes buddy-spark {
+  0% { opacity: 1; scale: 1.2; }
+  100% { opacity: 0; scale: 0.3; }
+}
+// the layer the guide lives in: page coordinates, clipped at the page's sides
+.buddy-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 0;
+  overflow-x: clip;
+  overflow-y: visible;
+  pointer-events: none;
+  z-index: 1500;
 }

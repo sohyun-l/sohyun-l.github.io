@@ -14,7 +14,8 @@ if (!window.__buddy) {
 
 function start() {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const fixedMode = () => matchMedia('(hover: none)').matches || innerWidth < 980;
+  const compact = () => matchMedia('(hover: none)').matches || innerWidth < 980;   // phones: smaller, straight-line moves
+  const fixedMode = () => false;
   const CW = 320, CH = 230;                          // canvas size, css px: room above for hops
 
   // ------------------------------------------------------------ lines
@@ -198,12 +199,12 @@ function start() {
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'A bear guide');
   const shadow = document.createElement('div'); shadow.className = 'buddy-shadow';
-  const hole = document.createElement('div'); hole.className = 'buddy-hole'; document.body.appendChild(hole);
-  // the gallery zipline: a rope from photo to photo
-  const rope = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); rope.setAttribute('class', 'buddy-rope');
-  const ropePath = document.createElementNS('http://www.w3.org/2000/svg', 'path'); rope.appendChild(ropePath); document.body.appendChild(rope);
+  // everything that is placed in page coordinates sits in a layer that clips sideways, so the
+  // canvas reaching past the page edge never makes the page wider
+  const layer = document.createElement('div'); layer.className = 'buddy-layer'; document.body.appendChild(layer);
+  const hole = document.createElement('div'); hole.className = 'buddy-hole'; layer.appendChild(hole);
   const bubble = document.createElement('div'); bubble.className = 'buddy-bubble'; bubble.setAttribute('aria-live', 'polite');
-  document.body.append(shadow, canvas, bubble);
+  layer.append(shadow, canvas); document.body.append(bubble);
 
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true }); }
@@ -751,7 +752,7 @@ function start() {
   // when every route is a long detour, pop over instead
   const p0 = (spots) => spots[0];
   function goTo(...spots) {
-    if (fixedMode()) return;
+    if (compact()) { goDirect(spots[0]); return; }
     if (st.burrow) { burrowTo(nearestFree(p0(spots)) ? centre(...nearestFree(p0(spots))) : st.burrow.to); return; }
     if (!grid || performance.now() - gridAt > 2500) buildGrid();
     let first = null;
@@ -781,23 +782,28 @@ function start() {
     const y = r.bottom + scrollY - 6, right = r.right + 46 < vw - 20;
     return [(right ? r.right + 42 : r.left - 42) + scrollX, y];
   }
-  // a straight walk (or a burrow, if far) that ignores the page's layout
+  // a straight move that ignores the page's layout: a walk if near, a leap in an arc
+  // (leaving a fading sparkle trail) if further, a burrow if far
   function goDirect(p) {
-    if (fixedMode()) return;
     if (!st.pos || reduce) { st.pos = p.slice(); return; }
     const d = Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]);
     if (st.burrow || d > 1500) { burrowTo(p); return; }
-    if (st.zip) { st.zip.to = p.slice(); return; }
+    if (st.leap) { st.leap.to = p.slice(); return; }
     if (d < 140) { st.path = [p]; return; }
-    st.path = []; st.zip = { from: st.pos.slice(), to: p.slice(), t0: performance.now(), dur: 900 + d * 1.6 };   // zip across on a rope
+    st.path = []; st.leap = { from: st.pos.slice(), to: p.slice(), t0: performance.now(), dur: 650 + d * 0.7, h: 90 + d * 0.2 };
   }
-  // the rope runs above both spots, sagging a little; the bear hangs below it by its paws
-  const HANG = 72, RAISE = 70;
-  function ropeAt(z, u) {
-    const A = [z.from[0], z.from[1] - HANG - RAISE], B = [z.to[0], z.to[1] - HANG - RAISE];
-    const C = [(A[0] + B[0]) / 2, Math.max(A[1], B[1]) + 34];
-    const v = 1 - u;
-    return { A, B, C, p: [v * v * A[0] + 2 * v * u * C[0] + u * u * B[0], v * v * A[1] + 2 * v * u * C[1] + u * u * B[1]] };
+  // phones: stand at the right edge, level with what is on screen
+  function besideMobile(spot) {
+    const r = spot.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+    const y = Math.max(innerHeight * 0.4, Math.min(innerHeight * 0.86, r.top + Math.min(r.height, 220)));
+    return [scrollX + vw - 46, scrollY + y];
+  }
+  let lastSpark = null;
+  function spark(p) {
+    const el = document.createElement('div'); el.className = 'buddy-spark';
+    el.style.transform = `translate(${p[0]}px, ${p[1]}px)`;
+    el.addEventListener('animationend', () => el.remove());
+    document.body.appendChild(el);
   }
   function besideOf(el) {
     const r = el.getBoundingClientRect(), y = r.top + scrollY + Math.min(r.height, 60) + BODY_H * 0.5;
@@ -855,14 +861,15 @@ function start() {
       const v = document.querySelector('.mapmyvisitors-widget'), r = v && v.getBoundingClientRect();
       if (r && r.top < innerHeight && r.bottom > 0) { el = v; spot = v; }
     }
-    if (spot && spot !== st.hover && !spot.closest('#navbar')) { showSpot(spot, el); st.fxT = 60 + Math.random() * (document.documentElement.clientWidth - 120); }
+    if (spot && spot !== st.hover && !spot.closest('#navbar')) { showSpot(spot, el); goDirect(besideMobile(spot)); }
+    else if (st.pos && (st.pos[1] < scrollY + 80 || st.pos[1] > scrollY + innerHeight - 20)) goDirect([scrollX + document.documentElement.clientWidth - 46, scrollY + innerHeight * 0.7]);
   }
   addEventListener('scroll', () => {
     wake();
-    if (fixedMode() && performance.now() - lastMid > 450) { lastMid = performance.now(); midSpot(); }
+    if (compact() && performance.now() - lastMid > 450) { lastMid = performance.now(); midSpot(); }
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => {
-      if (fixedMode()) {                                     // phones: act out what is in the middle of the screen
+      if (compact()) {                                       // phones: act out what is in the middle of the screen
         midSpot();
         return;
       }
@@ -886,15 +893,18 @@ function start() {
 
   // first appearance: beside the top of the content
   setTimeout(() => {
-    if (!fixedMode()) {
+    if (compact()) {                                         // phones: pop out by the right edge
+      st.pos = [scrollX + document.documentElement.clientWidth - 46, scrollY + innerHeight * 0.72];
+      st.burrow = { from: null, to: st.pos, t0: performance.now() - DIG };
+    } else {
       buildGrid();
       const box = document.querySelector('.container .post') || document.querySelector('.container');
       const r = box.getBoundingClientRect();
       const g = nearestFree([r.left + scrollX - 60, scrollY + innerHeight * 0.55]);
       if (g) { st.pos = centre(...g); st.burrow = { from: null, to: st.pos, t0: performance.now() - DIG }; }   // pops out of a hole
     }
-    if (fixedMode()) setTimeout(midSpot, 4800);
-    say(fixedMode() ? "Hi! I'm Sohyun's bear 🧸 Scroll, and I'll act out what you see!" : "Hi! I'm Sohyun's bear 🧸 I follow the honey. Hover a paper and I'll act it out!", 5000);
+    if (compact()) setTimeout(midSpot, 4800);
+    say(compact() ? "Hi! I'm Sohyun's bear 🧸 Scroll, and I'll act out what you see!" : "Hi! I'm Sohyun's bear 🧸 I follow the honey. Hover a paper and I'll act it out!", 5000);
   }, 700);
 
   // hold a prop d in front of it (toward the viewer) at height y, facing the viewer
@@ -936,25 +946,15 @@ function start() {
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
     const fixed = fixedMode();
 
-    // on the zipline (gallery): jump up and grab, slide along, drop off
+    // leaping in an arc, a trail of sparkles behind that fades from its tail
     st.hanging = 0;
-    if (st.zip && !fixed) {
-      const z = st.zip, u = (now - z.t0) / z.dur, R0 = ropeAt(z, 0);
-      const ease = (x) => x * x * (3 - 2 * x);
-      let fade = 1;
-      if (u < 0.15) { const k = ease(u / 0.15); st.pos = [z.from[0], z.from[1] + (R0.p[1] + HANG - z.from[1]) * k]; st.hanging = k; }
-      else if (u < 0.85) { const r = ropeAt(z, ease((u - 0.15) / 0.7)); st.pos = [r.p[0], r.p[1] + HANG]; st.hanging = 1; st.yawT = Math.sign(z.to[0] - z.from[0]) * 0.5; }
-      else if (u < 1) { const k = ease((u - 0.85) / 0.15), B = ropeAt(z, 1).p; st.pos = [z.to[0], B[1] + HANG + (z.to[1] - B[1] - HANG) * k]; st.hanging = 1 - k; }
-      else { st.pos = z.to.slice(); st.zip = null; fade = 0; }
-      if (st.zip) {
-        const { A, B, C } = ropeAt(z, 0), x0 = Math.min(A[0], B[0]) - 12, y0 = Math.min(A[1], B[1]) - 12;
-        rope.style.display = 'block';
-        rope.style.transform = `translate(${x0}px, ${y0}px)`;
-        rope.setAttribute('width', Math.abs(B[0] - A[0]) + 24); rope.setAttribute('height', Math.max(A[1], B[1]) + 60 - y0);
-        ropePath.setAttribute('d', `M${A[0] - x0},${A[1] - y0} Q${C[0] - x0},${C[1] - y0} ${B[0] - x0},${B[1] - y0}`);
-        rope.style.opacity = String(Math.min(1, u * 8, (1.15 - u) * 6));
-      }
-      if (!fade) rope.style.display = 'none';
+    if (st.leap) {
+      const z = st.leap, u = Math.min(1, (now - z.t0) / z.dur), e = u * u * (3 - 2 * u);
+      st.pos = [z.from[0] + (z.to[0] - z.from[0]) * e, z.from[1] + (z.to[1] - z.from[1]) * e - z.h * 4 * e * (1 - e)];
+      st.hanging = Math.sin(u * Math.PI); st.yawT = Math.sign(z.to[0] - z.from[0]) * 0.6;
+      const kk = compact() ? 0.72 : 1, c = [st.pos[0], st.pos[1] - 40 * kk];
+      if (!lastSpark || Math.hypot(c[0] - lastSpark[0], c[1] - lastSpark[1]) > 16) { spark(c); lastSpark = c; }
+      if (u >= 1) { st.pos = z.to.slice(); st.leap = null; lastSpark = null; st.jumpT = -1; }
     }
     // follow the path
     let moving = false;
@@ -982,7 +982,7 @@ function start() {
     }
     // little things it does on its own while standing: look around, tilt
     // its head, hop, wiggle, wave, spin, or wander off a bit
-    if (!moving && !st.zip && !st.sleeping && !st.act && !st.idle && now > st.nextIdle) {
+    if (!moving && !st.leap && !st.sleeping && !st.act && !st.idle && now > st.nextIdle) {
       const opts = fixed ? ['wander', 'look', 'tilt', 'hop', 'wiggle', 'wave', 'spin'] : ['wander', 'wander', 'look', 'tilt', 'hop', 'wiggle', 'wave', 'spin'];
       st.idle = opts[Math.floor(Math.random() * opts.length)]; st.idleT = 0;
       st.nextIdle = now + 3000 + Math.random() * 3500;
@@ -1343,11 +1343,11 @@ function start() {
       d.userData.v.y -= 9.8 * dt; d.position.addScaledVector(d.userData.v, dt);
       if (d.position.y < 0) d.visible = false;
     }
-    if (st.hanging > 0) {                                        // hanging from the rope by both paws, legs swinging
+    if (st.hanging > 0) {                                        // mid-leap: arms flung up, legs tucked, a little twirl
       const h = st.hanging;
-      P.armL.rotation.z = -0.2 - 2.75 * h; P.armR.rotation.z = 0.2 + 2.75 * h; P.armL.rotation.x = P.armR.rotation.x = 0;
-      P.legL.rotation.x = Math.sin(now / 160) * 0.5 * h; P.legR.rotation.x = -Math.sin(now / 160) * 0.5 * h;
-      P.body.rotation.z = Math.sin(now / 240) * 0.08 * h; want = null;
+      P.armL.rotation.z = -0.2 - 2.3 * h; P.armR.rotation.z = 0.2 + 2.3 * h; P.armL.rotation.x = P.armR.rotation.x = -0.3 * h;
+      P.legL.rotation.x = P.legR.rotation.x = -0.9 * h;
+      root.rotation.y += Math.sin(h * Math.PI) * 0.6; want = null;
     }
     // the venue's accessories, held in the left paw when they need one
     if (st.act && st.venue === 'vancouver') wx.leaves = 1;                // autumn leaves in Vancouver
@@ -1476,8 +1476,9 @@ function start() {
       if (!st.pos) { canvas.style.opacity = '0'; return; }
       pos = st.pos; left = pos[0] - FX; top = pos[1] - FY;
     }
-    st.at = { fixed, foot: [pos[0], pos[1], fixed ? 0.72 : 1] };
-    const pop = st.poof ? Math.min(1, (now - st.poof) / 260) : 1, k = fixed ? 0.72 : 1;
+    const small = compact();
+    st.at = { fixed, foot: [pos[0], pos[1], small ? 0.72 : 1] };
+    const pop = st.poof ? Math.min(1, (now - st.poof) / 260) : 1, k = small ? 0.72 : 1;
     canvas.style.opacity = String(pop);
     const jx = st.vfx === 'motion' ? Math.sin(now / 18) * 5 : 0;                    // motion blur: a fast shake
     canvas.style.transform = `translate(${left + jx}px, ${top}px) scale(${(0.6 + 0.4 * pop) * k})`;
