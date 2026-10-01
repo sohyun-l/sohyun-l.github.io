@@ -25,6 +25,7 @@ function start() {
     publications: "Papers! Hover one and I'll act it out.",
     services: 'Reviewing and service ✅',
     honors: 'Awards and honors 🏆',
+    visitors: 'Thanks for visiting! ♥',
   };
   const NAV = { about: 'Back to the start.', publications: 'All the papers, by year.', gallery: 'Photos!', blog: 'Blog posts.', 'curriculum vitae': 'The CV.' };
   // one line per paper, short enough to fit the bubble
@@ -42,9 +43,10 @@ function start() {
     kang2022style: 'Keeps inventing novel styles in training, to generalize to new domains.',
   };
   // the section a hovered heading or block belongs to
-  const BLOCKS = '.news, .experience, .education, .services, .honors';
+  const BLOCKS = '.news, .experience, .education, .services, .honors, .mapmyvisitors-widget';
   function sectionOf(spot) {
     if (spot.matches('h2[id]')) return spot.id;
+    if (spot.classList.contains('mapmyvisitors-widget')) return 'visitors';
     return ['news', 'experience', 'education', 'services', 'honors'].find((c) => spot.classList.contains(c)) || null;
   }
   function lineFor(spot, el) {
@@ -147,6 +149,7 @@ function start() {
     'sec:publications': 'books',             // a stack of papers
     'sec:services': 'review',                // a clipboard, ticking boxes
     'sec:honors': 'trophy',                  // a trophy held high, confetti
+    'sec:visitors': 'hearts',                // a finger heart, hearts floating out
     // gallery: a pose after each photo
     'gal:accv_wicv.jpg': 'speech', 'gal:cvpr22_workshop.jpg': 'speech', 'gal:cvpr22.jpg': 'speech',
     'gal:accv_wicv_2.jpg': 'cheese', 'gal:eccv24_2.jpg': 'cheese', 'gal:eccv22.jpg': 'cheese', 'gal:tubingen2.jpg': 'flagDE',
@@ -377,7 +380,8 @@ function start() {
   PR.pointer.add(sphere(0.05, pmat(0xe5484d, 0.4), [1, 1, 1], [0, 1.35, 0]));
   PR.phone = new THREE.Group(); PR.phone.position.set(0, -0.72, 0.12); PR.phone.rotation.set(0, Math.PI, 0); P.armL.add(PR.phone);
   PR.phone.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.55, 0.05), pmat(0x2b2b33, 0.3)));
-  const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.46), pmat(0x9fd0f2, 0.2, { emissive: 0x4a7aa8, emissiveIntensity: 0.4 })); scr.position.z = -0.03; scr.rotation.y = Math.PI; PR.phone.add(scr);
+  const scrMat = pmat(0x9fd0f2, 0.2, { emissive: 0x4a7aa8, emissiveIntensity: 0.4 });
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.46), scrMat); scr.position.z = -0.03; scr.rotation.y = Math.PI; PR.phone.add(scr);
   PR.laptop = new THREE.Group(); P.body.add(PR.laptop);
   const lb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.6), pmat(0xb9c0c8, 0.4)); PR.laptop.add(lb);
   const lid = new THREE.Group(); lid.position.set(0, 0.02, -0.3); lid.rotation.x = -0.35; PR.laptop.add(lid);
@@ -429,6 +433,13 @@ function start() {
   }
   // the page dims around it for the low-light paper
   const dimmer = document.createElement('div'); dimmer.className = 'buddy-dim'; document.body.appendChild(dimmer);
+  // hearts for the visitors
+  const heartTex = cardTex(64, 64, (g) => {
+    g.fillStyle = '#ff4d6d'; g.beginPath(); g.moveTo(32, 54);
+    g.bezierCurveTo(4, 34, 6, 10, 22, 10); g.bezierCurveTo(28, 10, 31, 14, 32, 19); g.bezierCurveTo(33, 14, 36, 10, 42, 10); g.bezierCurveTo(58, 10, 60, 34, 32, 54); g.fill();
+  });
+  PR.hearts = new THREE.Group(); P.body.add(PR.hearts);
+  const hearts = Array.from({ length: 6 }, (_, i) => { const h = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: heartTex, transparent: true, depthWrite: false })); h.userData.ph = i / 6; PR.hearts.add(h); return h; });
   // venue accessories
   PR.maple = new THREE.Group(); PR.maple.position.set(0, -0.6, 0.12); P.armL.add(PR.maple);   // a Canadian flag in the left paw
   PR.maple.add(capsule(0.025, 1.0, pmat(0x8a5a2b, 0.5), [0, -0.5, 0]));
@@ -444,7 +455,7 @@ function start() {
   PR.trumpet = new THREE.Group(); P.body.add(PR.trumpet);
   const brass = pmat(0xe3b341, 0.25, { metalness: 0.7 });
   PR.trumpet.add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.9, 12), brass).rotateX(Math.PI / 2));
-  PR.trumpet.add(new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.35, 24, 1, true), pmat(0xe3b341, 0.25, { metalness: 0.7, side: THREE.DoubleSide })).rotateX(-Math.PI / 2).translateY(0.6));
+  PR.trumpet.add(new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.35, 24, 1, true), pmat(0xe3b341, 0.25, { metalness: 0.7, side: THREE.DoubleSide })).rotateX(-Math.PI / 2).translateY(-0.6));   // the bell, facing away
   for (let i = 0; i < 3; i++) PR.trumpet.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 10), brass).translateZ(-0.05 + i * 0.1).translateY(0.12));
   const noteTex = cardTex(64, 64, (g) => { g.fillStyle = '#2b201b'; g.font = 'bold 54px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('♪', 32, 34); });
   const notes = Array.from({ length: 4 }, (_, i) => { const n = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: noteTex, transparent: true })); n.userData.ph = i / 4; PR.trumpet.add(n); return n; });
@@ -452,21 +463,26 @@ function start() {
   PR.beach = new THREE.Group(); scene.add(PR.beach);
   const sand = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40), pmat(0xf0d9a8, 0.95)); sand.rotation.x = -Math.PI / 2; sand.position.y = 0.01; PR.beach.add(sand);
   const wood = pmat(0xf7f2e8, 0.6), stripe = pmat(0x3b8bd6, 0.6);
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 1.9), stripe); seat.position.set(0, 0.42, 0.2); PR.beach.add(seat);
-  const backrest = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 1.3), stripe); backrest.position.set(0, 0.85, -1.15); backrest.rotation.x = -0.75; PR.beach.add(backrest);
-  for (const [x, z] of [[-0.5, 1.0], [0.5, 1.0], [-0.5, -0.6], [0.5, -0.6]]) PR.beach.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.06), wood).translateX(x).translateY(0.21).translateZ(z));
-  const parasol = new THREE.Group(); parasol.position.set(-1.5, 0, -0.6); PR.beach.add(parasol);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 1.0), stripe); seat.position.set(0.55, 0.42, 0); PR.beach.add(seat);
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 1.0), stripe); backrest.position.set(-0.85, 0.85, 0); backrest.rotation.z = -0.75; PR.beach.add(backrest);
+  for (const [x, z] of [[-0.35, 0.42], [-0.35, -0.42], [1.45, 0.42], [1.45, -0.42]]) PR.beach.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.06), wood).translateX(x).translateY(0.21).translateZ(z));
+  const parasol = new THREE.Group(); parasol.position.set(-1.7, 0, -0.9); PR.beach.add(parasol);
   parasol.add(capsule(0.03, 2.6, wood, [0, 1.3, 0]));
   for (let i = 0; i < 8; i++) parasol.add(new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.45, 8, 1, true, i * Math.PI / 4, Math.PI / 4), pmat(i % 2 ? 0xffffff : 0xe5484d, 0.6, { side: THREE.DoubleSide })).translateY(2.7));
   // San Diego: a surfboard under its feet, and a wave curling behind
   PR.surf = new THREE.Group(); root.add(PR.surf);
   PR.surf.add(sphere(1, pmat(0x3fb4c9, 0.3), [1.7, 0.07, 0.42], [0, -0.02, 0.05]));
   PR.surf.add(sphere(1, pmat(0xffffff, 0.3), [1.65, 0.075, 0.05], [0, -0.01, 0.05]));
-  PR.wave = new THREE.Group(); PR.wave.position.set(-1.0, 0, -0.9); PR.wave.rotation.y = 0.5; scene.add(PR.wave);
+  PR.wave = new THREE.Group(); PR.wave.position.set(-1.9, 0, -0.4); scene.add(PR.wave);
   const water = pmat(0x2f8fd6, 0.25, { transparent: true, opacity: 0.85, side: THREE.DoubleSide });
-  const curl = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.55, 14, 30, Math.PI * 1.1), water); curl.rotation.y = Math.PI / 2; curl.position.y = 0.4; PR.wave.add(curl);
-  for (let i = 0; i < 7; i++) PR.wave.add(sphere(0.18 + (i % 3) * 0.05, pmat(0xffffff, 0.6), [1, 0.8, 1], [0, 1.9 + Math.sin(i) * 0.15, -0.3 + i * 0.25]).translateX((i - 3) * 0.3));
-  const swell = new THREE.Mesh(new THREE.CircleGeometry(1.7, 40), pmat(0x56a9e3, 0.3)); swell.rotation.x = -Math.PI / 2; swell.position.set(0.3, 0.0, 1.3); swell.scale.set(1.3, 0.8, 1); PR.wave.add(swell);
+  // the wave, seen side-on: it rises on the left and curls over toward the bear, its lip foaming
+  const WR = 1.15;
+  const sheet = new THREE.Mesh(new THREE.CylinderGeometry(WR, WR, 1.6, 40, 1, true, Math.PI / 2 + 0.35, Math.PI * 1.5 - 0.35), water);
+  sheet.rotation.x = Math.PI / 2; sheet.position.y = WR; PR.wave.add(sheet);
+  const lip = [WR * Math.sin(Math.PI / 2 + 0.35), WR - WR * Math.cos(Math.PI / 2 + 0.35)];
+  for (let i = 0; i < 6; i++) PR.wave.add(sphere(0.17 + (i % 2) * 0.05, pmat(0xffffff, 0.6), [1, 0.8, 1], [lip[0] + 0.05, lip[1] + 0.02, -0.7 + i * 0.28]));
+  for (let i = 0; i < 5; i++) PR.wave.add(sphere(0.09, pmat(0xffffff, 0.6), [1, 1, 1], [lip[0] + 0.25 + i * 0.12, lip[1] - 0.3 - i * 0.22, 0.2]));   // spray
+  const sea = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40), pmat(0x56a9e3, 0.3)); sea.rotation.x = -Math.PI / 2; sea.position.set(1.5, 0.0, 0.6); sea.scale.set(1.3, 0.75, 1); PR.wave.add(sea);
   // Milan: the runway, a designer handbag and camera flashes
   PR.bag = new THREE.Group(); PR.bag.position.set(0, -0.72, 0.12); P.armL.add(PR.bag);
   PR.bag.add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 0.16), pmat(0xd64f8f, 0.35)).translateY(-0.2));
@@ -533,7 +549,7 @@ function start() {
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
-  const ACTPROP = { trumpet: 'trumpet', sunbed: 'beach', runway: 'runway', surf: 'surf', ski: 'skis', flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
+  const ACTPROP = { hearts: 'hearts', trumpet: 'trumpet', sunbed: 'beach', runway: 'runway', surf: 'surf', ski: 'skis', flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
     news: 'paper', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
   // weather props: a little cloud with rain or snow, and fog
   const cloud = new THREE.Group(); cloud.position.y = 4.65; scene.add(cloud);
@@ -1095,16 +1111,17 @@ function start() {
       }
       case 'trumpet': {                                            // New Orleans jazz: a trumpet, swaying, notes floating up
         P.armL.rotation.x = P.armR.rotation.x = -1.45 * still; P.armL.rotation.z = -0.35; P.armR.rotation.z = 0.15;
-        PR.trumpet.position.set(0.05, 2.0, 1.15); PR.trumpet.rotation.set(-0.25 + 0.08 * Math.sin(A * 4), 0, 0);
+        PR.trumpet.position.set(0.05, 2.0, 1.8); PR.trumpet.rotation.set(-0.25 + 0.08 * Math.sin(A * 4), 0, 0);
         P.body.rotation.z = 0.12 * Math.sin(A * 3) * still; root.position.y += Math.abs(Math.sin(A * 3)) * 0.06 * still; hx = -0.15;
         notes.forEach((n) => { const u = (A * 0.6 + n.userData.ph) % 1; n.position.set(0.35 * Math.sin(u * 6 + n.userData.ph * 9), 0.3 + u * 1.6, 0.9 + u * 0.6); n.material.opacity = 1 - u; n.rotation.set(0.25, 0, 0.3 * Math.sin(u * 5)); });
         break;
       }
       case 'sunbed':                                               // Tel Aviv: lying back on a sunbed, in the sun
-        root.rotation.x = -1.2 * still; root.position.y += 0.55 * still; root.position.z = 0.95 * still;
-        P.armL.rotation.z = -0.2 - 2.4 * still; P.armR.rotation.z = 0.2 + 2.4 * still; P.armL.rotation.x = P.armR.rotation.x = -0.4 * still;   // paws behind the head
-        P.legR.rotation.x = -0.35 * still; P.head.rotation.z = 0.08 * Math.sin(A * 0.8); light = 1.3;
-        PR.beach.rotation.y = root.rotation.y;
+        // reclined along the lounger, head on the raised end, paws behind the head, one knee up
+        root.rotation.y = 0.12; root.rotation.z = 1.05 * still; root.position.x = 1.35 * still; root.position.y += 0.5 * still;
+        P.armL.rotation.z = -0.2 - 2.5 * still; P.armR.rotation.z = 0.2 + 2.5 * still; P.armL.rotation.x = P.armR.rotation.x = -0.5 * still;
+        P.legL.rotation.x = -0.7 * still; P.head.rotation.z = -0.25 + 0.06 * Math.sin(A * 0.8); hyT = 0.3; light = 1.3;
+        PR.beach.rotation.y = 0;
         break;
       case 'runway': {                                             // Milan: struts the runway, hand on hip, flashes going off
         const t = A % 3.2;
@@ -1133,6 +1150,15 @@ function start() {
         wx.snow = 0.6;
         break;
       }
+      case 'hearts': {                                             // thanks for visiting: a finger heart by the cheek, hearts floating out
+        P.armR.rotation.x = -1.75 * still; P.armR.rotation.z = -0.15 * still;
+        P.armL.rotation.z = -0.2 - (0.5 + 0.2 * Math.sin(A * 5)) * still;
+        P.head.rotation.z = -0.15 * still; wink = 1;
+        if ((A % 1.6) < 0.35) root.position.y += Math.sin((A % 1.6) / 0.35 * Math.PI) * 0.12 * still;
+        PR.hearts.position.set(0.35, 2.25, 1.05);
+        hearts.forEach((h) => { const u = (A * 0.45 + h.userData.ph) % 1; h.position.set(0.5 * u + 0.3 * Math.sin(u * 7 + h.userData.ph * 11), u * 1.8, u * 0.3); h.scale.setScalar(0.5 + u * 0.9); h.material.opacity = Math.min(1, (1 - u) * 2.5); h.rotation.z = 0.3 * Math.sin(u * 6); });
+        break;
+      }
       case 'speech':                                               // a talk: mic to the mouth, the other paw gesturing
         P.armR.rotation.x = -1.6 * still; P.armR.rotation.z = -0.35 * still;
         PR.mic.position.set(0.12, 2.1, 0.95);
@@ -1155,9 +1181,10 @@ function start() {
         P.head.rotation.z = -0.18 * still; wink = 1;
         break;
       case 'selfie':                                               // phone up high, the other paw making a V
-        P.armL.rotation.z = -0.2 - 0.6 * still; P.armL.rotation.x = -2.3 * still;                // phone held up in front
-        PR.phone.rotation.set(0.3, Math.PI, 0);
-        P.armR.rotation.z = 0.2 + 2.3 * still; P.head.rotation.z = 0.15 * still; hx = -0.2; wink = 1;
+        P.armL.rotation.z = -0.2 - 0.9 * still; P.armL.rotation.x = -2.7 * still;                // phone up high, angled down at the face
+        PR.phone.rotation.set(-0.6, Math.PI, 0); hx = -0.35;
+        { const fl = (A % 1.6) < 0.12; scrMat.emissive.setHex(fl ? 0xffffff : 0x4a7aa8); scrMat.emissiveIntensity = fl ? 2.5 : 0.4; if (fl) vfx = 'flash'; }
+        P.armR.rotation.z = 0.2 + 2.3 * still; P.head.rotation.z = 0.15 * still; wink = 1;
         break;
       case 'tada':                                                 // arms wide open: here it is!
         P.armL.rotation.z = -0.2 - 1.5 * still; P.armR.rotation.z = 0.2 + 1.5 * still;
@@ -1235,6 +1262,7 @@ function start() {
       if (d.position.y < 0) d.visible = false;
     }
     // the venue's accessories, held in the left paw when they need one
+    if (st.act && st.venue === 'vancouver') wx.leaves = 1;                // autumn leaves in Vancouver
     const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || [], st.act ? st.photoExtra || [] : []);
     for (const k of extra) {
       if (HANDHELD[k] === 'up') { P.armL.rotation.z = -0.2 - 2.1 * still; P.armL.rotation.x = -0.2 * still; }
