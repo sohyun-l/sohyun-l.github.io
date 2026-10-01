@@ -159,9 +159,12 @@ function start() {
 
   // where each conference was, and what the bear wears or holds there
   const VENUE = { cvpr22: 'nola', neurips23: 'nola', cvpr23: 'vancouver', eccv22: 'telaviv', eccv24: 'milan', neurips25: 'sandiego', cvpr26: 'denver', accv: 'hanoi' };
-  const VNAME = { nola: 'New Orleans 🎷', vancouver: 'Vancouver 🍁', telaviv: 'Tel Aviv 🏖️', milan: 'Milan 🍕', sandiego: 'San Diego 🏄', denver: 'Denver 🤠', hanoi: 'Hanoi 🇻🇳' };
-  const VACC = { nola: ['beads'], vancouver: ['maple'], telaviv: ['shades', 'ball'], milan: ['pizza'], sandiego: ['shades', 'surf'], denver: ['cowboy'], hanoi: ['nonla'] };
-  const HANDHELD = { maple: 'up', ball: 'front', pizza: 'front' };
+  const VNAME = { nola: 'New Orleans 🎺', vancouver: 'Vancouver 🍁', telaviv: 'Tel Aviv 🏖️', milan: 'Milan 👜', sandiego: 'San Diego 🏄', denver: 'Denver, the Mile High City ⛷️', hanoi: 'Hanoi 🇻🇳' };
+  // some cities take over the pose: jazz trumpet, the beach, the runway, surfing, skiing in the Rockies
+  const VACT = { nola: 'trumpet', telaviv: 'sunbed', milan: 'runway', sandiego: 'surf', denver: 'ski' };
+  const VACC = { vancouver: ['maple'], telaviv: ['shades'], milan: ['shades'], sandiego: ['shades'], denver: ['goggles'], hanoi: ['nonla'] };
+  const HANDHELD = { maple: 'up' };
+  const ACTEXTRA = { surf: ['wave'], ski: ['poleL', 'poleR', 'rockies'], runway: ['bag'] };
 
   // ------------------------------------------------------------ dom
   const canvas = document.createElement('canvas');
@@ -370,7 +373,7 @@ function start() {
   PR.pointer = new THREE.Group(); P.body.add(PR.pointer);
   const stick = capsule(0.025, 1.3, pmat(0x8a5a2b, 0.5), [0, 0.65, 0]); PR.pointer.add(stick);
   PR.pointer.add(sphere(0.05, pmat(0xe5484d, 0.4), [1, 1, 1], [0, 1.35, 0]));
-  PR.phone = new THREE.Group(); P.body.add(PR.phone);
+  PR.phone = new THREE.Group(); PR.phone.position.set(0, -0.72, 0.12); PR.phone.rotation.set(0, Math.PI, 0); P.armL.add(PR.phone);
   PR.phone.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.55, 0.05), pmat(0x2b2b33, 0.3)));
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.46), pmat(0x9fd0f2, 0.2, { emissive: 0x4a7aa8, emissiveIntensity: 0.4 })); scr.position.z = -0.03; scr.rotation.y = Math.PI; PR.phone.add(scr);
   PR.laptop = new THREE.Group(); P.body.add(PR.laptop);
@@ -425,8 +428,6 @@ function start() {
   // the page dims around it for the low-light paper
   const dimmer = document.createElement('div'); dimmer.className = 'buddy-dim'; document.body.appendChild(dimmer);
   // venue accessories
-  PR.beads = new THREE.Group(); PR.beads.position.y = 1.95; P.body.add(PR.beads);            // Mardi Gras beads
-  for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2; PR.beads.add(sphere(0.06, pmat([0x7b3fbf, 0x2e9e4f, 0xe3b341][i % 3], 0.25, { metalness: 0.4 }), [1, 1, 1], [Math.sin(a) * 0.62, -0.18 - 0.22 * (1 + Math.cos(a)) / 2, Math.cos(a) * 0.6])); }
   PR.maple = new THREE.Group(); PR.maple.position.set(0, -0.6, 0.12); P.armL.add(PR.maple);   // a Canadian flag in the left paw
   PR.maple.add(capsule(0.025, 1.0, pmat(0x8a5a2b, 0.5), [0, -0.5, 0]));
   const caTex = flagTex((g, w, h) => {
@@ -437,20 +438,52 @@ function start() {
   });
   const caFlag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), new THREE.MeshStandardMaterial({ map: caTex, roughness: 0.8, side: THREE.DoubleSide }));
   caFlag.position.set(-0.3, -0.85, 0); caFlag.rotation.z = Math.PI; PR.maple.add(caFlag);
-  PR.ball = new THREE.Group(); PR.ball.position.set(0, -0.75, 0.15); P.armL.add(PR.ball);       // a beach ball
-  [0xe5484d, 0xffffff, 0x3b6fd8, 0xffd35a, 0xffffff, 0x2e9e4f].forEach((c, i) => PR.ball.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12, i * Math.PI / 3, Math.PI / 3), pmat(c, 0.35))));
-  PR.pizza = new THREE.Group(); PR.pizza.position.set(0, -0.7, 0.2); P.armL.add(PR.pizza);     // a slice of pizza
-  const slice = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.05, 20, 1, false, -0.35, 0.7), pmat(0xf6c95b, 0.6)); slice.rotation.x = Math.PI / 2; slice.position.y = -0.3; PR.pizza.add(slice);
-  const crust = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 6, 12, 0.7), pmat(0xc98a3a, 0.6)); crust.rotation.z = Math.PI / 2 - 0.35; crust.position.y = -0.3; PR.pizza.add(crust);
-  for (const [x, y] of [[0.05, -0.55], [-0.08, -0.72], [0.1, -0.75]]) PR.pizza.add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 12), pmat(0xc0392b, 0.5)).rotateX(Math.PI / 2).translateX(x).translateZ(-y).translateY(0.035));
-  PR.surf = new THREE.Group(); PR.surf.position.set(-1.6, 0, 0.6); PR.surf.rotation.set(0, 0.3, 0.1); scene.add(PR.surf);   // a surfboard beside it
-  PR.surf.add(sphere(1, pmat(0x3fb4c9, 0.3), [0.34, 1.5, 0.07], [0, 1.5, 0]));
-  PR.surf.add(sphere(1, pmat(0xffffff, 0.3), [0.05, 1.45, 0.075], [0, 1.5, 0]));
-  PR.cowboy = new THREE.Group(); PR.cowboy.position.y = 0.8; P.head.add(PR.cowboy);            // a cowboy hat
-  const hatB = pmat(0x9b6a3c, 0.6);
-  const cbrim = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.05, 32), hatB); cbrim.scale.z = 0.85; PR.cowboy.add(cbrim);
-  PR.cowboy.add(sphere(0.5, hatB, [1, 0.62, 0.85], [0, 0.18, 0]));
-  const cband = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.08, 24), pmat(0x3a2418, 0.5)); cband.scale.z = 0.85; cband.position.y = 0.08; PR.cowboy.add(cband);
+  // New Orleans: a trumpet, with notes floating up
+  PR.trumpet = new THREE.Group(); P.body.add(PR.trumpet);
+  const brass = pmat(0xe3b341, 0.25, { metalness: 0.7 });
+  PR.trumpet.add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.9, 12), brass).rotateX(Math.PI / 2));
+  PR.trumpet.add(new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.35, 24, 1, true), pmat(0xe3b341, 0.25, { metalness: 0.7, side: THREE.DoubleSide })).rotateX(-Math.PI / 2).translateY(0.6));
+  for (let i = 0; i < 3; i++) PR.trumpet.add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2, 10), brass).translateZ(-0.05 + i * 0.1).translateY(0.12));
+  const noteTex = cardTex(64, 64, (g) => { g.fillStyle = '#2b201b'; g.font = 'bold 54px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('♪', 32, 34); });
+  const notes = Array.from({ length: 4 }, (_, i) => { const n = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: noteTex, transparent: true })); n.userData.ph = i / 4; PR.trumpet.add(n); return n; });
+  // Tel Aviv: a sunbed on the sand, under a striped parasol
+  PR.beach = new THREE.Group(); scene.add(PR.beach);
+  const sand = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40), pmat(0xf0d9a8, 0.95)); sand.rotation.x = -Math.PI / 2; sand.position.y = 0.01; PR.beach.add(sand);
+  const wood = pmat(0xf7f2e8, 0.6), stripe = pmat(0x3b8bd6, 0.6);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 1.9), stripe); seat.position.set(0, 0.42, 0.2); PR.beach.add(seat);
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 1.3), stripe); backrest.position.set(0, 0.85, -1.15); backrest.rotation.x = -0.75; PR.beach.add(backrest);
+  for (const [x, z] of [[-0.5, 1.0], [0.5, 1.0], [-0.5, -0.6], [0.5, -0.6]]) PR.beach.add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.06), wood).translateX(x).translateY(0.21).translateZ(z));
+  const parasol = new THREE.Group(); parasol.position.set(-1.5, 0, -0.6); PR.beach.add(parasol);
+  parasol.add(capsule(0.03, 2.6, wood, [0, 1.3, 0]));
+  for (let i = 0; i < 8; i++) parasol.add(new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.45, 8, 1, true, i * Math.PI / 4, Math.PI / 4), pmat(i % 2 ? 0xffffff : 0xe5484d, 0.6, { side: THREE.DoubleSide })).translateY(2.7));
+  // San Diego: a surfboard under its feet, and a wave curling behind
+  PR.surf = new THREE.Group(); root.add(PR.surf);
+  PR.surf.add(sphere(1, pmat(0x3fb4c9, 0.3), [1.7, 0.07, 0.42], [0, -0.02, 0.05]));
+  PR.surf.add(sphere(1, pmat(0xffffff, 0.3), [1.65, 0.075, 0.05], [0, -0.01, 0.05]));
+  PR.wave = new THREE.Group(); PR.wave.position.set(-1.0, 0, -0.9); PR.wave.rotation.y = 0.5; scene.add(PR.wave);
+  const water = pmat(0x2f8fd6, 0.25, { transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+  const curl = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.55, 14, 30, Math.PI * 1.1), water); curl.rotation.y = Math.PI / 2; curl.position.y = 0.4; PR.wave.add(curl);
+  for (let i = 0; i < 7; i++) PR.wave.add(sphere(0.18 + (i % 3) * 0.05, pmat(0xffffff, 0.6), [1, 0.8, 1], [0, 1.9 + Math.sin(i) * 0.15, -0.3 + i * 0.25]).translateX((i - 3) * 0.3));
+  const swell = new THREE.Mesh(new THREE.CircleGeometry(1.7, 40), pmat(0x56a9e3, 0.3)); swell.rotation.x = -Math.PI / 2; swell.position.set(0.3, 0.0, 1.3); swell.scale.set(1.3, 0.8, 1); PR.wave.add(swell);
+  // Milan: the runway, a designer handbag and camera flashes
+  PR.bag = new THREE.Group(); PR.bag.position.set(0, -0.72, 0.12); P.armL.add(PR.bag);
+  PR.bag.add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.32, 0.16), pmat(0xd64f8f, 0.35)).translateY(-0.2));
+  PR.bag.add(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 8, 20, Math.PI), pmat(0xe3b341, 0.3, { metalness: 0.6 })).translateY(-0.05));
+  PR.runway = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 4.2), pmat(0x2b2b33, 0.5)); PR.runway.rotation.x = -Math.PI / 2; PR.runway.position.set(0, 0.01, -0.6); scene.add(PR.runway);
+  // Denver: skis, poles, goggles, and the Rockies behind
+  PR.skis = new THREE.Group(); root.add(PR.skis);
+  for (const sg of [-1, 1]) { const ski = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 2.0), pmat(0xe5484d, 0.4)); ski.position.set(sg * 0.42, 0.02, 0.3); PR.skis.add(ski); }
+  PR.poleL = new THREE.Group(); PR.poleL.position.set(0, -0.6, 0.12); P.armL.add(PR.poleL);
+  PR.poleR = new THREE.Group(); PR.poleR.position.set(0, -0.6, 0.12); P.armR.add(PR.poleR);
+  for (const pg of [PR.poleL, PR.poleR]) { pg.add(capsule(0.025, 1.3, pmat(0x2b2b33, 0.4), [0, -0.55, 0.2]).rotateX(0.25)); }
+  PR.goggles = new THREE.Group(); PR.goggles.position.set(0, 0.16, 0.74); P.head.add(PR.goggles);
+  PR.goggles.add(sphere(0.34, pmat(0x2b2b33, 0.5), [1.3, 0.56, 0.3]));
+  PR.goggles.add(sphere(0.3, pmat(0xff8a1f, 0.12, { metalness: 0.4 }), [1.25, 0.48, 0.3], [0, 0, 0.03]));
+  PR.rockies = new THREE.Group(); PR.rockies.position.set(0, 0, -3.2); scene.add(PR.rockies);
+  for (const [x, h, r] of [[-1.8, 2.6, 1.3], [0.2, 3.4, 1.6], [2.0, 2.4, 1.2]]) {
+    PR.rockies.add(new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), pmat(0x7d8a99, 0.9)).translateX(x).translateY(h / 2));
+    PR.rockies.add(new THREE.Mesh(new THREE.ConeGeometry(r * 0.35, h * 0.35, 5), pmat(0xffffff, 0.8)).translateX(x).translateY(h - h * 0.175 + 0.01));
+  }
   PR.nonla = new THREE.Group(); PR.nonla.position.y = 0.72; P.head.add(PR.nonla);              // a nón lá
   PR.nonla.add(new THREE.Mesh(new THREE.ConeGeometry(1.05, 0.62, 32, 1, true), pmat(0xe6cf8f, 0.75, { side: THREE.DoubleSide })).translateY(0.28));
   // snow: it turns into a snowman (carrot nose, top hat)
@@ -486,13 +519,13 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(1));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
-  Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.surf.userData, { s: 1.0 }); Object.assign(PR.pizza.userData, { s: 1.7 }); Object.assign(PR.ball.userData, { s: 1.2 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
+  Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
-  const ACTPROP = { flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
+  const ACTPROP = { trumpet: 'trumpet', sunbed: 'beach', runway: 'runway', surf: 'surf', ski: 'skis', flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
     news: 'paper', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
   // weather props: a little cloud with rain or snow, and fog
   const cloud = new THREE.Group(); cloud.position.y = 4.65; scene.add(cloud);
@@ -693,8 +726,10 @@ function start() {
     const key = spot.matches('li') ? (spot.querySelector('[id]') || {}).id
       : spot.matches('.gallery-item') ? 'gal:' + ((spot.querySelector('img') || {}).getAttribute?.('src') || '').split('/').pop().split('?')[0]
       : 'sec:' + sectionOf(spot);
-    if (ACT[key] !== st.act) { st.act = ACT[key] || null; st.actT = 0; }
     st.venue = key.startsWith('gal:') ? VENUE[Object.keys(VENUE).find((v) => key.slice(4).startsWith(v))] || null : null;
+    // a city's motion replaces the generic poses (poster, group photo, talk); special photos keep theirs
+    const act = (st.venue && VACT[st.venue] && ['point', 'cheese', 'speech', 'tada'].includes(ACT[key]) ? VACT[st.venue] : ACT[key]) || null;
+    if (act !== st.act) { st.act = act; st.actT = 0; }
     say(lineFor(spot, el) + (st.venue ? ` · ${VNAME[st.venue]}` : ''), 3800);
   }
   document.addEventListener('pointermove', (e) => {
@@ -900,7 +935,7 @@ function start() {
     P.body.rotation.x = st.amp * 0.18;                                          // lean into the hop
     if (st.jumpT < 0) root.rotation.y = st.yaw;
     // reset the free channels, then let the idle or the paper's act pose it
-    P.body.rotation.z = 0; P.head.rotation.z = 0;
+    P.body.rotation.z = 0; P.head.rotation.z = 0; root.rotation.x = 0; root.rotation.z = 0; root.position.x = 0; root.position.z = 0;
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
@@ -1016,15 +1051,58 @@ function start() {
       }
       case 'fifo': {                                               // fog pulled into the filter; foggy or clear, all the same
         const c = A % 3.2;
-        P.armR.rotation.z = 0.2 + 1.6 * still; P.armR.rotation.x = -0.4 * still;
-        PR.funnel.position.set(1.05, 2.55, 0.5); PR.funnel.rotation.set(0, 0, 0.25);
-        if (c < 1.6) { wx.fog = 1; fogPull = Math.max(0, (c - 0.7) / 0.9); }        // fog drifts in, then into the funnel
-        else {                                                                     // clear now: a shrug, nothing changed
+        if (c < 1.6) {                                                            // both paws hold the filter up; the fog goes in
+          wx.fog = 1; fogPull = Math.max(0, (c - 0.7) / 0.9);
+          P.armL.rotation.x = P.armR.rotation.x = -2.2 * still; P.armL.rotation.z = -0.45; P.armR.rotation.z = 0.45;
+          PR.funnel.position.set(0, 3.05, 0.85); PR.funnel.rotation.set(-0.2, 0, 0);
+        } else {                                                                   // clear now: the filter down, a shrug
+          want = null;
           const k = Math.min(1, (c - 1.6) / 0.3) * (c < 2.9 ? 1 : 0);
-          P.armL.rotation.z = -0.2 - 0.9 * k * still; P.armL.rotation.x = -0.6 * k * still; P.head.rotation.z = 0.2 * k;
+          P.armL.rotation.z = -0.2 - 0.9 * k * still; P.armR.rotation.z = 0.2 + 0.9 * k * still;   // a two-paw shrug
+          P.armL.rotation.x = P.armR.rotation.x = -0.6 * k * still; P.head.rotation.z = 0.2 * k;
           if (st.fifoSaid !== A - c) { st.fifoSaid = A - c; say('Foggy or clear? Looks the same to me 🤷', 1500); }
         }
         hyT = 0.4;
+        break;
+      }
+      case 'trumpet': {                                            // New Orleans jazz: a trumpet, swaying, notes floating up
+        P.armL.rotation.x = P.armR.rotation.x = -1.45 * still; P.armL.rotation.z = -0.35; P.armR.rotation.z = 0.15;
+        PR.trumpet.position.set(0.05, 2.0, 1.15); PR.trumpet.rotation.set(-0.25 + 0.08 * Math.sin(A * 4), 0, 0);
+        P.body.rotation.z = 0.12 * Math.sin(A * 3) * still; root.position.y += Math.abs(Math.sin(A * 3)) * 0.06 * still; hx = -0.15;
+        notes.forEach((n) => { const u = (A * 0.6 + n.userData.ph) % 1; n.position.set(0.35 * Math.sin(u * 6 + n.userData.ph * 9), 0.3 + u * 1.6, 0.9 + u * 0.6); n.material.opacity = 1 - u; n.rotation.set(0.25, 0, 0.3 * Math.sin(u * 5)); });
+        break;
+      }
+      case 'sunbed':                                               // Tel Aviv: lying back on a sunbed, in the sun
+        root.rotation.x = -1.2 * still; root.position.y += 0.55 * still; root.position.z = 0.95 * still;
+        P.armL.rotation.z = -0.2 - 2.4 * still; P.armR.rotation.z = 0.2 + 2.4 * still; P.armL.rotation.x = P.armR.rotation.x = -0.4 * still;   // paws behind the head
+        P.legR.rotation.x = -0.35 * still; P.head.rotation.z = 0.08 * Math.sin(A * 0.8); light = 1.3;
+        PR.beach.rotation.y = root.rotation.y;
+        break;
+      case 'runway': {                                             // Milan: struts the runway, hand on hip, flashes going off
+        const t = A % 3.2;
+        P.armR.rotation.z = 0.2 + 0.9 * still; P.armR.rotation.x = 0.6 * still;        // hand on hip
+        P.armL.rotation.x = -0.5 * still;
+        P.body.rotation.z = 0.12 * Math.sin(A * 6) * still; root.position.y += Math.abs(Math.sin(A * 6)) * 0.05 * still;
+        if (t > 2.2) { root.rotation.y += (t - 2.2) * 0.8; P.head.rotation.z = -0.15 * still; }   // the turn at the end of the runway
+        PR.runway.rotation.z = -root.rotation.y;
+        if ((A % 0.7) < 0.08) vfx = 'flash';
+        break;
+      }
+      case 'surf': {                                               // San Diego: riding the wave
+        P.armL.rotation.z = -0.2 - 1.35 * still; P.armR.rotation.z = 0.2 + 1.2 * still;
+        P.armL.rotation.x = -0.3 * still;
+        P.legL.rotation.x = -0.25 * still; P.legR.rotation.x = 0.25 * still;
+        root.rotation.z = 0.18 * Math.sin(A * 1.8) * still; root.position.y += (0.25 + 0.15 * Math.sin(A * 2.4)) * still;
+        P.body.rotation.x = 0.25 * still; hyT = -0.3;
+        PR.wave.position.y = 0.1 * Math.sin(A * 2.4);
+        break;
+      }
+      case 'ski': {                                                // Denver: carving down a slope, the Rockies behind
+        const sw = Math.sin(A * 2.2);
+        P.armL.rotation.x = P.armR.rotation.x = -0.6 * still; P.armL.rotation.z = -0.45; P.armR.rotation.z = 0.45;
+        root.rotation.z = 0.2 * sw * still; root.rotation.y = -0.2 + 0.35 * sw; P.body.rotation.x = 0.3 * still;   // facing us, carving
+        root.position.y += -0.1 * still; root.position.x = 0.3 * sw * still;
+        wx.snow = 0.6;
         break;
       }
       case 'speech':                                               // a talk: mic to the mouth, the other paw gesturing
@@ -1049,8 +1127,8 @@ function start() {
         P.head.rotation.z = -0.18 * still; wink = 1;
         break;
       case 'selfie':                                               // phone up high, the other paw making a V
-        P.armL.rotation.z = -0.2 - 1.9 * still; P.armL.rotation.x = -1.0 * still;
-        PR.phone.position.set(-0.85, 2.85, 0.9); PR.phone.rotation.set(-0.5, 0.4, 0.1);
+        P.armL.rotation.z = -0.2 - 0.6 * still; P.armL.rotation.x = -2.3 * still;                // phone held up in front
+        PR.phone.rotation.set(0.3, Math.PI, 0);
         P.armR.rotation.z = 0.2 + 2.3 * still; P.head.rotation.z = 0.15 * still; hx = -0.2; wink = 1;
         break;
       case 'tada':                                                 // arms wide open: here it is!
@@ -1129,7 +1207,7 @@ function start() {
       if (d.position.y < 0) d.visible = false;
     }
     // the venue's accessories, held in the left paw when they need one
-    const extra = st.act && st.venue ? VACC[st.venue] : [];
+    const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || []);
     for (const k of extra) {
       if (HANDHELD[k] === 'up') { P.armL.rotation.z = -0.2 - 2.1 * still; P.armL.rotation.x = -0.2 * still; }
       if (HANDHELD[k] === 'front') { P.armL.rotation.x = -1.1 * still; P.armL.rotation.z = -0.35; }
@@ -1194,7 +1272,7 @@ function start() {
       f.visible = Math.max(W.fog, W.dust) > 0.02;
       const h = f.userData.home || (f.userData.home = f.position.clone());
       if (fogPull > 0) {                                           // sucked into the fog-pass filter
-        const tgt = new THREE.Vector3(1.05, 2.9, 0.5).applyMatrix4(root.matrixWorld);
+        const tgt = new THREE.Vector3(0, 3.4, 0.85).applyMatrix4(root.matrixWorld);
         f.position.copy(h).lerp(tgt, fogPull); f.scale.set(1.4 * (1 - 0.8 * fogPull), 0.7 * (1 - 0.8 * fogPull), 1 - 0.8 * fogPull);
       } else { f.position.copy(h); f.position.x += Math.sin(now / 1500 + i * 2) * 0.15; f.scale.set(1.4, 0.7, 1); }
     });
@@ -1206,9 +1284,9 @@ function start() {
     // video corruptions: the frame itself degrades (blur, blocks, washed-out colours)
     if (vfx !== st.vfx) {
       st.vfx = vfx;
-      renderer.setPixelRatio(vfx === 'pixel' ? 0.16 : dpr);
+      if ((vfx === 'pixel') !== (st.pixelOn || false)) { st.pixelOn = vfx === 'pixel'; renderer.setPixelRatio(st.pixelOn ? 0.16 : dpr); }
       canvas.style.imageRendering = vfx === 'pixel' ? 'pixelated' : '';
-      canvas.style.filter = { motion: 'blur(1.6px)', defocus: 'blur(3px)', contrast: 'contrast(0.45) saturate(0.5) brightness(1.15)' }[vfx] || '';
+      canvas.style.filter = { motion: 'blur(1.6px)', defocus: 'blur(3px)', contrast: 'contrast(0.45) saturate(0.5) brightness(1.15)', flash: 'brightness(1.7)' }[vfx] || '';
     }
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
