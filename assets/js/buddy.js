@@ -244,7 +244,7 @@ function start() {
   layer.append(shadow, canvas); document.body.append(bubble);
 
   let renderer;
-  try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true }); }
+  try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, stencil: true }); }
   catch (e) { canvas.remove(); shadow.remove(); bubble.remove(); return; }
   const dpr = Math.min(devicePixelRatio || 1, 2);
   renderer.setPixelRatio(dpr);
@@ -570,12 +570,12 @@ function start() {
   // GaRA-SAM: eight armour modules, one per rank-1 component; the gate decides which go on for each input
   const modMat = pmat(0xffa63d, 0.25, { metalness: 0.45, emissive: 0x8a4a00, emissiveIntensity: 0.4 });
   const mods = [
-    [P.head, new THREE.Mesh(new THREE.SphereGeometry(0.88, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), modMat), [0, 0.05, -0.02]],          // helmet
+    [P.head, new THREE.Mesh(new THREE.SphereGeometry(0.98, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), modMat), [0, 0.06, -0.02], null, [1, 1.08, 1]],   // helmet
     [P.head, new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 8, 28, Math.PI), modMat), [0, 0.16, 0.12], [Math.PI / 2 - 0.15, 0, 0]],   // visor
     [P.body, sphere(0.34, modMat, [1, 0.6, 1]), [-0.8, 1.8, 0.1]],                                                                        // shoulder L
     [P.body, sphere(0.34, modMat, [1, 0.6, 1]), [0.8, 1.8, 0.1]],                                                                         // shoulder R
     [P.body, new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.6, 0.12), modMat), [0, 1.42, 0.9], [-0.15, 0, 0]],                             // chest plate
-    [P.body, new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.08, 8, 36), modMat), [0, 0.95, 0], [Math.PI / 2, 0, 0], [1, 0.92, 1]],        // belt
+    [P.body, new THREE.Mesh(new THREE.TorusGeometry(1.06, 0.09, 8, 36), modMat), [0, 0.95, 0], [Math.PI / 2, 0, 0], [1, 0.94, 1]],        // belt
     [P.armL, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.28, 16), modMat), [0, -0.5, 0.12]],                                   // gauntlet L
     [P.armR, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.28, 16), modMat), [0, -0.5, 0.12]],                                   // gauntlet R
   ].map(([parent, m, p, r, sc]) => { m.position.set(...p); if (r) m.rotation.set(...r); m.userData.s = sc || [1, 1, 1]; m.userData.k = 0; m.visible = false; parent.add(m); return m; });
@@ -725,9 +725,11 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  mods.forEach((m) => m.layers.disable(2));                       // (the GaRA modules stay visible through the mask)
   for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'].includes(k) ? 0 : 1));
-  const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
+  // the mask covers the bear's whole silhouette (its gear too) in one flat colour: drawn without depth, and
+  // through the stencil so each pixel is tinted exactly once
+  const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
+    stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilZPass: THREE.ReplaceStencilOp, stencilFail: THREE.KeepStencilOp });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
@@ -1623,7 +1625,7 @@ function start() {
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
     if (maskMat.opacity > 0.01) {                               // the mask: the whole bear, in one flat colour
-      camera.layers.set(2); scene.overrideMaterial = maskMat; renderer.render(scene, camera); scene.overrideMaterial = null;
+      renderer.clearStencil(); camera.layers.set(2); scene.overrideMaterial = maskMat; renderer.render(scene, camera); scene.overrideMaterial = null;
     }
     renderer.clearDepth();
     camera.layers.set(1); renderer.render(scene, camera);
