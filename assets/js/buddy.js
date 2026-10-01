@@ -188,6 +188,13 @@ function start() {
     aodai: { coat: 0xc8102e, boots: 0x2b2b33, wear: ['aodai'] },                             // an áo dài
     lab: { coat: 0xf4f4f1, boots: 0x2b2b33, wear: ['shirt', 'tie', 'glasses'] },             // a lab coat
     pajama: { coat: 0x7fa7d8, boots: 'fur', wear: ['nightcap'] },                            // pyjamas and a nightcap
+    ringmaster: { coat: 0xc0392b, boots: 0x1a1a1f, wear: ['tophat', 'baton', 'shirt', 'bowtie'] },   // the tamer: a ringmaster
+    hero: { coat: 0x2f6fd8, boots: 0xc0392b, wear: ['cape', 'emblem'] },                     // robust: a superhero
+    mechanic: { coat: 0x3b5a8a, boots: 0x5a3d2a, wear: ['mcap'] },                           // restoration: a mechanic in overalls
+    detective: { coat: 0xc8a874, boots: 0x5a3d2a, wear: ['deerstalker'] },                   // through the fog: a detective
+    director: { coat: 0x1f1f26, boots: 0x1f1f26, wear: ['beret'] },                          // video: a film director
+    artist: { coat: 0xd64f8f, boots: 0x2b2b33, wear: ['beret'] },                            // new styles: an artist
+    tta: { coat: 0x3b8bd6, boots: 0x2b2b33, wear: [] },                                      // TestDG: a coat that adapts its colour
     suit: { coat: 0x2f3e5c, boots: 0x2b2b33, wear: ['shirt', 'tie'] },                       // a blazer and tie
     casual: { coat: 0xb5835a, boots: 0x7a5536, wear: ['shirt', 'glasses'] },                 // a cardigan and glasses
   };
@@ -195,8 +202,10 @@ function start() {
   const SPOTOUTFIT = {
     'sec:about': 'suit', 'sec:education': 'grad', 'sec:honors': 'award', 'sec:services': 'suit', 'sec:experience': 'casual',
     'sec:publications': 'casual', 'sec:news': 'casual', 'sec:visitors': 'casual',
-    lee2026selfcompensatingvla: 'lab', yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
-    lee2023pid: 'pajama',
+    yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
+    lee2023pid: 'pajama', lee2025dicotta: 'tta',
+    lee2026selfcompensatingvla: 'ringmaster', lee2025garasam: 'hero', lee2024frest: 'mechanic',
+    lee2022fifo: 'detective', lee2026moga: 'director', kang2022style: 'artist',
   };
   function outfitFor(file, act, venue) {
     if (venue === 'hanoi') return OUTFIT.aodai;
@@ -529,6 +538,32 @@ function start() {
   PR.aodai.add(new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.85), pmat(0xc8102e, 0.5, { side: THREE.DoubleSide })).translateY(0.35).translateZ(0.98));
   PR.aodai.add(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.5, 0.2, 28), pmat(0xc8102e, 0.5)).translateY(2.02));
   PR.aodai.add(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.025, 6, 28), pmat(0xe3b341, 0.4)).rotateX(Math.PI / 2).translateZ(-1.92));
+  PR.tophat = new THREE.Group(); PR.tophat.position.y = 0.78; P.head.add(PR.tophat);    // a ringmaster's top hat
+  const thm = pmat(0x1a1a1f, 0.4);
+  PR.tophat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 32), thm));
+  PR.tophat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.5, 0.75, 28), thm).translateY(0.4));
+  PR.tophat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.515, 0.515, 0.14, 28), pmat(0xc0392b, 0.5)).translateY(0.12));
+  PR.baton = new THREE.Group(); PR.baton.position.set(0, -0.62, 0.15); P.armL.add(PR.baton);   // a baton, in the free paw
+  PR.baton.add(capsule(0.035, 0.8, pmat(0x1a1a1f, 0.4), [0, -0.4, 0.15]).rotateX(0.5));
+  PR.baton.add(sphere(0.06, pmat(0xe3b341, 0.3, { metalness: 0.6 }), [1, 1, 1], [0, -0.78, 0.38]));
+  PR.cape = new THREE.Group(); P.body.add(PR.cape);                                           // a superhero's cape
+  const capeM = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.25, 1.7, 24, 1, true, Math.PI * 0.62, Math.PI * 0.76), pmat(0xc0392b, 0.6, { side: THREE.DoubleSide }));
+  capeM.position.y = 1.05; PR.cape.add(capeM);
+  PR.emblem = new THREE.Group(); PR.emblem.position.set(0, 1.45, 0.98); PR.emblem.rotation.x = -0.15; P.body.add(PR.emblem);   // a star on the chest
+  { const st5 = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.09 : 0.22, a = Math.PI / 2 + i * Math.PI / 5; i ? st5.lineTo(Math.cos(a) * r, Math.sin(a) * r) : st5.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    PR.emblem.add(new THREE.Mesh(new THREE.CircleGeometry(0.3, 28), pmat(0xffd23f, 0.4)));
+    PR.emblem.add(new THREE.Mesh(new THREE.ShapeGeometry(st5), pmat(0xc0392b, 0.4)).translateZ(0.01)); }
+  PR.mcap = new THREE.Group(); PR.mcap.position.set(0, 0.42, 0.02); P.head.add(PR.mcap);    // a mechanic's cap
+  PR.mcap.add(new THREE.Mesh(new THREE.SphereGeometry(0.85, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), pmat(0x3b5a8a, 0.7)));
+  PR.mcap.add(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.04, 24, 1, false, -Math.PI / 2, Math.PI), pmat(0x2c4468, 0.7)).translateZ(0.62).translateY(0.02));
+  PR.deerstalker = new THREE.Group(); PR.deerstalker.position.set(0, 0.42, 0); P.head.add(PR.deerstalker);   // a detective's deerstalker
+  const dsm = pmat(0x8a6a45, 0.85);
+  PR.deerstalker.add(new THREE.Mesh(new THREE.SphereGeometry(0.86, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), dsm));
+  for (const sg of [-1, 1]) PR.deerstalker.add(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 20, 1, false, -Math.PI / 2, Math.PI), dsm).rotateY(sg > 0 ? 0 : Math.PI).translateZ(0.66).translateY(0.02));
+  PR.deerstalker.add(sphere(0.07, dsm, [1, 1, 1], [0, 0.86, 0]));
+  PR.beret = new THREE.Group(); PR.beret.position.set(0.1, 0.72, -0.05); PR.beret.rotation.z = -0.25; P.head.add(PR.beret);   // a beret
+  PR.beret.add(sphere(0.62, pmat(0x1f1f26, 0.8), [1, 0.32, 1]));
+  PR.beret.add(sphere(0.05, pmat(0x1f1f26, 0.8), [1, 1, 1], [0, 0.2, 0]));
   PR.nightcap = new THREE.Group(); PR.nightcap.position.set(0, 0.5, -0.05); PR.nightcap.rotation.z = 0.35; P.head.add(PR.nightcap);   // a nightcap
   PR.nightcap.add(new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.3, 24), pmat(0x7fa7d8, 0.85)).translateY(0.55));
   PR.nightcap.add(new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.1, 8, 28), pmat(0xffffff, 0.9)).rotateX(Math.PI / 2));
@@ -634,14 +669,14 @@ function start() {
     { w: 'snow', on: [1, 3, 6, 7] }, { w: 'night', on: [0, 2, 4, 6] }, { w: 'dust', on: [1, 3, 4], unseen: true },
   ];
   const TTA = [
-    { w: 'rain', name: 'Rain', gear: 'umbrella' }, { w: 'snow', name: 'Snow', gear: 'snowman' },
-    { w: 'noise', name: 'Noise', gear: 'phones' }, { w: 'fog', name: 'Fog', gear: 'fan' },
-    { w: 'night', name: 'Dark', gear: 'lantern' }, { w: 'bright', name: 'Glare', gear: 'shades' },
+    { w: 'rain', name: 'Rain', gear: 'umbrella', col: 0x3b8bd6 }, { w: 'snow', name: 'Snow', gear: 'snowman', col: 0xf3f5f8 },
+    { w: 'noise', name: 'Noise', gear: 'phones', col: 0x8a8f99 }, { w: 'fog', name: 'Fog', gear: 'fan', col: 0xb9a8d6 },
+    { w: 'night', name: 'Dark', gear: 'lantern', col: 0x2a3550 }, { w: 'bright', name: 'Glare', gear: 'shades', col: 0xffc94d },
   ];
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap'].includes(k) ? 0 : 1));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
@@ -1113,7 +1148,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
+    let ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -1147,6 +1182,7 @@ function start() {
       }
       case 'tta': {
         const D = TTA[Math.floor(A / 2.3) % TTA.length], c = A % 2.3;
+        if (c >= 0.6) ttaCol = D.col;                                                     // the coat adapts too
         if (D.w === 'night') light = 0.3; else if (D.w === 'bright') light = 1.75; else wx[D.w] = 1;
         if (c < 0.6) { hyT = Math.sin(c * 28) * 0.35; P.head.rotation.z = 0.2 * still; }    // huh? a new domain
         else {
@@ -1423,7 +1459,7 @@ function start() {
     if (st.act === 'style') M.coat.color.setHSL((0.13 + A * 0.18) % 1, 0.7, 0.56);
     else {
       const of = st.act && st.outfit;
-      M.coat.color.lerp(snowy ? SNOW : of ? (of.coat == null ? FUR : _c.setHex(of.coat)) : COAT, Math.min(1, dt * 6));
+      M.coat.color.lerp(snowy ? SNOW : ttaCol != null ? _c.setHex(ttaCol) : of ? (of.coat == null ? FUR : _c.setHex(of.coat)) : COAT, Math.min(1, dt * 6));
       M.boot.color.lerp(of ? (of.boots === 'fur' ? FUR : _c2.setHex(of.boots)) : BOOTC, Math.min(1, dt * 6));
       M.trim.color.lerp(of && of.coat != null ? _c3.setHex(of.coat).multiplyScalar(0.82) : TRIMC, Math.min(1, dt * 6));   // the hem matches the outfit
       P.hood.visible = !of;
@@ -1433,7 +1469,7 @@ function start() {
     maskMat.opacity = 0.62 * maskK;
     placeKeypoints(dark > 0 && !st.sleeping);
     dimmer.classList.toggle('on', dark > 0 && !st.sleeping);
-    if (degrade > 0) { M.fur.color.copy(FUR).lerp(GREY, degrade * 0.75); M.coat.color.copy(COAT).lerp(GREY, degrade * 0.75); M.light.color.copy(LIGHT).lerp(GREY, degrade * 0.75); }
+    if (degrade > 0) { M.fur.color.copy(FUR).lerp(GREY, degrade * 0.75); M.coat.color.copy(st.outfit && st.outfit.coat != null ? _c.setHex(st.outfit.coat) : COAT).lerp(GREY, degrade * 0.75); M.light.color.copy(LIGHT).lerp(GREY, degrade * 0.75); }
     else M.light.color.lerp(LIGHT, Math.min(1, dt * 4));
     sparkles.forEach((sp, i) => {
       sp.visible = sparkle > 0;
