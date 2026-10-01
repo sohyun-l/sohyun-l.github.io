@@ -131,8 +131,8 @@ function start() {
     lee2025dicotta: 'tta',                   // continual TTA: the condition keeps changing; each time it is
                                              // puzzled for a moment, then adapts (gears up for it)
     yoon2026metalens: 'lens',                // metalens: drops and dust on the lens, still a clear view
-    lee2026moga: 'film',                     // robust video segmentation: films steadily through video corruptions
-                                             // (motion blur, noise, defocus, compression, low contrast) that change frame to frame
+    lee2026moga: 'film',                     // robust video segmentation: films steadily through video corruptions (motion blur,
+                                             // noise, defocus, compression, low contrast), the seasons, and an unseen one
     lee2025garasam: 'conditions',            // robust SAM: rank components lit per input, even an unseen one
     lee2024frest: 'restore',                 // restoration: rain, snow, fog, dark, shaking each one off
     sehyun2023active: 'ask',                 // active learning: a superpixel is queried, every class in it ticked, then its pixels sorted out
@@ -541,7 +541,19 @@ function start() {
   const fogMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0, depthWrite: false });
   // fog sits behind and around it, never in front, so the bear and its props stay solid
   const fogs = [[-1.25, 0.7, -0.5], [1.25, 1.1, -0.6], [0, 0.6, -1.1], [-0.7, 1.8, -0.9], [0.9, 2.2, -1.0]].map(([x, y, z]) => { const f = sphere(0.75, fogMat, [1.4, 0.7, 1], [x, y, z]); f.renderOrder = -1; scene.add(f); return f; });
-  const W = { rain: 0, snow: 0, fog: 0, noise: 0, dust: 0 };
+  const W = { rain: 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
+  // RobustPVOS: what the camera goes through
+  const FILM = [
+    { vfx: 'motion' }, { vfx: 'noise', w: 'noise' }, { vfx: 'defocus' }, { vfx: 'pixel' }, { vfx: 'contrast' },
+    { w: 'petals' }, { vfx: 'summer', light: 1.6 }, { w: 'leaves' }, { w: 'snow' },          // spring, summer, autumn, winter
+    { vfx: 'unseen', unseen: true },                                                        // never seen in training
+  ];
+  // falling petals (spring) and leaves (autumn)
+  const fallers = Array.from({ length: 16 }, (_, i) => {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(0.08, 6), new THREE.MeshStandardMaterial({ color: 0xf6a6c1, roughness: 0.8, side: THREE.DoubleSide }));
+    m.scale.set(1, 0.6, 1); m.position.set((Math.random() - 0.5) * 3, Math.random() * 4.4, (Math.random() - 0.3) * 1.4); m.visible = false; scene.add(m); return m;
+  });
+  const LEAF = [0xd9622b, 0xe8a33a, 0xb5402a], PETAL = [0xf6a6c1, 0xfbd3e0, 0xf18fb0];
   // dirt kicked up while digging
   const dirt = Array.from({ length: 14 }, () => { const d = sphere(0.07, pmat(0x7a5536, 0.9)); d.visible = false; d.userData.v = new THREE.Vector3(); scene.add(d); return d; });
   // sparkles while it restores itself
@@ -939,7 +951,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0 };
+    let vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -1018,8 +1030,15 @@ function start() {
         break;
       }
       case 'film': {                                               // keeps filming steadily as conditions change frame to frame
-        vfx = ['motion', 'noise', 'defocus', 'pixel', 'contrast'][Math.floor(A / 0.9) % 5];
-        if (vfx === 'noise') wx.noise = 1;
+        // corruptions, then the seasons, then one it has never seen: it keeps filming through all of them
+        const F = FILM[Math.floor(A / 1.0) % FILM.length], fc = A % 1.0;
+        if (F.vfx) vfx = F.vfx;
+        if (F.w) wx[F.w] = 1;
+        if (F.light) light = F.light;
+        if (F.unseen) {
+          if (st.filmSaid !== A - fc) { st.filmSaid = A - fc; say('Never seen this one… still tracking ✓', 1200); }
+          if (fc > 0.3 && fc < 0.7) root.position.y += Math.sin((fc - 0.3) / 0.4 * Math.PI) * 0.15 * still;
+        }
         P.armL.rotation.x = P.armR.rotation.x = -1.35 * still;
         if (st.cursor && st.pos) {
           hyT = Math.max(-1, Math.min(1, (st.cursor[0] - st.pos[0]) / 220)) - root.rotation.y;
@@ -1255,6 +1274,16 @@ function start() {
       f.position.y -= dt * 1.5; f.position.x += Math.sin(now / 300 + f.position.y * 3) * dt * 0.3;
       if (f.position.y < 0.1) { f.position.y = 4.45; f.position.x = (Math.random() - 0.5) * 1.5; }
     }
+    const fall = W.petals > W.leaves ? 'petals' : 'leaves', fk = Math.max(W.petals, W.leaves);
+    fallers.forEach((f, i) => {
+      f.visible = fk > 0.4;
+      if (!f.visible) return;
+      f.material.color.setHex((fall === 'petals' ? PETAL : LEAF)[i % 3]);
+      f.scale.setScalar(fall === 'petals' ? 1 : 1.8); f.scale.y *= 0.6;
+      f.position.y -= dt * (fall === 'petals' ? 0.9 : 1.3); f.position.x += Math.sin(now / 400 + i) * dt * 0.5;
+      f.rotation.x += dt * 3; f.rotation.z += dt * 2;
+      if (f.position.y < 0.1) { f.position.y = 4.4; f.position.x = (Math.random() - 0.5) * 3; }
+    });
     for (const c of confetti) {
       c.visible = st.act === 'trophy' && !st.sleeping;
       c.position.y -= dt * 1.3; c.rotation.x += dt * 6; c.rotation.y += dt * 4;
@@ -1286,7 +1315,8 @@ function start() {
       st.vfx = vfx;
       if ((vfx === 'pixel') !== (st.pixelOn || false)) { st.pixelOn = vfx === 'pixel'; renderer.setPixelRatio(st.pixelOn ? 0.16 : dpr); }
       canvas.style.imageRendering = vfx === 'pixel' ? 'pixelated' : '';
-      canvas.style.filter = { motion: 'blur(1.6px)', defocus: 'blur(3px)', contrast: 'contrast(0.45) saturate(0.5) brightness(1.15)', flash: 'brightness(1.7)' }[vfx] || '';
+      canvas.style.filter = { motion: 'blur(1.6px)', defocus: 'blur(3px)', contrast: 'contrast(0.45) saturate(0.5) brightness(1.15)', flash: 'brightness(1.7)',
+        summer: 'brightness(1.12) saturate(1.35)', unseen: 'hue-rotate(150deg) saturate(1.6) contrast(1.1)' }[vfx] || '';
     }
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
