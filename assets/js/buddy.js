@@ -191,7 +191,7 @@ function start() {
     pajama: { coat: 0x7fa7d8, boots: 'fur', wear: ['nightcap'] },                            // pyjamas and a nightcap
     ringmaster: { coat: 0xc0392b, boots: 0x1a1a1f, wear: ['tophat', 'baton', 'shirt', 'bowtie'] },   // the tamer: a ringmaster
     robobear: { coat: null, boots: 0x8a929c, wear: ['antenna', 'panel'], robot: true },   // taming: it turns into a robot bear
-    hero: { coat: 0x2f6fd8, boots: 0xc0392b, wear: ['cape', 'emblem'] },                     // robust: a superhero
+    gara: { coat: 0x2b3442, boots: 0x2b3442, wear: [] },                                      // GaRA: a bodysuit; armour modules snap on per input
     mechanic: { coat: 0x3b5a8a, boots: 0x5a3d2a, wear: ['mcap', 'wrench'] },                           // restoration: a mechanic in overalls
     detective: { coat: 0xc8a874, boots: 0x5a3d2a, wear: ['deerstalker'] },                   // through the fog: a detective
     director: { coat: 0x1f1f26, boots: 0x1f1f26, wear: ['beret', 'clapper'] },                          // video: a film director
@@ -206,8 +206,8 @@ function start() {
     'sec:about': 'suit', 'sec:education': 'grad', 'sec:honors': 'award', 'sec:services': 'suit', 'sec:experience': 'casual',
     'sec:publications': 'casual', 'sec:news': 'casual', 'sec:visitors': 'casual',
     yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
-    lee2023pid: 'mocap', lee2025dicotta: 'tta',
-    lee2026selfcompensatingvla: 'robobear', lee2025garasam: 'hero', lee2024frest: 'mechanic',
+    lee2023pid: 'pajama', lee2025dicotta: 'tta',
+    lee2026selfcompensatingvla: 'robobear', lee2025garasam: 'gara', lee2024frest: 'mechanic',
     lee2022fifo: 'detective', lee2026moga: 'director', kang2022style: 'artist',
   };
   function outfitFor(file, act, venue) {
@@ -567,6 +567,18 @@ function start() {
   const brushTip = pmat(0xd64f8f, 0.5); PR.brush.add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 10), brushTip).rotateX(Math.PI).translateY(0.66));
   PR.mocapcap = new THREE.Group(); PR.mocapcap.position.set(0, 0.42, 0); P.head.add(PR.mocapcap);
   PR.mocapcap.add(new THREE.Mesh(new THREE.SphereGeometry(0.85, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), pmat(0x15161a, 0.8)));
+  // GaRA-SAM: eight armour modules, one per rank-1 component; the gate decides which go on for each input
+  const modMat = pmat(0xffa63d, 0.25, { metalness: 0.45, emissive: 0x8a4a00, emissiveIntensity: 0.4 });
+  const mods = [
+    [P.head, new THREE.Mesh(new THREE.SphereGeometry(0.88, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), modMat), [0, 0.05, -0.02]],          // helmet
+    [P.head, new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 8, 28, Math.PI), modMat), [0, 0.16, 0.12], [Math.PI / 2 - 0.15, 0, 0]],   // visor
+    [P.body, sphere(0.34, modMat, [1, 0.6, 1]), [-0.8, 1.8, 0.1]],                                                                        // shoulder L
+    [P.body, sphere(0.34, modMat, [1, 0.6, 1]), [0.8, 1.8, 0.1]],                                                                         // shoulder R
+    [P.body, new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.6, 0.12), modMat), [0, 1.42, 0.9], [-0.15, 0, 0]],                             // chest plate
+    [P.body, new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.08, 8, 36), modMat), [0, 0.95, 0], [Math.PI / 2, 0, 0], [1, 0.92, 1]],        // belt
+    [P.armL, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.28, 16), modMat), [0, -0.5, 0.12]],                                   // gauntlet L
+    [P.armR, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.28, 16), modMat), [0, -0.5, 0.12]],                                   // gauntlet R
+  ].map(([parent, m, p, r, sc]) => { m.position.set(...p); if (r) m.rotation.set(...r); m.userData.s = sc || [1, 1, 1]; m.userData.k = 0; m.visible = false; parent.add(m); return m; });
   PR.tophat = new THREE.Group(); PR.tophat.position.y = 0.78; P.head.add(PR.tophat);    // a ringmaster's top hat
   const thm = pmat(0x1a1a1f, 0.4);
   PR.tophat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 32), thm));
@@ -705,6 +717,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
+  mods.forEach((m) => m.layers.disable(2));                       // (the GaRA modules stay visible through the mask)
   for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
@@ -1177,7 +1190,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
+    let garaOn = null, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -1236,6 +1249,7 @@ function start() {
         if (D.w === 'night') light = 0.45; else wx[D.w] = D.w === 'fog' || D.w === 'dust' ? 0.6 : 1;
         rankDots.visible = true;
         rankDots.children.forEach((d, i) => (d.material = D.on.includes(i) ? rankOn : rankOff));
+        garaOn = D.on;                                                                    // the same components, worn as armour
         // three point prompts land on it, one by one, then the mask covers it
         promptPts.forEach((g, i) => g.scale.setScalar(Math.max(0.001, Math.min(1, (c - 0.15 - i * 0.22) * 6))));
         maskK = c < 0.85 ? 0 : Math.min(1, (c - 0.85) * 4);
@@ -1512,6 +1526,13 @@ function start() {
     M.light.color.lerp(robo ? METAL2 : LIGHT, Math.min(1, dt * 4)); M.ear.color.lerp(robo ? METAL3 : EARC, Math.min(1, dt * 4));
     M.eye.color.lerp(robo ? _c3.setHex(0x7cf0ff) : EYEC, Math.min(1, dt * 4)); M.eye.emissive.setHex(0x3cc8ff); M.eye.emissiveIntensity = 1.2 * st.robo;
     maskMat.opacity = 0.62 * maskK;
+    mods.forEach((m, i) => {                                     // modules snap on and off with a little pop
+      const on = garaOn && garaOn.includes(i) && !st.sleeping ? 1 : 0;
+      m.userData.k += (on - m.userData.k) * Math.min(1, dt * 12);
+      m.visible = m.userData.k > 0.02;
+      const k = m.userData.k * (1 + 0.25 * Math.sin(m.userData.k * Math.PI)), sc = m.userData.s;
+      m.scale.set(sc[0] * k, sc[1] * k, sc[2] * k);
+    });
     if (PR.cape.visible) PR.cape.userData.m.rotation.x = -0.12 - 0.12 * Math.sin(now / 260) - st.amp * 0.3;   // the cape flutters
     placeKeypoints(dark > 0 && !st.sleeping);
     dimmer.classList.toggle('on', dark > 0 && !st.sleeping);
