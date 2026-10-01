@@ -1578,11 +1578,11 @@ html.transition *:after {
   cursor: pointer;
 }
 
-// The panda's speech bubble (assets/js/buddy.js).
-.panda-bubble {
+// The bear's speech bubble (assets/js/buddy.js).
+.buddy-bubble {
   position: fixed;
   left: 0;
-  bottom: 0;
+  top: 0;
   z-index: 1501;
   max-width: min(260px, 70vw);
   padding: 0.45rem 0.7rem;
@@ -1597,7 +1597,7 @@ html.transition *:after {
   opacity: 0;
   transition: opacity 0.2s ease;
   &.on { opacity: 1; }
-  &::after {                      // the tail, pointing down at the panda
+  &::after {                      // the tail, pointing down at the bear
     content: "";
     position: absolute;
     left: var(--tail, 50%);
@@ -1611,16 +1611,16 @@ html.transition *:after {
     transform: rotate(45deg);
   }
 }
-@media print { .panda-bubble { display: none; } }
+@media print { .buddy-bubble { display: none; } }
 
-// The 3D quokka (assets/js/buddy.js): walks around the page itself, between
+// The 3D bear (assets/js/buddy.js): walks around the page itself, between
 // the content blocks; positioned in document coordinates by the script.
 .buddy {
   position: absolute;
   left: 0;
   top: 0;
-  width: 150px;
-  height: 190px;
+  width: 180px;
+  height: 230px;
   z-index: 1500;
   pointer-events: none;
   opacity: 0;
@@ -1630,8 +1630,8 @@ html.transition *:after {
   position: absolute;
   left: 0;
   top: 0;
-  width: 52px;
-  height: 12px;
+  width: 64px;
+  height: 14px;
   z-index: 1499;
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(0, 0, 0, 0.18), transparent);
@@ -1639,5 +1639,29 @@ html.transition *:after {
   opacity: 0;
 }
 html[data-theme="dark"] .buddy-shadow { background: radial-gradient(closest-side, rgba(0, 0, 0, 0.5), transparent); }
-.panda-bubble.buddy-bubble { top: 0; bottom: auto; }
 @media print { .buddy, .buddy-shadow { display: none; } }
+
+// Footprints the bear leaves behind; they fade on their own.
+.buddy-print {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 13px;
+  height: 8px;
+  margin: -4px 0 0 -6px;
+  border-radius: 55% 45% 45% 55%;
+  background: var(--global-text-color);
+  pointer-events: none;
+  z-index: 1;
+  animation: buddy-print 4s ease-in forwards;
+}
+@keyframes buddy-print {
+  0% { opacity: 0.2; }
+  100% { opacity: 0; }
+}
+// The cursor is a little honey pot, the bear's favourite (desktop only).
+@media (hover: hover) and (pointer: fine) {
+  html {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M3 3l8 3-3 2z' fill='%232b201b'/%3E%3Cellipse cx='16' cy='18' rx='8.5' ry='7.5' fill='%23e0a33a' stroke='%237a4a17' stroke-width='1.3'/%3E%3Crect x='9.5' y='9' width='13' height='4' rx='2' fill='%23c9862a' stroke='%237a4a17' stroke-width='1.2'/%3E%3Cpath d='M10 15q3 3 6 0t6 0v3q-3 2-6 0t-6 0z' fill='%23f6c95b'/%3E%3C/svg%3E") 3 3, auto;
+  }
+}
