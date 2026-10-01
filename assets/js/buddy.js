@@ -67,9 +67,10 @@ function start() {
   const C = { fur: 0x9c6b45, light: 0xe6cba5, dark: 0x2b201b, paw: 0x6e4f3a, ear: 0xd99a86, pink: 0xf2a2a0 };
   const mat = (c, r = 0.8) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0 });
   const M = { fur: mat(C.fur), light: mat(C.light), dark: mat(C.dark, 0.35), paw: mat(C.paw), ear: mat(C.ear), pink: mat(C.pink), shine: mat(0xffffff, 0.2),
-    coat: mat(0xf3c331, 0.42), trim: mat(0xdca91c, 0.5), boot: mat(0x2f4a6d, 0.4), cloud: mat(0xeef1f5, 0.9),
+    eye: mat(0x2b201b, 0.35), coat: mat(0xf3c331, 0.42), trim: mat(0xdca91c, 0.5), boot: mat(0x2f4a6d, 0.4), cloud: mat(0xeef1f5, 0.9),
     drop: new THREE.MeshStandardMaterial({ color: 0x6fa8e0, roughness: 0.2, transparent: true, opacity: 0.85 }) };
   M.coat.side = THREE.DoubleSide;
+  const METAL = new THREE.Color(0xcfd6de), METAL2 = new THREE.Color(0xeef1f4), METAL3 = new THREE.Color(0x7d8794), EARC = M.ear.color.clone(), EYEC = M.eye.color.clone(), PAWC = M.paw.color.clone();
   const _c = new THREE.Color(), _c2 = new THREE.Color(), _c3 = new THREE.Color(), BOOTC = M.boot.color.clone(), TRIMC = M.trim.color.clone();
   const COAT = M.coat.color.clone(), FUR = M.fur.color.clone(), LIGHT = M.light.color.clone(), SNOW = new THREE.Color(0xf3f5f8), GREY = new THREE.Color(0x8d8a86);
   const sphere = (r, m, s = [1, 1, 1], p = [0, 0, 0]) => {
@@ -123,7 +124,7 @@ function start() {
     P.eyes = new THREE.Group(); P.head.add(P.eyes);
     for (const s of [-1, 1]) {
       const e = new THREE.Group(); e.position.set(s * 0.29, 0.13, 0.72);
-      e.add(sphere(0.088, M.dark)); e.add(sphere(0.03, M.shine, [1, 1, 1], [0.03, 0.035, 0.07]));
+      e.add(sphere(0.088, M.eye)); e.add(sphere(0.03, M.shine, [1, 1, 1], [0.03, 0.035, 0.07]));
       P.eyes.add(e);
     }
     P.head.add(sphere(0.1, M.dark, [1.35, 0.9, 0.9], [0, -0.12, 0.93]));                // nose
@@ -189,6 +190,7 @@ function start() {
     lab: { coat: 0xf4f4f1, boots: 0x2b2b33, wear: ['shirt', 'tie', 'glasses'] },             // a lab coat
     pajama: { coat: 0x7fa7d8, boots: 'fur', wear: ['nightcap'] },                            // pyjamas and a nightcap
     ringmaster: { coat: 0xc0392b, boots: 0x1a1a1f, wear: ['tophat', 'baton', 'shirt', 'bowtie'] },   // the tamer: a ringmaster
+    robobear: { coat: null, boots: 0x8a929c, wear: ['antenna', 'panel'], robot: true },   // taming: it turns into a robot bear
     hero: { coat: 0x2f6fd8, boots: 0xc0392b, wear: ['cape', 'emblem'] },                     // robust: a superhero
     mechanic: { coat: 0x3b5a8a, boots: 0x5a3d2a, wear: ['mcap'] },                           // restoration: a mechanic in overalls
     detective: { coat: 0xc8a874, boots: 0x5a3d2a, wear: ['deerstalker'] },                   // through the fog: a detective
@@ -204,7 +206,7 @@ function start() {
     'sec:publications': 'casual', 'sec:news': 'casual', 'sec:visitors': 'casual',
     yoon2026metalens: 'lab', sehyun2023active: 'lab', sehyun2022combating: 'lab',
     lee2023pid: 'pajama', lee2025dicotta: 'tta',
-    lee2026selfcompensatingvla: 'ringmaster', lee2025garasam: 'hero', lee2024frest: 'mechanic',
+    lee2026selfcompensatingvla: 'robobear', lee2025garasam: 'hero', lee2024frest: 'mechanic',
     lee2022fifo: 'detective', lee2026moga: 'director', kang2022style: 'artist',
   };
   function outfitFor(file, act, venue) {
@@ -538,6 +540,13 @@ function start() {
   PR.aodai.add(new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.85), pmat(0xc8102e, 0.5, { side: THREE.DoubleSide })).translateY(0.35).translateZ(0.98));
   PR.aodai.add(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.5, 0.2, 28), pmat(0xc8102e, 0.5)).translateY(2.02));
   PR.aodai.add(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.025, 6, 28), pmat(0xe3b341, 0.4)).rotateX(Math.PI / 2).translateZ(-1.92));
+  // the robot bear's antenna and chest panel
+  PR.antenna = new THREE.Group(); PR.antenna.position.set(0, 0.78, -0.05); P.head.add(PR.antenna);
+  PR.antenna.add(capsule(0.03, 0.4, pmat(0x8a929c, 0.3, { metalness: 0.7 }), [0, 0.22, 0]));
+  const antTip = pmat(0xff4d4d, 0.3, { emissive: 0xff2a2a, emissiveIntensity: 1 }); PR.antenna.add(sphere(0.09, antTip, [1, 1, 1], [0, 0.48, 0]));
+  PR.panel = new THREE.Group(); PR.panel.position.set(0, 1.25, 0.9); PR.panel.rotation.x = -0.12; P.body.add(PR.panel);
+  PR.panel.add(new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.42, 0.04), pmat(0x5d6670, 0.3, { metalness: 0.6 })));
+  const panelLights = [0, 1, 2].map((i) => { const m = pmat(0x3be37a, 0.3, { emissive: 0x3be37a, emissiveIntensity: 1 }); PR.panel.add(sphere(0.055, m, [1, 1, 0.5], [-0.17 + i * 0.17, 0.05, 0.03])); return m; });
   PR.tophat = new THREE.Group(); PR.tophat.position.y = 0.78; P.head.add(PR.tophat);    // a ringmaster's top hat
   const thm = pmat(0x1a1a1f, 0.4);
   PR.tophat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 32), thm));
@@ -676,7 +685,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret'].includes(k) ? 0 : 1));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
@@ -1161,6 +1170,9 @@ function start() {
       case 'tame': {                                               // a jittery arm, calmed down
         // the robot stands on the side with room: its right on a computer, its left on a phone (it is at the right edge)
         const c = A % 4.4, wildK = c < 2.2 ? 1 - c / 2.4 : 0, sd = compact() ? -1 : 1, RX = 1.65 * sd;
+        if (st.outfit && st.outfit.robot && A < 0.8) { root.rotation.y += (1 - A / 0.8) * Math.PI * 4 * (A / 0.8); sparkle = 1; }   // transform!
+        antTip.emissiveIntensity = Math.sin(A * 8) > 0 ? 1.4 : 0.2;
+        panelLights.forEach((m, i) => { const ok = wildK < 0.05; m.color.setHex(ok ? 0x3be37a : (Math.sin(A * 14 + i * 2) > 0 ? 0xffb020 : 0xe5484d)); m.emissive.copy(m.color); });
         root.rotation.y = st.yaw + (0.75 * sd - st.yaw) * Math.min(1, A * 3);   // turns to the robot
         PR.robot.rotation.y = -0.3 * sd;
         blue.color.setHex(wildK > 0.05 ? 0xe5484d : 0x3b6fd8);
@@ -1459,13 +1471,20 @@ function start() {
     if (st.act === 'style') M.coat.color.setHSL((0.13 + A * 0.18) % 1, 0.7, 0.56);
     else {
       const of = st.act && st.outfit;
-      M.coat.color.lerp(snowy ? SNOW : ttaCol != null ? _c.setHex(ttaCol) : of ? (of.coat == null ? FUR : _c.setHex(of.coat)) : COAT, Math.min(1, dt * 6));
+      M.coat.metalness = 0.3 * (st.robo || 0);
+      M.coat.color.lerp(snowy ? SNOW : ttaCol != null ? _c.setHex(ttaCol) : of ? (of.coat == null ? (of.robot ? METAL : FUR) : _c.setHex(of.coat)) : COAT, Math.min(1, dt * 6));
       M.boot.color.lerp(of ? (of.boots === 'fur' ? FUR : _c2.setHex(of.boots)) : BOOTC, Math.min(1, dt * 6));
       M.trim.color.lerp(of && of.coat != null ? _c3.setHex(of.coat).multiplyScalar(0.82) : TRIMC, Math.min(1, dt * 6));   // the hem matches the outfit
       P.hood.visible = !of;
       P.shell.forEach((o) => (o.visible = !of || of.coat != null));
     }
-    M.fur.color.lerp(snowy ? SNOW : FUR, Math.min(1, dt * 4));
+    const robo = st.act && st.outfit && st.outfit.robot ? 1 : 0;
+    st.robo = (st.robo || 0) + (robo - (st.robo || 0)) * Math.min(1, dt * 5);
+    M.fur.color.lerp(snowy ? SNOW : robo ? METAL : FUR, Math.min(1, dt * 4));
+    M.fur.metalness = 0.3 * st.robo; M.fur.roughness = 0.8 - 0.45 * st.robo;
+    M.paw.color.lerp(robo ? METAL3 : PAWC, Math.min(1, dt * 4));
+    M.light.color.lerp(robo ? METAL2 : LIGHT, Math.min(1, dt * 4)); M.ear.color.lerp(robo ? METAL3 : EARC, Math.min(1, dt * 4));
+    M.eye.color.lerp(robo ? _c3.setHex(0x7cf0ff) : EYEC, Math.min(1, dt * 4)); M.eye.emissive.setHex(0x3cc8ff); M.eye.emissiveIntensity = 1.2 * st.robo;
     maskMat.opacity = 0.62 * maskK;
     placeKeypoints(dark > 0 && !st.sleeping);
     dimmer.classList.toggle('on', dark > 0 && !st.sleeping);
