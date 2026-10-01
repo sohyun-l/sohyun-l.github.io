@@ -491,133 +491,125 @@
   }
 
   // ---------------------------------------------------------------- garasam
-  // GaRA-SAM: robustifying SAM with gated-rank adaptation (the paper's
-  // Figs. 1, 3 and 6). Adapters in the frozen SAM are made of rank-1
-  // components in a lower-rank and a higher-rank space. For each input a
-  // space gate picks one space, and a binary gate lights the subset of its
-  // components that input needs, so the effective rank follows the input
-  // (e.g. rain stays low, snow goes high), and an unseen corruption is
-  // met by a combination of learned components. Frozen SAM's mask breaks
-  // up under corruption; GaRA-SAM's holds. The cursor picks the input.
-  // Which components light is illustrative.
+  // GaRA-SAM: gated-rank adaptation. An adapter's update is a sum of rank-1
+  // components, dW = sum_i b_i a_i^T; a gate looks at the input and picks
+  // which components to add, so the effective rank of dW follows the
+  // input. The cursor sets the input: x sweeps the corruption type
+  // (rain, fog, noise, snow, night), y its severity. Middle: the rank-1
+  // components, lit when the gate picks them. Right: dW, the sum of the
+  // lit ones - plain stripes at low rank, richer texture at high rank.
+  // Which components each corruption picks is illustrative.
   function garasamScene() {
-    const INS = [
-      { name: 'rain', photo: 'rain', hi: false, on: [1, 5, 6], deg: 0.5 },
-      { name: 'fog', photo: 'fog', hi: false, on: [2, 4], deg: 0.55 },
-      { name: 'noise', photo: 'gaussian', hi: true, on: [0, 2, 3, 5, 6, 8, 9, 11, 13, 14], deg: 0.85 },
-      { name: 'snow', photo: 'snow', hi: true, on: [1, 2, 4, 5, 7, 8, 10, 11, 12, 15], deg: 0.75 },
-      { name: 'night', photo: 'night', hi: true, on: [0, 3, 4, 6, 7, 9, 12, 13], deg: 0.8 },
-      { name: 'unseen', photo: 'blur', hi: false, on: [0, 3, 5, 7], deg: 0.75 },
+    const TYPES = [
+      { name: 'rain', photo: 'rain', base: [0, 3, 7] },
+      { name: 'fog', photo: 'fog', base: [1, 4] },
+      { name: 'noise', photo: 'gaussian', base: [2, 5, 6, 8, 10] },
+      { name: 'snow', photo: 'snow', base: [3, 6, 9, 11] },
+      { name: 'night', photo: 'night', base: [0, 2, 7, 10] },
     ];
-    const N = INS.length, KL = 8, KH = 16, X0 = 16, X1 = W - 16, SEG = (X1 - X0) / N;
-    const TY = 9, TW = SEG - 6, TH = 24;
-    const IMG = { x: 14, y: 62, w: 104, h: 104 * PHOTO_H / PHOTO_W };
-    const ADX = 128, ADW = 80, ADY = 62, ADH = 92;
-    const OUT = [{ y: 52, name: 'sam' }, { y: 119, name: 'gara-sam' }], OX = 220, OW = 84, OH = 86 * PHOTO_H / PHOTO_W;
-    const PROMPT = [0.47, 0.5];                             // the click on the house, photo coords
-    const s = { i: 3, glowL: new Array(KL).fill(0), glowH: new Array(KH).fill(0), sp: 1 };
+    const NT = TYPES.length, K = 12, M = 16;
+    const IMG = { x: 14, y: 16, w: 124, h: 124 * PHOTO_H / PHOTO_W };
+    const PAD = { x: 14, y: 106, w: 124, h: 52 };
+    const CX = 156, CS = 15, CG = 5;                  // component tiles: 2 columns x 6
+    const HX = 204, HY = 16, HS = 102;                // dW heatmap
+    // the rank-1 components: smooth column/row vectors so each b a^T reads as a plaid
+    const vec = (i, side) => { const fr = 0.18 + 0.07 * ((i * 5 + side * 3) % 7), ph = i * 1.3 + side * 2.1; return Array.from({ length: M }, (_, r) => Math.cos(r * fr + ph)); };
+    const B = Array.from({ length: K }, (_, i) => vec(i, 0)), A = Array.from({ length: K }, (_, i) => vec(i, 1));
+    const s = { t: 1.4, v: 0.55, glow: new Array(K).fill(0) };
 
-    // is a photo-space point inside the house?
-    function inHouse(fx, fy) {
-      const [wx, wy, ww, wh] = HOUSE.wall;
-      if (fx >= wx && fx <= wx + ww && fy >= wy && fy <= wy + wh) return true;
-      const [a, b, c] = HOUSE.roof;
-      const sgn = (p, q, r) => (p[0] - r[0]) * (q[1] - r[1]) - (q[0] - r[0]) * (p[1] - r[1]);
-      const p = [fx, fy], d1 = sgn(p, a, b), d2 = sgn(p, b, c), d3 = sgn(p, c, a);
-      return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+    // the gate: components ranked by how much this input wants them; severity sets how many
+    function gate(t, v) {
+      const t0 = Math.floor(clamp(t, 0, NT - 1 - 1e-6)), f = clamp(t - t0, 0, 1), t1 = Math.min(NT - 1, t0 + 1);
+      const pref = (ty, i) => (TYPES[ty].base.includes(i) ? 1 : 0.35 * hash(ty * 31 + i));
+      const score = Array.from({ length: K }, (_, i) => ({ i, sc: (1 - f) * pref(t0, i) + f * pref(t1, i) }));
+      score.sort((a, b) => b.sc - a.sc);
+      const nb = lerp(TYPES[t0].base.length, TYPES[t1].base.length, f);
+      const k = clamp(Math.round(nb - 1 + v * 6), 1, K);
+      return new Set(score.slice(0, k).map((o) => o.i));
     }
-    // a mask as a grid of cells; deg breaks it up (holes, spill), seed fixes the pattern
-    function mask(P, x, y, w, h, deg, seed, color) {
-      const n = 30, m = Math.round(n * h / w), cw = w / n, ch = h / m;
-      P.ctx.save();
-      P.ctx.fillStyle = color;
-      for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
-        const fx = (i + 0.5) / n, fy = (j + 0.5) / m, r = hash(seed * 7777 + j * 131 + i);
-        const blob = 0.5 + 0.5 * Math.sin(i * 0.9 + seed) * Math.cos(j * 0.8 - seed);   // spatially coherent damage
-        const keep = inHouse(fx, fy) ? r > deg * (0.35 + 0.65 * blob) : r < deg * 0.06 * blob;
-        if (!keep) continue;
-        P.ctx.globalAlpha = 0.55;
-        P.ctx.fillRect(x + i * cw, y + j * ch, cw + 0.3, ch + 0.3);
+    function plaid(P, x, y, sz, i, alpha) {
+      const T = P.T, c = sz / M, ctx = P.ctx;
+      ctx.save();
+      for (let r = 0; r < M; r++) for (let q = 0; q < M; q++) {
+        const val = B[i][r] * A[i][q];
+        ctx.globalAlpha = alpha * Math.min(1, Math.abs(val));
+        ctx.fillStyle = val > 0 ? T.acc : T.ink;
+        ctx.fillRect(x + q * c, y + r * c, c + 0.2, c + 0.2);
       }
-      P.ctx.restore();
-    }
-    // one rank-1 component, drawn as an hourglass (as in the paper)
-    function comp(P, c, s, on, glow) {
-      const T = P.T, [x, y] = c;
-      const pts = [[x - s, y - s], [x + s, y - s], [x - s, y + s], [x + s, y + s], [x - s, y - s]];
-      if (glow > 0.02) {
-        P.ctx.save(); P.ctx.globalAlpha = 0.85 * glow; P.ctx.fillStyle = T.acc;
-        P.ctx.beginPath(); P.ctx.moveTo(x - s, y - s); P.ctx.lineTo(x + s, y - s); P.ctx.lineTo(x, y); P.ctx.closePath(); P.ctx.fill();
-        P.ctx.beginPath(); P.ctx.moveTo(x - s, y + s); P.ctx.lineTo(x + s, y + s); P.ctx.lineTo(x, y); P.ctx.closePath(); P.ctx.fill();
-        P.ctx.restore();
-      }
-      P.line(pts, { w: 1.1, color: on ? T.acc : T.mute, alpha: on ? 1 : 0.5 });
+      ctx.restore();
     }
 
     return {
       sticky: true,
       idle: () => null,
       draw(P, st) {
-        const T = P.T;
+        const T = P.T, ctx = P.ctx, dt = st.dt || 0.016;
         P.marks();
-        if (!st.idle) s.i = clamp(Math.floor((st.ptr[0] - X0) / SEG), 0, N - 1);
-        const inp = INS[s.i], dt = st.dt || 0.016;
-        const kk = approach(dt, 10);
-        for (let k = 0; k < KL; k++) s.glowL[k] = lerp(s.glowL[k], !inp.hi && inp.on.includes(k) ? 1 : 0, kk);
-        for (let k = 0; k < KH; k++) s.glowH[k] = lerp(s.glowH[k], inp.hi && inp.on.includes(k) ? 1 : 0, kk);
-        s.sp = lerp(s.sp, inp.hi ? 1 : 0, kk);
+        // the input, set by the cursor
+        if (!st.idle) {
+          s.t = clamp((st.ptr[0] - 14) / (W - 28), 0, 1) * (NT - 1);
+          s.v = clamp((st.ptr[1] - 20) / (H - 40), 0, 1);
+        }
+        const on = gate(s.t, s.v), kk = approach(dt, 12);
+        for (let i = 0; i < K; i++) s.glow[i] = lerp(s.glow[i], on.has(i) ? 1 : 0, kk);
 
-        // the inputs
-        INS.forEach((it, i) => {
-          const x = X0 + i * SEG + 3, hot = i === s.i;
-          P.ctx.drawImage(photo(it.photo), x, TY, TW, TH);
-          P.rect(x, TY, TW, TH, { w: hot ? 2 : 1, color: hot ? T.acc : T.ink, alpha: hot ? 1 : 0.6, dash: it.name === 'unseen' ? [2.5, 2] : null });
-          P.text(it.name, x + TW / 2, TY + TH + 6, { size: 5.8, align: 'center', color: hot ? T.ink : T.mute, detail: true });
-        });
-
-        // the chosen input with its prompt point
-        P.ctx.drawImage(photo(inp.photo), IMG.x, IMG.y, IMG.w, IMG.h);
+        // input image: clean photo under the chosen corruption, blended by type and severity
+        const t0 = Math.floor(clamp(s.t, 0, NT - 1 - 1e-6)), f = s.t - t0, t1 = Math.min(NT - 1, t0 + 1);
+        ctx.drawImage(photo('clean'), IMG.x, IMG.y, IMG.w, IMG.h);
+        ctx.save();
+        ctx.globalAlpha = (0.3 + 0.7 * s.v) * (1 - f); ctx.drawImage(photo(TYPES[t0].photo), IMG.x, IMG.y, IMG.w, IMG.h);
+        ctx.globalAlpha = (0.3 + 0.7 * s.v) * f; ctx.drawImage(photo(TYPES[t1].photo), IMG.x, IMG.y, IMG.w, IMG.h);
+        ctx.restore();
         P.rect(IMG.x, IMG.y, IMG.w, IMG.h, { w: 1.2, color: T.ink });
-        const pp = [IMG.x + PROMPT[0] * IMG.w, IMG.y + PROMPT[1] * IMG.h];
-        P.star(pp, 4.2, { fill: '#ffd35a', color: '#1b1b1b', w: 1 });
-        P.text('input + prompt', IMG.x, IMG.y - 6, { size: 6, detail: true });
+        P.text('input', IMG.x, IMG.y - 6, { size: 6, detail: true });
 
-        // the adapter inside frozen SAM: components, gated by the input
-        P.rect(ADX, ADY, ADW, ADH, { w: 1.1, color: T.ink, dash: [3, 2] });
-        P.text('frozen sam', ADX + ADW / 2, ADY - 6, { size: 6, align: 'center', detail: true });
-        P.text('gara', ADX + ADW / 2, ADY + 10, { size: P.small ? 9 : 7, align: 'center', color: T.acc, bold: true });
-        // the space gate picks a row; the binary gate lights components in it
-        const rows = [{ y: ADY + 32, n: KL, r: 3.3, gl: s.glowL, on: !inp.hi, label: 'lower' }, { y: ADY + 62, n: KH, r: 2.6, gl: s.glowH, on: inp.hi, label: 'higher' }];
-        rows.forEach((rw) => {
-          const span = ADW - 12, step = span / (rw.n <= 8 ? rw.n : rw.n / 2);
-          for (let k = 0; k < rw.n; k++) {
-            const col = rw.n <= 8 ? k : k % (rw.n / 2), row = rw.n <= 8 ? 0 : Math.floor(k / (rw.n / 2));
-            comp(P, [ADX + 6 + step * (col + 0.5), rw.y + row * 8 - (rw.n > 8 ? 4 : 0)], rw.r, rw.on && inp.on.includes(k), rw.gl[k]);
-          }
-          if (!rw.on) P.rect(ADX + 4, rw.y - 11, ADW - 8, 22, { w: 0, fill: T.bg, fillAlpha: 0.55 });
-          P.text(rw.label, ADX + 5, rw.y - 14, { size: 5.5, color: rw.on ? T.acc : T.mute, detail: true });
+        // the input pad: corruption type across, severity down
+        P.rect(PAD.x, PAD.y, PAD.w, PAD.h, { w: 1, color: T.faint });
+        const tx = (t) => PAD.x + 12 + (t / (NT - 1)) * (PAD.w - 24);
+        TYPES.forEach((ty, i) => {
+          const x = tx(i);
+          P.line([[x, PAD.y], [x, PAD.y + 3]], { w: 1, color: T.mute });
+          P.text(ty.name, x, PAD.y + PAD.h + 6, { size: P.small ? 7.5 : 6.2, align: 'center', keepCase: true, bold: i === Math.round(s.t), color: i === Math.round(s.t) ? T.ink : T.mute });
         });
-        // the space gate, drawn as a switch pointing at the chosen row
-        const sy = lerp(rows[0].y, rows[1].y, s.sp);
-        P.circle([ADX - 8, ADY + ADH / 2], 1.8, { fill: T.ink, w: 0 });
-        P.line([[ADX - 8, ADY + ADH / 2], [ADX - 1, sy]], { w: 1.4, color: T.acc });
-        P.head([ADX + 2, sy], Math.atan2(sy - ADY - ADH / 2, 9), { color: T.acc, head: 4.5 });
-        P.text(inp.hi ? 'high rank' : 'low rank', ADX + ADW / 2, ADY + ADH - 9, { size: P.small ? 9 : 7, align: 'center', color: T.acc });
-        // input -> gate -> adapter
-        P.line([[IMG.x + IMG.w + 1, IMG.y + IMG.h / 2], [ADX - 8, ADY + ADH / 2]], { w: 1, color: T.ink });
-        P.text('gate', ADX - 8, ADY + ADH / 2 + 8, { size: 5.5, align: 'center', detail: true });
+        P.text('severity', PAD.x - 3, PAD.y + PAD.h / 2, { size: 5.5, align: 'right', detail: true });
+        const dot = [tx(s.t), PAD.y + 3 + s.v * (PAD.h - 6)];
+        P.line([[dot[0], PAD.y], [dot[0], PAD.y + PAD.h]], { w: 0.8, color: T.faint });
+        P.circle(dot, 3.2, { fill: T.acc, w: 0 });
 
-        // masks: frozen SAM vs GaRA-SAM
-        OUT.forEach((o, oi) => {
-          const mine = oi === 1, deg = mine ? inp.deg * 0.06 : inp.deg;
-          P.ctx.save(); P.ctx.globalAlpha = 0.35; P.ctx.drawImage(photo(inp.photo), OX, o.y, OW, OH); P.ctx.restore();
-          mask(P, OX, o.y, OW, OH, deg, s.i * 3 + oi + 1, mine || deg < 0.3 ? T.acc : T.bad);
-          P.rect(OX, o.y, OW, OH, { w: 1.1, color: T.ink });
-          P.text(o.name, OX, o.y - 6, { size: P.small ? 8.5 : 6.5, color: mine ? T.acc : T.mute, bold: mine });
-          const good = deg < 0.3;
-          if (good) P.check(OX + OW - 8, o.y - 6, 0.75, { color: T.acc, w: 1.6 });
-          else P.cross(OX + OW - 8, o.y - 6, 0.75, { color: T.bad, w: 1.6 });
-        });
+        // the rank-1 components; the gate lights a subset
+        P.text('rank-1 components', CX - 2, 9, { size: 5.8, detail: true });
+        for (let i = 0; i < K; i++) {
+          const x = CX + (i % 2) * (CS + CG), y = 16 + Math.floor(i / 2) * (CS + 3.4);
+          plaid(P, x, y, CS, i, 0.18 + 0.82 * s.glow[i]);
+          P.rect(x, y, CS, CS, { w: on.has(i) ? 1.4 : 0.8, color: on.has(i) ? T.acc : T.faint });
+        }
+
+        // dW: the sum of the lit components
+        P.text('Σ', (CX + 2 * CS + CG + HX) / 2, HY + HS / 2, { size: 13, align: 'center', color: T.ink, keepCase: true });
+        const c = HS / M;
+        let mx = 1e-6;
+        const val = [];
+        for (let r = 0; r < M; r++) for (let q = 0; q < M; q++) {
+          let v = 0;
+          for (let i = 0; i < K; i++) v += s.glow[i] * B[i][r] * A[i][q];
+          val.push(v); mx = Math.max(mx, Math.abs(v));
+        }
+        ctx.save();
+        for (let r = 0; r < M; r++) for (let q = 0; q < M; q++) {
+          const v = val[r * M + q] / mx;
+          ctx.globalAlpha = Math.min(1, Math.abs(v)) * 0.95;
+          ctx.fillStyle = v > 0 ? T.acc : T.ink;
+          ctx.fillRect(HX + q * c, HY + r * c, c + 0.25, c + 0.25);
+        }
+        ctx.restore();
+        P.rect(HX, HY, HS, HS, { w: 1.2, color: T.ink });
+        P.text('ΔW', HX, HY - 6, { size: 6.5, color: T.ink, keepCase: true, detail: true });
+
+        // rank gauge
+        const gy = HY + HS + 12, gw = HS / K;
+        for (let i = 0; i < K; i++) P.rect(HX + i * gw + 0.8, gy, gw - 1.6, 6, { w: 0, fill: i < on.size ? T.acc : T.faint });
+        P.text('rank', HX, gy + 15, { size: P.small ? 8 : 6.5, color: T.mute });
+        P.text(on.size <= 3 ? 'low' : on.size <= 6 ? 'mid' : 'high', HX + HS, gy + 15, { size: P.small ? 8 : 6.5, align: 'right', color: T.acc, bold: true });
       },
     };
   }
