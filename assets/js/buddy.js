@@ -172,17 +172,17 @@ function start() {
   const HANDHELD = { maple: 'up' };
   // gallery outfits instead of the raincoat: coat colour (null = none, just fur), boots, a conference badge
   const OUTFIT = {
-    conference: { coat: 0x2f3e5c, boots: 0x2b2b33, badge: true },        // a navy blazer and a lanyard
-    grad: { coat: 0x8f1d2c, boots: 0x2b2b33 },                            // a crimson gown
-    award: { coat: 0x1f1f26, boots: 0x2b2b33 },                           // a black suit
-    beach: { coat: null, boots: 'fur' },                                  // just the bear, sunbathing
-    surf: { coat: 0x16181d, boots: 0x16181d },                            // a wetsuit
-    runway: { coat: 0xd64f8f, boots: 0x2b2b33 },                          // something pink
-    ski: { coat: 0xe5484d, boots: 0x2b2b33 },                             // a ski jacket
-    jazz: { coat: 0x5b2a86, boots: 0x2b2b33 },                            // a purple suit
-    hike: { coat: 0x4f8a4b, boots: 0x7a5536 },                            // a hiking jacket
-    visit: { coat: 0xb5835a, boots: 0x7a5536 },                           // a cardigan
-    aodai: { coat: 0xf2efe6, boots: 0x2b2b33, badge: true },              // light and airy
+    conference: { coat: 0x2f3e5c, boots: 0x2b2b33, wear: ['shirt', 'tie', 'badge'] },          // a blazer, shirt and tie, a lanyard
+    grad: { coat: 0x1d1d24, boots: 0x2b2b33, wear: ['stole'] },                              // a black gown with a crimson stole
+    award: { coat: 0x1f1f26, boots: 0x2b2b33, wear: ['shirt', 'bowtie'] },                   // a black suit and a bow tie
+    beach: { coat: null, boots: 'fur', wear: ['swim'] },                                     // a striped swimsuit
+    surf: { coat: 0x16181d, boots: 0x16181d, wear: ['wet'] },                                // a wetsuit with stripes
+    runway: { coat: 0xd64f8f, boots: 0x2b2b33, wear: ['pearls'] },                           // pink, and pearls
+    ski: { coat: 0xe5484d, boots: 0x2b2b33, wear: ['beanie'] },                              // a ski jacket and a bobble hat
+    jazz: { coat: 0x5b2a86, boots: 0x2b2b33, wear: ['shirt', 'bowtie', 'fedora'] },          // a purple suit, bow tie and fedora
+    hike: { coat: 0x4f8a4b, boots: 0x7a5536, wear: ['backpack', 'bucket'] },                 // a hiking jacket, backpack, bucket hat
+    visit: { coat: 0xb5835a, boots: 0x7a5536, wear: ['shirt'] },                             // a cardigan over a shirt
+    aodai: { coat: 0xc8102e, boots: 0x2b2b33, wear: ['aodai'] },                             // an áo dài
   };
   function outfitFor(file, act, venue) {
     if (venue === 'hanoi') return OUTFIT.aodai;
@@ -465,6 +465,45 @@ function start() {
   });
   PR.hearts = new THREE.Group(); P.body.add(PR.hearts);
   const hearts = Array.from({ length: 6 }, (_, i) => { const h = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: heartTex, transparent: true, depthWrite: false })); h.userData.ph = i / 6; PR.hearts.add(h); return h; });
+  // outfit pieces
+  const tri = (pts, mat) => { const sh = new THREE.Shape(); pts.forEach(([x, y], i) => (i ? sh.lineTo(x, y) : sh.moveTo(x, y))); return new THREE.Mesh(new THREE.ShapeGeometry(sh), mat); };
+  PR.shirt = tri([[-0.27, 0.36], [0.27, 0.36], [0, -0.38]], pmat(0xffffff, 0.6)); PR.shirt.position.set(0, 1.6, 0.97); PR.shirt.rotation.x = -0.22; P.body.add(PR.shirt);
+  PR.tie = tri([[0, 0.3], [0.07, 0.2], [0.05, -0.24], [0, -0.32], [-0.05, -0.24], [-0.07, 0.2]], pmat(0xb22234, 0.5)); PR.tie.position.set(0, 1.62, 0.985); PR.tie.rotation.x = -0.22; P.body.add(PR.tie);
+  PR.bowtie = new THREE.Group(); PR.bowtie.position.set(0, 1.9, 0.9); P.body.add(PR.bowtie);
+  for (const sg of [-1, 1]) PR.bowtie.add(tri([[0, 0], [sg * 0.2, 0.1], [sg * 0.2, -0.1]], pmat(0x1a1a1f, 0.4)));
+  PR.bowtie.add(sphere(0.045, pmat(0x1a1a1f, 0.4)));
+  PR.stole = new THREE.Group(); P.body.add(PR.stole);
+  for (const sg of [-1, 1]) { const st2 = new THREE.Mesh(new THREE.BoxGeometry(0.17, 1.15, 0.02), pmat(0xb22234, 0.5)); st2.position.set(sg * 0.3, 1.35, 0.95); st2.rotation.set(-0.12, 0, sg * 0.1); PR.stole.add(st2); }
+  PR.pearls = new THREE.Group(); P.body.add(PR.pearls);
+  for (let i = 0; i < 15; i++) { const a = -1.5 + i * 3 / 14; PR.pearls.add(sphere(0.05, pmat(0xfbf7ef, 0.2), [1, 1, 1], [Math.sin(a) * 0.58, 1.86 - 0.1 * Math.cos(a), Math.cos(a) * 0.6])); }
+  PR.swim = new THREE.Group(); P.body.add(PR.swim);                                        // striped swimsuit
+  const swimTex = cardTex(256, 64, (g, w, h) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#2f7bd9'; g.fillRect(0, i * h / 8, w, h / 8 + 1); } });
+  const swimBand = new THREE.Mesh(new THREE.CylinderGeometry(0.99, 1.03, 0.85, 36, 1, true), new THREE.MeshStandardMaterial({ map: swimTex, roughness: 0.7 }));
+  swimBand.position.y = 0.95; swimBand.scale.z = 0.92; PR.swim.add(swimBand);
+  for (const sg of [-1, 1]) { const strap = capsule(0.05, 0.6, pmat(0x2f7bd9, 0.6), [sg * 0.42, 1.62, 0.62]); strap.rotation.x = -0.5; PR.swim.add(strap); }
+  PR.wet = new THREE.Group(); P.body.add(PR.wet);                                          // wetsuit stripes
+  for (const sg of [-1, 1]) { const ws = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1.3, 0.3), pmat(0x2ec4d6, 0.4)); ws.position.set(sg * 0.98, 1.2, 0.1); ws.rotation.z = sg * -0.05; PR.wet.add(ws); }
+  PR.beanie = new THREE.Group(); PR.beanie.position.y = 0.2; P.head.add(PR.beanie);       // a bobble hat
+  PR.beanie.add(new THREE.Mesh(new THREE.SphereGeometry(0.86, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), pmat(0xd64545, 0.85)));
+  PR.beanie.add(new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.09, 8, 30), pmat(0xffffff, 0.85)).rotateX(Math.PI / 2));
+  PR.beanie.add(sphere(0.2, pmat(0xffffff, 0.9), [1, 1, 1], [0, 0.92, 0]));
+  PR.fedora = new THREE.Group(); PR.fedora.position.y = 0.78; P.head.add(PR.fedora);     // a fedora
+  const fed = pmat(0x2b2b33, 0.6);
+  PR.fedora.add(new THREE.Mesh(new THREE.CylinderGeometry(0.98, 0.98, 0.05, 32), fed));
+  PR.fedora.add(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.58, 0.45, 28), fed).translateY(0.24));
+  PR.fedora.add(new THREE.Mesh(new THREE.CylinderGeometry(0.585, 0.585, 0.1, 28), pmat(0xe3b341, 0.5)).translateY(0.08));
+  PR.bucket = new THREE.Group(); PR.bucket.position.y = 0.72; P.head.add(PR.bucket);     // a bucket hat
+  const buc = pmat(0xc9b27c, 0.85);
+  PR.bucket.add(new THREE.Mesh(new THREE.CylinderGeometry(0.62, 1.0, 0.18, 32, 1, true), pmat(0xc9b27c, 0.85, { side: THREE.DoubleSide })));
+  PR.bucket.add(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, 0.4, 28), buc).translateY(0.28));
+  PR.backpack = new THREE.Group(); P.body.add(PR.backpack);                                 // a backpack
+  PR.backpack.add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.15, 0.45), pmat(0xe8735a, 0.7)).translateY(1.35).translateZ(-0.95));
+  PR.backpack.add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.2), pmat(0xc95a43, 0.7)).translateY(1.1).translateZ(-1.2));
+  for (const sg of [-1, 1]) { const bs = capsule(0.05, 0.75, pmat(0x5a3d2a, 0.7), [sg * 0.45, 1.5, 0.7]); bs.rotation.x = -0.35; PR.backpack.add(bs); }
+  PR.aodai = new THREE.Group(); P.body.add(PR.aodai);                                       // an áo dài: long front panel, mandarin collar
+  PR.aodai.add(new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.85), pmat(0xc8102e, 0.5, { side: THREE.DoubleSide })).translateY(0.35).translateZ(0.98));
+  PR.aodai.add(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.5, 0.2, 28), pmat(0xc8102e, 0.5)).translateY(2.02));
+  PR.aodai.add(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.025, 6, 28), pmat(0xe3b341, 0.4)).rotateX(Math.PI / 2).translateZ(-1.92));
   // a conference badge on a lanyard
   PR.badge = new THREE.Group(); P.body.add(PR.badge);
   for (const sg of [-1, 1]) { const cord = capsule(0.018, 0.75, pmat(0x3b6fd8, 0.5), [sg * 0.2, 1.62, 0.88]); cord.rotation.z = sg * 0.32; cord.rotation.x = -0.25; PR.badge.add(cord); }
@@ -573,7 +612,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis'].includes(k) ? 0 : 1));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai'].includes(k) ? 0 : 1));
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
@@ -1351,8 +1390,7 @@ function start() {
     }
     // the venue's accessories, held in the left paw when they need one
     if (st.act && st.venue === 'vancouver') wx.leaves = 1;                // autumn leaves in Vancouver
-    if (st.act && st.outfit && st.outfit.badge) wx.badge = 1;
-    const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || [], st.act ? st.photoExtra || [] : [], wx.badge ? ['badge'] : []);
+    const extra = (st.act && st.venue ? VACC[st.venue] || [] : []).concat(ACTEXTRA[st.act] || [], st.act ? st.photoExtra || [] : [], st.act && st.outfit ? st.outfit.wear : []);
     for (const k of extra) {
       if (HANDHELD[k] === 'up') { P.armL.rotation.z = -0.2 - 2.1 * still; P.armL.rotation.x = -0.2 * still; }
       if (HANDHELD[k] === 'front') { P.armL.rotation.x = -1.1 * still; P.armL.rotation.z = -0.35; }
