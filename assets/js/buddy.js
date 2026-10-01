@@ -939,6 +939,10 @@ function start() {
   }
   // a straight walk that ignores the page's layout
   function goDirect(p) {
+    if (compact()) {                                             // phones: never leave the screen sideways
+      const vw = document.documentElement.clientWidth;
+      p = [Math.max(scrollX + 50, Math.min(scrollX + vw - 68, p[0])), p[1]];
+    }
     if (!st.pos || reduce) { st.pos = p.slice(); return; }
     const d = Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]);
     if (st.burrow) { burrowTo(p); return; }
@@ -981,7 +985,7 @@ function start() {
   document.addEventListener('pointermove', (e) => {
     st.cursor = [e.clientX + scrollX, e.clientY + scrollY];
     wake();
-    if (fixedMode()) return;
+    if (compact()) return;                                       // phones: a finger drag is not a hover; scrolling decides
     const el = e.target instanceof Element ? e.target : null;
     st.onFig = !!(el && el.closest('.pub-fig'));
     const spot = spotOf(el);
@@ -1084,7 +1088,7 @@ function start() {
       el.className = 'buddy-print';
       el.style.transform = `translate(${st.pos[0] - dy * s * 9}px, ${st.pos[1] + dx * s * 9}px) rotate(${ang + 90}deg)`;
       el.addEventListener('animationend', () => el.remove());
-      document.body.appendChild(el); prints.push(el);
+      layer.appendChild(el); prints.push(el);                     // in the clipped layer: never widens the page
     }
     while (prints.length > 60) prints.shift().remove();
   }
