@@ -1683,3 +1683,14 @@ html[data-theme="dark"] .buddy-shadow { background: radial-gradient(closest-side
 }
 // the guide's canvas may reach past the page edge; never scroll sideways for it
 html, body { overflow-x: clip; }
+// the page dims while the bear acts out the low-light paper
+.buddy-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  background: rgba(6, 8, 16, 0.8);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  &.on { opacity: 1; }
+}

@@ -35,7 +35,7 @@ function start() {
     lee2026moga: 'Promptable video segmentation that stays robust, frame after frame.',
     lee2025garasam: 'A robust SAM: a gate picks how much adapter rank each input needs.',
     lee2024frest: 'No clean labels needed: restores features hurt by adverse conditions.',
-    sehyun2023active: 'Cheaper labels: ask which classes are in a region, not where they are.',
+    sehyun2023active: 'Asks which classes appear in a superpixel, then works out which pixel is which.',
     lee2023pid: 'Human poses in extremely low light, with a new real dataset 🌙',
     sehyun2022combating: 'Picks what to label so class proportions match across domains.',
     lee2022fifo: 'A fog-pass filter pulls out the fog, so features stop telling foggy from clear 🌫️',
@@ -65,7 +65,7 @@ function start() {
     coat: mat(0xf3c331, 0.42), trim: mat(0xdca91c, 0.5), boot: mat(0x2f4a6d, 0.4), cloud: mat(0xeef1f5, 0.9),
     drop: new THREE.MeshStandardMaterial({ color: 0x6fa8e0, roughness: 0.2, transparent: true, opacity: 0.85 }) };
   M.coat.side = THREE.DoubleSide;
-  const COAT = M.coat.color.clone(), FUR = M.fur.color.clone(), LIGHT = M.light.color.clone(), SNOW = new THREE.Color(0xf3f5f8), GREY = new THREE.Color(0x8d8a86), MASKC = new THREE.Color(0x3b8bff), BOOT = M.boot.color.clone();
+  const COAT = M.coat.color.clone(), FUR = M.fur.color.clone(), LIGHT = M.light.color.clone(), SNOW = new THREE.Color(0xf3f5f8), GREY = new THREE.Color(0x8d8a86);
   const sphere = (r, m, s = [1, 1, 1], p = [0, 0, 0]) => {
     const o = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), m);
     o.scale.set(...s); o.position.set(...p); return o;
@@ -134,7 +134,7 @@ function start() {
     lee2026moga: 'film',                     // robust video segmentation: films steadily while conditions change frame to frame
     lee2025garasam: 'conditions',            // robust SAM: rank components lit per input, even an unseen one
     lee2024frest: 'restore',                 // restoration: rain, snow, fog, dark, shaking each one off
-    sehyun2023active: 'ask',                 // active learning: a region is queried; it ticks every class in it
+    sehyun2023active: 'ask',                 // active learning: a superpixel is queried, every class in it ticked, then its pixels sorted out
     lee2023pid: 'night',                     // low-light pose: lights down, strikes poses
     sehyun2022combating: 'balance',          // label shift: target class proportions brought to match the source
     lee2022fifo: 'fifo',                     // fog-pass filter: the fog is pulled into a filter; foggy or clear, it can't tell
@@ -235,19 +235,33 @@ function start() {
   const tick = (g, x, y, k) => { g.strokeStyle = '#2f9e44'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x + 7 * k, y + 9 * k); g.lineTo(x + 7 + 11 * k, y - 10 * k); g.stroke(); };
   // active learning: a region of an image is queried, and every class in it gets a tick
   PR.query = makeBoard();
+  // (1) an informative superpixel is picked, (2) the answer: every class in it
+  // (a multi-hot label), (3) its pixels are then sorted out class by class
+  const SP = [[56, 50], [112, 46], [122, 96], [92, 116], [50, 104]];           // the queried superpixel
   function drawQuery(A) {
     const g = PR.query.userData.g; frame0(g);
+    const c = A % 4.6;
     g.save(); g.beginPath(); g.roundRect(20, 30, 140, 160, 8); g.clip();
     g.fillStyle = '#9fd0f2'; g.fillRect(20, 30, 140, 160);                         // sky
-    g.fillStyle = '#9a9a9a'; g.fillRect(20, 140, 140, 50);                         // road
-    g.fillStyle = '#5f9e46'; g.beginPath(); g.arc(70, 100, 34, 0, 7); g.fill();    // tree
-    g.fillStyle = '#7a5332'; g.fillRect(64, 118, 12, 26);
+    g.fillStyle = '#9a9a9a'; g.fillRect(20, 150, 140, 40);                         // road
+    g.fillStyle = '#5f9e46'; g.beginPath(); g.arc(80, 112, 30, 0, 7); g.fill();    // tree
+    g.fillStyle = '#7a5332'; g.fillRect(74, 128, 12, 24);
+    g.strokeStyle = 'rgba(43,32,27,0.25)'; g.lineWidth = 2;                         // superpixels
+    for (const [x0, y0, x1, y1] of [[20, 74, 160, 70], [20, 128, 160, 132], [56, 30, 50, 190], [112, 30, 122, 190], [20, 104, 160, 96]]) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
+    const poly = () => { g.beginPath(); SP.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+    if (c > 2.6) {                                                                  // (3) which pixel is which
+      const k = Math.min(1, (c - 2.6) / 0.8);
+      g.save(); poly(); g.clip(); g.globalAlpha = 0.85 * k;
+      g.fillStyle = '#3d7bd9'; g.fillRect(20, 30, 140, 160);                       // sky label
+      g.fillStyle = '#3aa655'; g.beginPath(); g.arc(80, 112, 30, 0, 7); g.fill();  // tree label
+      g.restore();
+    }
     g.restore();
-    g.setLineDash([7, 5]); g.strokeStyle = '#e8735a'; g.lineWidth = 5;            // the queried region
-    g.beginPath(); g.moveTo(52, 58); g.lineTo(118, 52); g.lineTo(132, 112); g.lineTo(98, 160); g.lineTo(46, 150); g.closePath(); g.stroke(); g.setLineDash([]);
-    const rows = [['tree', 1], ['sky', 1], ['road', 1], ['car', 0]], n = Math.floor((A % 3.4) / 0.55);
+    const pulse = c < 1.0 ? 0.5 + 0.5 * Math.sin(c * 12) : 1;                      // (1) the query
+    g.setLineDash([7, 5]); g.strokeStyle = `rgba(232,115,90,${pulse})`; g.lineWidth = 5; poly(); g.stroke(); g.setLineDash([]);
+    const rows = [['tree', 1], ['sky', 1], ['road', 0], ['car', 0]], n = c < 1.0 ? 0 : Math.floor((c - 1.0) / 0.4) + 1;
     g.font = 'bold 22px sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left';
-    rows.forEach(([name, has], i) => {
+    rows.forEach(([name, has], i) => {                                             // (2) multi-hot answer
       const y = 52 + i * 42;
       g.strokeStyle = '#2b201b'; g.lineWidth = 4; g.strokeRect(178, y - 13, 26, 26);
       g.fillStyle = '#2b201b'; g.fillText(name, 214, y);
@@ -389,6 +403,26 @@ function start() {
     for (let i = 0; i < a.length; i += 3) { const x = flagBase[i]; a[i + 2] = Math.sin(x * 7 - t * 8) * 0.08 * x / 0.9; }
     flagGeo.attributes.position.needsUpdate = true;
   }
+  // ExLPose: glowing keypoints and a skeleton, visible in the dark
+  const kpMat = new THREE.MeshBasicMaterial({ color: 0x7cf0ff }), boneMat = new THREE.LineBasicMaterial({ color: 0x7cf0ff });
+  const KP = [[P.head, [0, 0, 0.75]], [P.body, [-0.72, 1.5, 0.35]], [P.body, [0.72, 1.5, 0.35]], [P.armL, [0, -0.6, 0.15]], [P.armR, [0, -0.6, 0.15]],
+    [P.body, [-0.42, 0.6, 0.45]], [P.body, [0.42, 0.6, 0.45]], [P.legL, [0, -0.5, 0.3]], [P.legR, [0, -0.5, 0.3]]];
+  const BONES = [[0, 1], [0, 2], [1, 3], [2, 4], [1, 5], [2, 6], [5, 6], [5, 7], [6, 8]];
+  const kps = KP.map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), kpMat); m.visible = false; m.layers.set(1); scene.add(m); return m; });
+  const boneGeo = new THREE.BufferGeometry(); boneGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(BONES.length * 6), 3));
+  const bones = new THREE.LineSegments(boneGeo, boneMat); bones.visible = false; bones.layers.set(1); bones.frustumCulled = false; scene.add(bones);
+  const _v = new THREE.Vector3();
+  function placeKeypoints(on) {
+    kps.forEach((m) => (m.visible = on)); bones.visible = on;
+    if (!on) return;
+    root.updateMatrixWorld(true);
+    KP.forEach(([part, p], i) => kps[i].position.copy(part.localToWorld(_v.set(...p))));
+    const a = boneGeo.attributes.position.array;
+    BONES.forEach(([i, j], b) => { kps[i].position.toArray(a, b * 6); kps[j].position.toArray(a, b * 6 + 3); });
+    boneGeo.attributes.position.needsUpdate = true;
+  }
+  // the page dims around it for the low-light paper
+  const dimmer = document.createElement('div'); dimmer.className = 'buddy-dim'; document.body.appendChild(dimmer);
   // venue accessories
   PR.beads = new THREE.Group(); PR.beads.position.y = 1.95; P.body.add(PR.beads);            // Mardi Gras beads
   for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2; PR.beads.add(sphere(0.06, pmat([0x7b3fbf, 0x2e9e4f, 0xe3b341][i % 3], 0.25, { metalness: 0.4 }), [1, 1, 1], [Math.sin(a) * 0.62, -0.18 - 0.22 * (1 + Math.cos(a)) / 2, Math.cos(a) * 0.6])); }
@@ -450,7 +484,9 @@ function start() {
   ];
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
+  root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
   for (const k in PR) PR[k].traverse((o) => o.layers.set(1));
+  const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthFunc: THREE.LessEqualDepth, depthWrite: false, side: THREE.DoubleSide });
   hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.surf.userData, { s: 1.0 }); Object.assign(PR.pizza.userData, { s: 1.7 }); Object.assign(PR.ball.userData, { s: 1.2 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
@@ -867,7 +903,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0 };
+    let dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -962,8 +998,8 @@ function start() {
         front(PR.query, 2.0, 1.35);
         drawQuery(A); hx = 0.3; P.head.rotation.z = Math.sin(A * 3) * 0.06;
         break;
-      case 'night': {                                              // lights down, strike a pose
-        light = 0.35;
+      case 'night': {                                              // nearly pitch dark: only its keypoints glow as it poses
+        light = 0.05; dark = 1;
         const k2 = Math.floor(A / 0.9) % 3;
         const L = [[-2.6, 2.6, 0], [-1.5, 1.5, 0.4], [-2.6, 0.5, -0.4]][k2];
         P.armL.rotation.z = -0.2 + (L[0] + 0.2) * still; P.armR.rotation.z = 0.2 + (L[1] - 0.2) * still; P.legR.rotation.z = L[2] * still;
@@ -1106,8 +1142,9 @@ function start() {
     if (st.act === 'style') M.coat.color.setHSL((0.13 + A * 0.18) % 1, 0.7, 0.56);
     else M.coat.color.lerp(snowy ? SNOW : COAT, Math.min(1, dt * 4));
     M.fur.color.lerp(snowy ? SNOW : FUR, Math.min(1, dt * 4));
-    if (maskK > 0) { M.fur.color.copy(FUR).lerp(MASKC, 0.55 * maskK); M.coat.color.copy(COAT).lerp(MASKC, 0.55 * maskK); M.light.color.copy(LIGHT).lerp(MASKC, 0.55 * maskK); M.boot.color.copy(BOOT).lerp(MASKC, 0.55 * maskK); }
-    else M.boot.color.lerp(BOOT, Math.min(1, dt * 4));
+    maskMat.opacity = 0.62 * maskK;
+    placeKeypoints(dark > 0 && !st.sleeping);
+    dimmer.classList.toggle('on', dark > 0 && !st.sleeping);
     if (degrade > 0) { M.fur.color.copy(FUR).lerp(GREY, degrade * 0.75); M.coat.color.copy(COAT).lerp(GREY, degrade * 0.75); M.light.color.copy(LIGHT).lerp(GREY, degrade * 0.75); }
     else M.light.color.lerp(LIGHT, Math.min(1, dt * 4));
     sparkles.forEach((sp, i) => {
@@ -1166,6 +1203,9 @@ function start() {
     P.eyes.children.forEach((e, i) => (e.scale.y = wink && i === 0 && !st.sleeping ? 0.12 : ey));
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
+    if (maskMat.opacity > 0.01) {                               // the mask: the whole bear, in one flat colour
+      camera.layers.set(2); scene.overrideMaterial = maskMat; renderer.render(scene, camera); scene.overrideMaterial = null;
+    }
     renderer.clearDepth();
     camera.layers.set(1); renderer.render(scene, camera);
     const drawnTop = Math.min(topPx([root, cloud, rankDots, PR.robot].filter((o) => o.visible)), st.act === 'trophy' ? (FY - 4.4 * PX) : CH);
