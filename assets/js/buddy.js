@@ -747,11 +747,22 @@ function start() {
     st.path = []; st.burrow = { from: st.pos.slice(), to: p, t0: performance.now() };
   }
   // stand beside an element, on the side nearer the cursor
+  // gallery photos: stand right beside the photo, by its lower corner, even over the next one
+  function besidePhoto(el) {
+    const r = el.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+    const y = r.bottom + scrollY - 6, right = r.right + 46 < vw - 20;
+    return [(right ? r.right + 42 : r.left - 42) + scrollX, y];
+  }
+  // a straight walk (or a burrow, if far) that ignores the page's layout
+  function goDirect(p) {
+    if (fixedMode()) return;
+    if (!st.pos || reduce) { st.pos = p.slice(); return; }
+    if (st.burrow || Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]) > 900) { burrowTo(p); return; }
+    st.path = [p];
+  }
   function besideOf(el) {
-    // photos sit in a grid: stand in the page margin, level with the photo
-    const r = el.getBoundingClientRect(), band = (el.closest('.gallery-grid') || el).getBoundingClientRect();
-    const y = r.top + scrollY + Math.min(el.matches('.gallery-item') ? r.height * 0.55 : r.height, 60) + BODY_H * 0.5;
-    const L = [band.left + scrollX - BODY_W - 26, y], R = [band.right + scrollX + BODY_W + 26, y];
+    const r = el.getBoundingClientRect(), y = r.top + scrollY + Math.min(r.height, 60) + BODY_H * 0.5;
+    const L = [r.left + scrollX - BODY_W - 26, y], R = [r.right + scrollX + BODY_W + 26, y];
     const ref = st.cursor || st.pos;
     if (!ref) return [L, R];
     return Math.abs(L[0] - ref[0]) <= Math.abs(R[0] - ref[0]) ? [L, R] : [R, L];
@@ -782,7 +793,8 @@ function start() {
     const spot = spotOf(el);
     if (spot && spot !== st.hover) {
       showSpot(spot, el);
-      if (!spot.closest('#navbar')) goTo(...besideOf(spot));
+      if (spot.matches('.gallery-item')) goDirect(besidePhoto(spot));
+      else if (!spot.closest('#navbar')) goTo(...besideOf(spot));
     } else if (!spot) {
       st.hover = null; st.act = null;
       // otherwise it follows the honey pot (the cursor), as near as it can stand
