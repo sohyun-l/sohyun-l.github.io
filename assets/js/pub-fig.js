@@ -214,6 +214,7 @@
       if (name === 'fog') { const a = 0.5 + 0.3 * (1 - y) + 0.08 * Math.sin(i * 0.0007 + y * 9); r = lerp(r, 214, a); gg = lerp(gg, 220, a); b = lerp(b, 226, a); }
       if (name === 'snow') { r = r * 0.75 + 20; gg = gg * 0.78 + 24; b = b * 0.82 + 34; }
       if (name === 'bright') { r = 120 + r * 0.6; gg = 120 + gg * 0.6; b = 120 + b * 0.6; }
+      if (name === 'rain') { r = r * 0.82 + 10; gg = gg * 0.84 + 12; b = b * 0.88 + 18; }
       if (name === 'night') { r = r * 0.22 + 8 * gauss(); gg = gg * 0.26 + 8 * gauss(); b = b * 0.4 + 10 + 8 * gauss(); }
       if (name === 'blur') {                       // horizontal motion blur
         const x = (i / 4) % PW, row = i - x * 4;
@@ -230,6 +231,10 @@
         g.fillStyle = rand() < 0.3 ? '#111' : `hsl(${hue},95%,${55 + rand() * 25}%)`;
         g.fillRect(rand() * PW, rand() * PH, sz, sz);
       }
+    }
+    if (name === 'rain') {                        // long, thin, slanted streaks
+      g.strokeStyle = 'rgba(235,240,255,.75)'; g.lineWidth = 0.8;
+      for (let k = 0; k < 120; k++) { const x0 = rand() * PW * 1.2 - 10, y0 = rand() * PH, l = 7 + rand() * 9; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l * 0.28, y0 + l); g.stroke(); }
     }
     if (name === 'snow') {
       g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1;
@@ -487,29 +492,30 @@
 
   // ---------------------------------------------------------------- garasam
   // GaRA-SAM: robustifying SAM with gated-rank adaptation (the paper's
-  // teaser). A frozen SAM carries lightweight adapters made of rank-1
-  // components; a learned gate looks at the input and switches on only the
-  // components this corruption needs, so the adapter's effective rank
-  // follows the input: none for a clean image, a few for fog, more for
-  // noise, and a combination of learned ones for an unseen corruption.
-  // Frozen SAM's mask breaks up under corruption; GaRA-SAM's holds. The
-  // cursor picks the input along the top strip.
+  // Figs. 1, 3 and 6). Adapters in the frozen SAM are made of rank-1
+  // components in a lower-rank and a higher-rank space. For each input a
+  // space gate picks one space, and a binary gate lights the subset of its
+  // components that input needs, so the effective rank follows the input
+  // (e.g. rain stays low, snow goes high), and an unseen corruption is
+  // met by a combination of learned components. Frozen SAM's mask breaks
+  // up under corruption; GaRA-SAM's holds. The cursor picks the input.
+  // Which components light is illustrative.
   function garasamScene() {
     const INS = [
-      { name: 'clean', photo: 'clean', on: [], deg: 0 },
-      { name: 'fog', photo: 'fog', on: [1, 4], deg: 0.55 },
-      { name: 'noise', photo: 'gaussian', on: [0, 2, 3, 5, 7], deg: 0.85 },
-      { name: 'snow', photo: 'snow', on: [1, 3, 6], deg: 0.7 },
-      { name: 'night', photo: 'night', on: [0, 4, 5, 6], deg: 0.8 },
-      { name: 'unseen', photo: 'blur', on: [1, 3, 4], deg: 0.75 },
+      { name: 'rain', photo: 'rain', hi: false, on: [1, 5, 6], deg: 0.5 },
+      { name: 'fog', photo: 'fog', hi: false, on: [2, 4], deg: 0.55 },
+      { name: 'noise', photo: 'gaussian', hi: true, on: [0, 2, 3, 5, 6, 8, 9, 11, 13, 14], deg: 0.85 },
+      { name: 'snow', photo: 'snow', hi: true, on: [1, 2, 4, 5, 7, 8, 10, 11, 12, 15], deg: 0.75 },
+      { name: 'night', photo: 'night', hi: true, on: [0, 3, 4, 6, 7, 9, 12, 13], deg: 0.8 },
+      { name: 'unseen', photo: 'blur', hi: false, on: [0, 3, 5, 7], deg: 0.75 },
     ];
-    const N = INS.length, K = 8, X0 = 16, X1 = W - 16, SEG = (X1 - X0) / N;
+    const N = INS.length, KL = 8, KH = 16, X0 = 16, X1 = W - 16, SEG = (X1 - X0) / N;
     const TY = 9, TW = SEG - 6, TH = 24;
     const IMG = { x: 14, y: 62, w: 104, h: 104 * PHOTO_H / PHOTO_W };
-    const ADX = 128, ADW = 72, ADY = 62, ADH = 92;
-    const OUT = [{ y: 52, name: 'sam' }, { y: 119, name: 'gara-sam' }], OX = 216, OW = 86, OH = 86 * PHOTO_H / PHOTO_W;
+    const ADX = 128, ADW = 80, ADY = 62, ADH = 92;
+    const OUT = [{ y: 52, name: 'sam' }, { y: 119, name: 'gara-sam' }], OX = 220, OW = 84, OH = 86 * PHOTO_H / PHOTO_W;
     const PROMPT = [0.47, 0.5];                             // the click on the house, photo coords
-    const s = { i: 3, glow: new Array(K).fill(0) };
+    const s = { i: 3, glowL: new Array(KL).fill(0), glowH: new Array(KH).fill(0), sp: 1 };
 
     // is a photo-space point inside the house?
     function inHouse(fx, fy) {
@@ -556,7 +562,10 @@
         P.marks();
         if (!st.idle) s.i = clamp(Math.floor((st.ptr[0] - X0) / SEG), 0, N - 1);
         const inp = INS[s.i], dt = st.dt || 0.016;
-        for (let k = 0; k < K; k++) s.glow[k] = lerp(s.glow[k], inp.on.includes(k) ? 1 : 0, approach(dt, 10));
+        const kk = approach(dt, 10);
+        for (let k = 0; k < KL; k++) s.glowL[k] = lerp(s.glowL[k], !inp.hi && inp.on.includes(k) ? 1 : 0, kk);
+        for (let k = 0; k < KH; k++) s.glowH[k] = lerp(s.glowH[k], inp.hi && inp.on.includes(k) ? 1 : 0, kk);
+        s.sp = lerp(s.sp, inp.hi ? 1 : 0, kk);
 
         // the inputs
         INS.forEach((it, i) => {
@@ -577,16 +586,26 @@
         P.rect(ADX, ADY, ADW, ADH, { w: 1.1, color: T.ink, dash: [3, 2] });
         P.text('frozen sam', ADX + ADW / 2, ADY - 6, { size: 6, align: 'center', detail: true });
         P.text('gara', ADX + ADW / 2, ADY + 10, { size: P.small ? 9 : 7, align: 'center', color: T.acc, bold: true });
-        for (let k = 0; k < K; k++) {
-          const c = [ADX + 14 + (k % 4) * 15, ADY + 32 + Math.floor(k / 4) * 22];
-          comp(P, c, 5, inp.on.includes(k), s.glow[k]);
-        }
-        const rank = inp.on.length;
-        P.text(rank ? `rank ${rank}` : 'off', ADX + ADW / 2, ADY + ADH - 10, { size: P.small ? 9 : 7, align: 'center', color: rank ? T.acc : T.mute });
+        // the space gate picks a row; the binary gate lights components in it
+        const rows = [{ y: ADY + 32, n: KL, r: 3.3, gl: s.glowL, on: !inp.hi, label: 'lower' }, { y: ADY + 62, n: KH, r: 2.6, gl: s.glowH, on: inp.hi, label: 'higher' }];
+        rows.forEach((rw) => {
+          const span = ADW - 12, step = span / (rw.n <= 8 ? rw.n : rw.n / 2);
+          for (let k = 0; k < rw.n; k++) {
+            const col = rw.n <= 8 ? k : k % (rw.n / 2), row = rw.n <= 8 ? 0 : Math.floor(k / (rw.n / 2));
+            comp(P, [ADX + 6 + step * (col + 0.5), rw.y + row * 8 - (rw.n > 8 ? 4 : 0)], rw.r, rw.on && inp.on.includes(k), rw.gl[k]);
+          }
+          if (!rw.on) P.rect(ADX + 4, rw.y - 11, ADW - 8, 22, { w: 0, fill: T.bg, fillAlpha: 0.55 });
+          P.text(rw.label, ADX + 5, rw.y - 14, { size: 5.5, color: rw.on ? T.acc : T.mute, detail: true });
+        });
+        // the space gate, drawn as a switch pointing at the chosen row
+        const sy = lerp(rows[0].y, rows[1].y, s.sp);
+        P.circle([ADX - 8, ADY + ADH / 2], 1.8, { fill: T.ink, w: 0 });
+        P.line([[ADX - 8, ADY + ADH / 2], [ADX - 1, sy]], { w: 1.4, color: T.acc });
+        P.head([ADX + 2, sy], Math.atan2(sy - ADY - ADH / 2, 9), { color: T.acc, head: 4.5 });
+        P.text(inp.hi ? 'high rank' : 'low rank', ADX + ADW / 2, ADY + ADH - 9, { size: P.small ? 9 : 7, align: 'center', color: T.acc });
         // input -> gate -> adapter
-        P.line([[IMG.x + IMG.w + 2, IMG.y + IMG.h / 2], [ADX - 3, IMG.y + IMG.h / 2]], { w: 1, color: T.ink });
-        P.head([ADX - 1, IMG.y + IMG.h / 2], 0, { head: 5 });
-        P.text('gate', (IMG.x + IMG.w + ADX) / 2, IMG.y + IMG.h / 2 - 6, { size: 5.8, align: 'center', detail: true });
+        P.line([[IMG.x + IMG.w + 1, IMG.y + IMG.h / 2], [ADX - 8, ADY + ADH / 2]], { w: 1, color: T.ink });
+        P.text('gate', ADX - 8, ADY + ADH / 2 + 8, { size: 5.5, align: 'center', detail: true });
 
         // masks: frozen SAM vs GaRA-SAM
         OUT.forEach((o, oi) => {
