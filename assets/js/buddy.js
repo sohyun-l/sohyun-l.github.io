@@ -202,6 +202,9 @@ function start() {
   // everything that is placed in page coordinates sits in a layer that clips sideways, so the
   // canvas reaching past the page edge never makes the page wider
   const layer = document.createElement('div'); layer.className = 'buddy-layer'; document.body.appendChild(layer);
+  // the layer is as tall as the page (measured with it collapsed, so it never feeds its own height)
+  const fitLayer = () => { layer.style.height = '0'; layer.style.height = Math.max(document.documentElement.scrollHeight, innerHeight) + 'px'; };
+  fitLayer(); setInterval(fitLayer, 600); addEventListener('resize', fitLayer);
   const hole = document.createElement('div'); hole.className = 'buddy-hole'; layer.appendChild(hole);
   const bubble = document.createElement('div'); bubble.className = 'buddy-bubble'; bubble.setAttribute('aria-live', 'polite');
   layer.append(shadow, canvas); document.body.append(bubble);
@@ -826,6 +829,9 @@ function start() {
     if (!st.pos || reduce) { st.pos = p.slice(); return; }
     const d = Math.hypot(p[0] - st.pos[0], p[1] - st.pos[1]);
     if (st.burrow) { burrowTo(p); return; }
+    // out of sight and far away: come in from the edge of the screen it was beyond, then walk
+    const vis = st.pos[1] > scrollY - 40 && st.pos[1] < scrollY + innerHeight + 40;
+    if (!vis && d > innerHeight * 0.8) st.pos = [p[0], st.pos[1] < scrollY ? scrollY - 30 : scrollY + innerHeight + 30];
     st.path = [p];                                              // just walk there, leaving paw prints
   }
   // phones: stand at the right edge, level with what is on screen
