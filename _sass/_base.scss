@@ -1681,6 +1681,14 @@ html, body { overflow-x: clip; }
   transition: opacity 0.4s ease;
   &.on { opacity: 1; }
 }
+// the paper being acted out stays lit while the rest of the page goes dark (low-light pose)
+.buddy-lit {
+  position: relative;
+  z-index: 1450;
+  background-color: var(--global-bg-color);
+  border-radius: 10px;
+  box-shadow: 0 0 0 10px var(--global-bg-color), 0 0 48px 18px rgba(255, 214, 120, 0.35);
+}
 // the layer the guide lives in: page coordinates, clipped at the page's sides
 .buddy-layer {
   position: absolute;

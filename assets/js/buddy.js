@@ -108,7 +108,7 @@ function start() {
       P[k].rotation.z = s * 0.2;
       P.body.add(P[k]);
     }
-    P.body.add(sphere(0.2, M.fur, [1, 1, 1], [0, 0.6, -0.95]));                    // stubby tail
+    P.tail = sphere(0.2, M.fur, [1, 1, 1], [0, 0.6, -0.95]); P.body.add(P.tail);   // stubby tail (it wags)
     // head: round, with a pale muzzle, puffy cheeks and the famous smile
     P.head = new THREE.Group(); P.head.position.set(0, 2.25, 0.05); P.body.add(P.head);
     P.head.add(sphere(0.8, M.fur, [1.04, 0.94, 1]));
@@ -116,10 +116,11 @@ function start() {
     // the hood: a shell around the back of the head, open at the face
     const hood = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 20, Math.PI / 2 + 1.05, Math.PI * 2 - 2.1, 0, Math.PI * 0.78), M.coat);
     hood.position.set(0, 0.02, -0.06); P.head.add(hood); P.hood = hood;
+    P.ears = []; P.blush = [];
     for (const s of [-1, 1]) {
-      P.head.add(sphere(0.26, M.fur, [1, 1, 0.6], [s * 0.52, 0.76, -0.08]));          // round ears, poking out of the hood
-      P.head.add(sphere(0.16, M.light, [1, 1, 0.4], [s * 0.52, 0.76, 0.03]));
-      P.head.add(sphere(0.1, M.pink, [1, 0.7, 0.4], [s * 0.52, -0.2, 0.62]));         // blush
+      const ear = new THREE.Group(); ear.position.set(s * 0.52, 0.76, -0.08); P.head.add(ear); P.ears.push(ear);   // round ears, poking out of the hood (they twitch)
+      ear.add(sphere(0.26, M.fur, [1, 1, 0.6])); ear.add(sphere(0.16, M.light, [1, 1, 0.4], [0, 0, 0.11]));
+      const b = sphere(0.1, M.pink, [1, 0.7, 0.4], [s * 0.52, -0.2, 0.62]); P.head.add(b); P.blush.push(b);   // blush
     }
     P.eyes = new THREE.Group(); P.head.add(P.eyes);
     for (const s of [-1, 1]) {
@@ -129,7 +130,8 @@ function start() {
     }
     P.head.add(sphere(0.1, M.dark, [1.35, 0.9, 0.9], [0, -0.12, 0.93]));                // nose
     const smile = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.024, 8, 24, Math.PI), M.dark);
-    smile.rotation.z = Math.PI; smile.rotation.x = -0.25; smile.position.set(0, -0.32, 0.88); P.head.add(smile);
+    smile.rotation.z = Math.PI; smile.rotation.x = -0.25; smile.position.set(0, -0.32, 0.88); P.head.add(smile); P.smile = smile;
+    P.mouth = sphere(0.085, M.dark, [1, 1.25, 0.45], [0, -0.36, 0.86]); P.mouth.visible = false; P.head.add(P.mouth);   // open, for a yawn
     return { root, P };
   }
 
@@ -217,7 +219,7 @@ function start() {
   }
   // visiting-researcher photos: round glasses
   const PHOTOEXTRA = { 'zurich.jpg': ['glasses'], 'tubingen.jpg': ['glasses'], 'tubingen2.jpg': ['glasses'] };
-  const ACTEXTRA = { surf: ['wave'], ski: ['poleL', 'poleR', 'rockies'], runway: ['bag'] };
+  const ACTEXTRA = { surf: ['wave'], ski: ['poleL', 'poleR', 'rockies'], runway: ['bag'], tame: ['goal'], film: ['strip'] };
 
   // ------------------------------------------------------------ dom
   const canvas = document.createElement('canvas');
@@ -297,6 +299,12 @@ function start() {
   j2.add(sphere(0.15, blue)); j2.add(capsule(0.1, 0.45, grey, [0, 0.28, 0]));
   const grip = new THREE.Group(); grip.position.y = 0.58; j2.add(grip);
   const fingers = [-1, 1].map((sg) => { const f = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.24, 0.12), blue); f.position.set(sg * 0.1, 0.1, 0); grip.add(f); return f; });
+  // the spot the robot is told to reach: red while it keeps missing, green once it lands on it
+  PR.goal = new THREE.Group(); scene.add(PR.goal);
+  const goalMat = new THREE.MeshBasicMaterial({ color: 0xe5484d });
+  const goalRing = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.035, 8, 32), goalMat); PR.goal.add(goalRing);
+  for (const a of [0, Math.PI / 2]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.02), goalMat); b.rotation.z = a; PR.goal.add(b); }   // a cross in the middle
+  const _g = new THREE.Vector3();
   // a flat lens on a handle (metalens)
   PR.lens = new THREE.Group(); P.body.add(PR.lens);
   PR.lens.add(new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.045, 10, 36), M.dark));
@@ -306,9 +314,11 @@ function start() {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09 * i, 0.006, 6, 32), pmat(0x7fb4e8, 0.3)); PR.lens.add(ring);
   }
   PR.lens.add(capsule(0.04, 0.38, M.dark, [0, -0.6, 0]));
-  // raindrops and dust right on the lens; the far view stays clear
+  // raindrops and dust right on the lens: the metalens filters them out
+  const lensDrops = [];
   for (const [x, y, r, c] of [[-0.14, 0.12, 0.05, 0x8fc3ee], [0.12, -0.08, 0.045, 0x8fc3ee], [0.05, 0.2, 0.035, 0x8fc3ee], [-0.05, -0.18, 0.03, 0x7a5a3c], [0.2, 0.1, 0.025, 0x7a5a3c], [-0.22, -0.05, 0.028, 0x7a5a3c]])
-    PR.lens.add(sphere(r, pmat(c, 0.15, { transparent: true, opacity: 0.85 }), [1, 1, 0.5], [x, y, 0.03]));
+    lensDrops.push(sphere(r, pmat(c, 0.15, { transparent: true, opacity: 0.85 }), [1, 1, 0.5], [x, y, 0.03]));
+  lensDrops.forEach((d) => PR.lens.add(d));
   // a camcorder with a blinking light (video)
   PR.cam = new THREE.Group(); P.body.add(PR.cam);
   PR.cam.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.36, 0.5), pmat(0x7d8794, 0.45)));
@@ -316,6 +326,39 @@ function start() {
   const lensC = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.22, 20), pmat(0x22262b, 0.3)); lensC.rotation.x = Math.PI / 2; lensC.position.z = 0.34; PR.cam.add(lensC);
   const recMat = pmat(0xff3b30, 0.3, { emissive: 0xff3b30, emissiveIntensity: 0.8 });
   const rec = sphere(0.05, recMat, [1, 1, 1], [0.17, 0.2, 0.18]); PR.cam.add(rec);
+  // the footage it shoots, as a film strip: each frame hit by something different, the same object masked in every one
+  PR.strip = new THREE.Group(); scene.add(PR.strip);
+  const stripCv = document.createElement('canvas'); stripCv.width = 512; stripCv.height = 174;
+  const stripTex = new THREE.CanvasTexture(stripCv); stripTex.colorSpace = THREE.SRGBColorSpace;
+  PR.strip.add(new THREE.Mesh(new THREE.PlaneGeometry(3.5, 1.19), new THREE.MeshBasicMaterial({ map: stripTex, transparent: true, side: THREE.DoubleSide })));
+  const STRIPFX = ['blur', 'noise', 'dark', 'snow', 'fog', 'blocks'];
+  function drawStrip(A) {
+    const g = stripCv.getContext('2d'), W = 512, H = 150, fw = 150, LB = { blur: 'blur', noise: 'noise', dark: 'dark', snow: 'snow', fog: 'fog', blocks: 'jpeg' }, off = (A * 40) % (fw + 8);
+    g.clearRect(0, 0, W, H + 24); g.fillStyle = 'rgba(255,250,242,0.92)'; g.beginPath(); g.roundRect(0, H - 4, W, 28, 8); g.fill();
+    g.fillStyle = '#1f1f26'; g.beginPath(); g.roundRect(0, 6, W, H - 12, 10); g.fill();
+    g.fillStyle = '#fffaf2'; for (let x = 6 - (off % 22); x < W; x += 22) { g.fillRect(x, 11, 10, 7); g.fillRect(x, H - 18, 10, 7); }   // sprocket holes
+    for (let i = -1; i < 5; i++) {
+      const x = 8 + i * (fw + 8) - off, n = Math.floor(A * 40 / (fw + 8)) + i, fx = STRIPFX[((n % 6) + 6) % 6];
+      g.save(); g.beginPath(); g.rect(x, 24, fw, H - 48); g.clip();
+      if (fx === 'blur') g.filter = 'blur(2.5px)';
+      g.fillStyle = '#9fd0f2'; g.fillRect(x, 24, fw, 60); g.fillStyle = '#7cb36a'; g.fillRect(x, 84, fw, 42);   // sky, grass
+      const bx = x + 38 + ((n * 13) % 60), by = 78;                                // the object (a little dog) moves along
+      g.fillStyle = '#c0742f'; g.beginPath(); g.ellipse(bx, by, 17, 11, 0, 0, 7); g.fill(); g.beginPath(); g.arc(bx + 16, by - 9, 8, 0, 7); g.fill();
+      g.fillRect(bx - 12, by + 6, 4, 10); g.fillRect(bx + 8, by + 6, 4, 10);
+      g.filter = 'none';
+      if (fx === 'noise') for (let k = 0; k < 140; k++) { g.fillStyle = `rgba(${Math.random() * 255 | 0},${Math.random() * 255 | 0},${Math.random() * 255 | 0},0.7)`; g.fillRect(x + Math.random() * fw, 24 + Math.random() * (H - 48), 2, 2); }
+      if (fx === 'dark') { g.fillStyle = 'rgba(10,12,30,0.62)'; g.fillRect(x, 24, fw, H - 48); }
+      if (fx === 'snow') { g.fillStyle = '#fff'; for (let k = 0; k < 26; k++) { g.beginPath(); g.arc(x + ((k * 37 + n * 11) % fw), 26 + ((k * 23 + A * 30) % (H - 52)), 1.8, 0, 7); g.fill(); } }
+      if (fx === 'fog') { g.fillStyle = 'rgba(255,255,255,0.55)'; g.fillRect(x, 24, fw, H - 48); }
+      if (fx === 'blocks') for (let k = 0; k < 8; k++) { g.fillStyle = `rgba(${120 + k * 12},${110 + k * 9},${130 - k * 5},0.55)`; g.fillRect(x + (k * 29) % fw, 24 + (k * 17) % 70, 18, 14); }
+      g.fillStyle = 'rgba(47,123,255,0.5)'; g.strokeStyle = '#2f7bff'; g.lineWidth = 2;   // its mask, frame after frame
+      g.beginPath(); g.ellipse(bx, by, 20, 14, 0, 0, 7); g.fill(); g.stroke(); g.beginPath(); g.arc(bx + 16, by - 9, 10, 0, 7); g.fill(); g.stroke();
+      g.restore();
+      g.fillStyle = '#2b201b'; g.font = 'bold 22px sans-serif'; g.textAlign = 'center'; g.fillText(LB[fx], x + fw / 2, H + 18);   // what hit this frame
+    }
+    g.fillStyle = '#fffaf2'; g.fillRect(0, H, W, 4);
+    stripTex.needsUpdate = true;
+  }
   // boards it holds up, redrawn live (active learning, label shift)
   function makeBoard() {
     const c = document.createElement('canvas'); c.width = 320; c.height = 220;
@@ -364,20 +407,26 @@ function start() {
   }
   // label shift: target class proportions pulled to match the source's
   PR.hist = makeBoard();
+  // label shift as a balance: what is labelled in the target is picked until its class mix matches the source's
   function drawHist(A) {
     const g = PR.hist.userData.g; frame0(g);
-    const src = [0.5, 0.3, 0.2], tgt0 = [0.15, 0.25, 0.6], c = A % 3.6, k = c < 0.6 ? 0 : Math.min(1, (c - 0.6) / 1.6);
+    const src = [3, 2, 1], tgt0 = [1, 1, 4], c = A % 3.6, k = c < 0.6 ? 0 : Math.min(1, (c - 0.6) / 1.6);
     const e = k * k * (3 - 2 * k), cols = ['#3b6fd8', '#6aa84f', '#e8735a'];
-    g.strokeStyle = '#2b201b'; g.lineWidth = 3; g.beginPath(); g.moveTo(24, 186); g.lineTo(296, 186); g.stroke();
-    src.forEach((v, i) => {
-      const x = 44 + i * 88, hS = v * 300, hT = (tgt0[i] + (v - tgt0[i]) * e) * 300;
-      g.fillStyle = cols[i]; g.fillRect(x + 30, 186 - hT, 30, hT);                 // target, filled
-      g.setLineDash([6, 4]); g.strokeStyle = '#2b201b'; g.lineWidth = 3; g.strokeRect(x, 186 - hS, 30, hS); g.setLineDash([]);   // source, dashed
+    const tgt = tgt0.map((v, i) => Math.round(v + (src[i] - v) * e));
+    const miss = tgt.reduce((a, v, i) => a + Math.abs(v - src[i]), 0) / 6, th = 0.32 * miss;   // the target side sinks while the mix is off
+    g.fillStyle = '#2b201b'; g.beginPath(); g.moveTo(160, 112); g.lineTo(140, 196); g.lineTo(180, 196); g.fill();   // the stand
+    g.save(); g.translate(160, 108); g.rotate(th);
+    g.strokeStyle = '#2b201b'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(-112, 0); g.lineTo(112, 0); g.stroke();
+    [[-1, src, 'source'], [1, tgt, 'target']].forEach(([sd, cnt, name]) => {
+      g.save(); g.translate(sd * 104, 0); g.rotate(-th);                            // pans hang straight down
+      g.lineWidth = 2; g.beginPath(); g.moveTo(0, 0); g.lineTo(-34, 50); g.moveTo(0, 0); g.lineTo(34, 50); g.stroke();
+      g.fillStyle = '#c9b79c'; g.beginPath(); g.ellipse(0, 52, 44, 8, 0, 0, 7); g.fill(); g.stroke();
+      let n = 0; cnt.forEach((v, ci) => { for (let q = 0; q < v; q++, n++) { g.fillStyle = cols[ci]; g.fillRect(-36 + (n % 4) * 18, 30 - Math.floor(n / 4) * 16, 15, 14); } });
+      g.fillStyle = '#2b201b'; g.font = 'bold 16px sans-serif'; g.textAlign = 'center'; g.fillText(name, 0, 80);
+      g.restore();
     });
-    g.font = 'bold 18px sans-serif'; g.fillStyle = '#2b201b'; g.textAlign = 'left'; g.textBaseline = 'middle';
-    g.setLineDash([6, 4]); g.strokeRect(24, 20, 18, 14); g.setLineDash([]); g.fillText('source', 48, 28);
-    g.fillStyle = '#888'; g.fillRect(150, 20, 18, 14); g.fillStyle = '#2b201b'; g.fillText('target', 174, 28);
-    if (k >= 1) tick(g, 270, 26, 1);
+    g.restore();
+    if (k >= 1) tick(g, 276, 28, 1);
     PR.hist.userData.t.needsUpdate = true;
   }
   // card-like props drawn on a canvas
@@ -517,12 +566,22 @@ function start() {
   }
   // the page dims around it for the low-light paper
   const dimmer = document.createElement('div'); dimmer.className = 'buddy-dim'; document.body.appendChild(dimmer);
+  // a comic mark beside its head (! when it finds something, ? when puzzled), Zs while it sleeps, a heart when patted
+  const glyphTex = {};
+  const glyph = (ch, col) => glyphTex[ch] || (glyphTex[ch] = cardTex(96, 96, (g) => {
+    g.font = 'bold 76px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 12; g.strokeStyle = '#fffaf2'; g.lineJoin = 'round'; g.strokeText(ch, 48, 52); g.fillStyle = col; g.fillText(ch, 48, 52);
+  }));
+  const mark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glyph('!', '#e8590c'), transparent: true, depthTest: false }));
+  mark.layers.set(1); mark.visible = false; scene.add(mark);
+  const zees = Array.from({ length: 3 }, () => { const z = new THREE.Sprite(new THREE.SpriteMaterial({ map: glyph('Z', '#5b6fa8'), transparent: true, depthTest: false })); z.layers.set(1); z.visible = false; scene.add(z); return z; });
   // hearts for the visitors
   const heartTex = cardTex(64, 64, (g) => {
     g.fillStyle = '#ff4d6d'; g.beginPath(); g.moveTo(32, 54);
     g.bezierCurveTo(4, 34, 6, 10, 22, 10); g.bezierCurveTo(28, 10, 31, 14, 32, 19); g.bezierCurveTo(33, 14, 36, 10, 42, 10); g.bezierCurveTo(58, 10, 60, 34, 32, 54); g.fill();
   });
   PR.hearts = new THREE.Group(); P.body.add(PR.hearts);
+  const patHeart = new THREE.Sprite(new THREE.SpriteMaterial({ map: heartTex, transparent: true, depthTest: false })); patHeart.layers.set(1); patHeart.visible = false; scene.add(patHeart);
   const hearts = Array.from({ length: 6 }, (_, i) => { const h = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: heartTex, transparent: true, depthWrite: false })); h.userData.ph = i / 6; PR.hearts.add(h); return h; });
   // outfit pieces
   const tri = (pts, mat) => { const sh = new THREE.Shape(); pts.forEach(([x, y], i) => (i ? sh.lineTo(x, y) : sh.moveTo(x, y))); return new THREE.Mesh(new THREE.ShapeGeometry(sh), mat); };
@@ -750,7 +809,12 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'].includes(k) ? 0 : 1));
+  const INPLACE = ['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'];
+  const FRONT = Object.keys(PR).filter((k) => !INPLACE.includes(k));
+  for (const k in PR) PR[k].traverse((o) => o.layers.set(INPLACE.includes(k) ? 0 : 1));
+  // ...but only while it faces us: turned away, glasses, phones and what it holds go behind its head and body
+  let propsAway = false;
+  const facing = (away) => { if (away === propsAway) return; propsAway = away; FRONT.forEach((k) => PR[k].traverse((o) => o.layers.set(away ? 0 : 1))); [...kps, bones].forEach((o) => o.layers.set(away ? 0 : 1)); };
   // open shells (helmet, hood, hats) cast from both faces, or their shadow is only a thin arc
   const casts = (o) => { if (!o.isMesh) return; o.castShadow = true; [].concat(o.material).forEach((m) => { m.shadowSide = THREE.DoubleSide; }); };
   root.traverse(casts);
@@ -933,7 +997,7 @@ function start() {
   }
   function wake() {
     st.lastAct = performance.now();
-    if (st.sleeping) { st.sleeping = false; st.bubbleUntil = 0; }
+    if (st.sleeping) { st.sleeping = false; st.bubbleUntil = 0; st.wakeT = performance.now(); say('*yawn* 🥱 I\'m up!', 1600); }
   }
   const pathLen = (pts, from) => pts.reduce((a, q, i) => a + Math.hypot(q[0] - (i ? pts[i - 1] : from)[0], q[1] - (i ? pts[i - 1] : from)[1]), 0);
   // walk to p (or to the first of several spots with a sensible route);
@@ -996,12 +1060,13 @@ function start() {
     return Math.abs(L[0] - ref[0]) <= Math.abs(R[0] - ref[0]) ? [L, R] : [R, L];
   }
 
+  if (/[?&]buddydebug\b/.test(location.search)) window.__buddy = { st, showSpot: (el) => showSpot(el, el) };   // for checking acts by hand
   // ------------------------------------------------------------ input
   let followTimer = 0;
   const spotOf = (el) => el && (el.closest('.publications ol.bibliography > li') || el.closest('.gallery-item') || el.closest('#navbar .nav-link') || el.closest('h2[id]') || el.closest(BLOCKS));
   // act out a paper or section, and say its line
   function showSpot(spot, el) {
-    st.hover = spot;
+    st.hover = spot; st.introTok = 0;                            // a new spot ends an introduction
     const key = spot.matches('li') ? (spot.querySelector('[id]') || {}).id
       : spot.matches('.gallery-item') ? 'gal:' + ((spot.querySelector('img') || {}).getAttribute?.('src') || '').split('/').pop().split('?')[0]
       : 'sec:' + sectionOf(spot);
@@ -1010,7 +1075,7 @@ function start() {
     st.photoExtra = key.startsWith('gal:') ? PHOTOEXTRA[key.slice(4)] || [] : [];
     st.outfit = null;
     const act = (st.venue && VACT[st.venue] && ['point', 'cheese', 'speech', 'tada'].includes(ACT[key]) ? VACT[st.venue] : ACT[key]) || null;
-    if (act !== st.act) { st.act = act; st.actT = 0; }
+    if (act !== st.act) { st.act = act; st.actT = 0; st.mark = { ch: '!', t0: performance.now(), dur: 1100 }; }
     if (key.startsWith('gal:')) st.outfit = outfitFor(key.slice(4), act, st.venue);
     else st.outfit = OUTFIT[SPOTOUTFIT[key]] || null;                 // sections and papers (null: the raincoat)
     say(lineFor(spot, el) + (st.venue ? ` · ${VNAME[st.venue]}` : ''), 3800);
@@ -1073,11 +1138,38 @@ function start() {
     if (!st.at) return;
     const [x, y] = st.at.fixed ? [e.clientX, e.clientY] : [e.pageX, e.pageY], [fx, fy, k] = st.at.foot;
     if (Math.abs(x - fx) > 42 * k || y > fy + 4 || y < fy - (FY - HEAD) * k) return;
-    st.tapBear = performance.now();
-    wake(); st.jumpT = performance.now(); st.waveT = performance.now();
+    st.tapBear = performance.now(); st.happyT = performance.now();
+    wake(); st.waveT = performance.now();
     say(['Hi! ♥', 'Thanks for visiting!', '♥ ♥', 'Hehe, that tickles.'][Math.floor(Math.random() * 4)], 2000);
   });
 
+
+  // a click on Sohyun's photo: it runs over, waves, and introduces Sohyun
+  const INTRO = [
+    "This is Sohyun! 👋",
+    'A postdoc at POSTECH CVLab, with Prof. Suha Kwak.',
+    'Sohyun builds physical AI for the real world 🤖',
+    'Robust perception, robust foundation models, test-time adaptation…',
+    '…and now: reliable vision-language-action models for real robots!',
+    "Hover a paper and I'll act it out for you 🧸",
+  ];
+  const photo = document.querySelector('.hero-photo img');
+  if (photo) { photo.style.cursor = 'pointer'; photo.title = 'Click: the bear will introduce Sohyun'; }
+  document.addEventListener('click', (e) => {
+    const ph = e.target instanceof Element && e.target.closest('.hero-photo');
+    if (!ph || !st.pos) return;
+    wake();
+    const spot = spotOf(ph) || ph, tok = st.introTok = performance.now();
+    st.hover = spot; st.outfit = OUTFIT[SPOTOUTFIT['sec:about']] || null;
+    st.act = 'greet'; st.actT = 0; st.mark = { ch: '!', t0: performance.now(), dur: 1100 }; st.happyT = performance.now();
+    if (!compact()) goTo(...besideOf(ph));
+    INTRO.forEach((line, i) => setTimeout(() => {
+      if (st.introTok !== tok) return;
+      if (i === 1 && !compact()) { st.act = 'point'; st.actT = 0; }   // points at the photo while it talks (phones: it keeps waving)
+      if (i === INTRO.length - 1) { st.act = 'greet'; st.actT = 0; st.happyT = performance.now(); }
+      say(line, 2700);
+    }, i * 2700));
+  });
 
   // first appearance: beside the top of the content
   setTimeout(() => {
@@ -1181,7 +1273,7 @@ function start() {
     // reached the honey: a nibble
     if (!fixed && !moving && st.cursor && st.pos && !st.act && !st.idle && now - st.nomAt > 7000
       && Math.hypot(st.cursor[0] - st.pos[0], st.cursor[1] - st.pos[1] + 50) < 90) {
-      st.idle = 'munch'; st.idleT = 0; st.nomAt = now; say('Nom nom 🍯', 1500);
+      st.idle = 'munch'; st.idleT = 0; st.nomAt = now; st.happyT = now; say('Nom nom 🍯', 1500);
     }
     if (st.idle) st.idleT += dt;
     if (st.act) st.actT += dt;
@@ -1189,7 +1281,7 @@ function start() {
     st.yaw += dyaw * Math.min(1, dt * 9);
 
     // pose
-    if (!st.sleeping && now - st.lastAct > 45000) { st.sleeping = true; say('Zzz…', 1e9); }
+    if (!st.sleeping && now - st.lastAct > 45000) { st.sleeping = true; st.sleepT = now; bubble.classList.remove('on'); }
     // it hops: both feet together, tucked in the air, a squash on landing
     st.amp += ((moving ? 1 : 0) - st.amp) * Math.min(1, dt * 10);
     st.phase += dt * (7 + st.speed / 110);
@@ -1237,7 +1329,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let ttaNow = -1, ttaSeen = 0, garaOn = null, garaD = null, garaFly = -1, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
+    let eyeBig = 0, goalAt = null, markCh = null, ttaNow = -1, ttaSeen = 0, garaOn = null, garaD = null, garaFly = -1, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -1256,16 +1348,18 @@ function start() {
         root.rotation.y = st.yaw + (0.75 * sd - st.yaw) * Math.min(1, A * 3);   // turns to the robot
         PR.robot.rotation.y = -0.3 * sd;
         blue.color.setHex(wildK > 0.05 ? 0xe5484d : 0x3b6fd8);
+        goalAt = [sd * -0.45, sd * -0.95, wildK < 0.05];
         blue.emissive.setHex(wildK > 0.05 && Math.sin(A * 20) > 0 ? 0x7a1010 : 0x000000);
         if (c < 2.2) {                                             // bear: easy there, a gentle pat
           const pat = sd > 0 ? P.armR : P.armL;                     // easy there: a pat, with the paw on the robot's side
           pat.rotation.z = sd * (0.2 + 0.5 * still); pat.rotation.x = (-1.3 + Math.sin(A * 9) * 0.3) * still;
-          j1.rotation.z = sd * (-0.25 - wildK * (0.55 * Math.sin(A * 13) + 0.3 * Math.sin(A * 23)));
-          j2.rotation.z = sd * (-0.7 - wildK * 0.7 * Math.sin(A * 17 + 1));
+          j1.rotation.z = sd * (-0.45 - wildK * (0.55 * Math.sin(A * 13) + 0.3 * Math.sin(A * 23)));   // keeps missing the spot it was told
+          j2.rotation.z = sd * (-0.95 - wildK * 0.7 * Math.sin(A * 17 + 1));
           PR.robot.position.x = RX + wildK * 0.05 * Math.sin(A * 31);
         } else {                                                   // tamed: smooth and steady, a happy hop
           const v = c - 2.2;
-          j1.rotation.z = sd * (-0.25 - 0.25 * Math.sin(v * 2.6)); j2.rotation.z = sd * (-0.7 - 0.3 * Math.sin(v * 2.6 + 1));
+          j1.rotation.z = sd * (-0.45 - 0.02 * Math.sin(v * 2.6)); j2.rotation.z = sd * (-0.95 - 0.02 * Math.sin(v * 2.6 + 1));   // right on it
+          if (st.tameSaid !== A - c) { st.tameSaid = A - c; say('Pre-compensated → right on target ✓', 1500); }
           PR.robot.position.x = RX;
           if (v < 0.5) root.position.y += Math.sin(v / 0.5 * Math.PI) * 0.22 * still;
           fingers.forEach((f, i) => (f.position.x = (i ? 1 : -1) * (0.05 + 0.03 * Math.abs(Math.sin(v * 5)))));
@@ -1276,8 +1370,9 @@ function start() {
         const n = Math.floor(A / 2.3), D = TTA[n % TTA.length], c = A % 2.3;
         if (D.w === 'night') light = 0.3; else if (D.w === 'bright') light = 1.75; else wx[D.w] = 1;
         ttaNow = n % TTA.length; ttaSeen = Math.min(TTA.length, n + (c >= 0.6 ? 1 : 0));
-        if (c < 0.6) { hyT = Math.sin(c * 28) * 0.35; P.head.rotation.z = 0.2 * still; }    // huh? a new domain
+        if (c < 0.6) { hyT = Math.sin(c * 28) * 0.35; P.head.rotation.z = 0.2 * still; markCh = '?'; }   // huh? a new domain
         else {                                                                            // adapted, at test time: a nod and a sparkle
+          if (c < 1.3) markCh = '!';                                                        // got it
           if (D !== st.ttaSaid) { st.ttaSaid = D; say(`Continual TTA · ${D.name} → adapted, nothing forgotten ✓`, 1900); }
           if (D.gear === 'snowman') { snowy = 1; want = 'snowman'; }                       // in the snow it becomes a snowman,
           else if (D.gear === 'lantern' || D.gear === 'phones') want = D.gear;             // in the dark it holds a lantern, in the noise wears headphones
@@ -1317,19 +1412,22 @@ function start() {
         if (c >= 2.3 && st.restSaid !== A - c) { st.restSaid = A - c; say('Restored ✨', 900); }
         break;
       }
-      case 'lens': {                                               // looks through the dirty lens, sees fine
-        const p = Math.sin(A * 1.4);
-        P.armR.rotation.x = -1.5 * still; P.armR.rotation.z = 0.05;
-        PR.lens.position.set(0.28 + 0.12 * p, 2.25, 1.05); PR.lens.rotation.set(0, 0.25 * p, 0);
-        hyT = 0.25 * p; P.body.rotation.z = 0.08 * p * still;
+      case 'lens': {                                               // the lens up to its eye: drops land on it, the metalens filters them out
+        const c = A % 3.0, f = c < 0.9 ? 0 : Math.min(1, (c - 0.9) / 0.7);
+        P.armR.rotation.x = -1.75 * still; P.armR.rotation.z = 0.35 * still;
+        PR.lens.position.set(0.3, 2.42, 1.02); PR.lens.rotation.set(0, 0, 0);
+        hyT = 0; hx = 0; P.head.rotation.z = -0.06 * still;
+        lensDrops.forEach((d) => { d.material.opacity = 0.85 * (1 - f); d.visible = f < 0.98; });
+        eyeBig = 1;                                                 // its eye, huge behind the glass
+        if (f >= 1) { sparkle = 1; if (st.lensSaid !== A - c) { st.lensSaid = A - c; say('Drops filtered out → clear view ✓', 1300); } }
         break;
       }
       case 'film': {                                               // keeps filming steadily as conditions change frame to frame
         // corruptions, then the seasons, then one it has never seen: it keeps filming through all of them
         const F = FILM[Math.floor(A / 1.0) % FILM.length], fc = A % 1.0;
         clapArm.rotation.z = fc < 0.12 ? 0.5 * (1 - fc / 0.12) : fc > 0.85 ? 0.5 * (fc - 0.85) / 0.15 : 0;   // clap! each new condition, a new take
-        if (F.vfx) vfx = F.vfx;
-        if (F.w) wx[F.w] = 1;
+        if (F.vfx === 'summer' || F.vfx === 'unseen') vfx = F.vfx;   // the corruptions themselves play out on the film strip
+        if (F.w && F.w !== 'noise') wx[F.w] = 1;
         if (F.light) light = F.light;
         if (F.unseen) {
           if (st.filmSaid !== A - fc) { st.filmSaid = A - fc; say('Never seen this one… still tracking ✓', 1200); }
@@ -1342,6 +1440,7 @@ function start() {
         }
         P.armR.rotation.z = 0.2 + 0.9 * still; P.armL.rotation.x = -0.6 * still;
         PR.cam.position.set(0.75, 2.35, 0.75); PR.cam.rotation.set(hx * 0.8, st.hy * 0.8 + 0.2, 0);
+        drawStrip(A); PR.strip.position.set((compact() ? -1 : 1) * 2.45, 3.55, 0.2);
         recMat.emissiveIntensity = Math.sin(A * 6) > 0 ? 1.2 : 0.05;
         break;
       }
@@ -1580,6 +1679,14 @@ function start() {
       m.scale.setScalar(cur ? 1.2 + 0.06 * Math.sin(now / 150) : 1);
       if (cur) arrow.position.set(m.position.x, -0.32, 0);
     });
+    if (goalAt && PR.goal.visible) {                             // the goal sits where the arm should end up
+      const s1 = j1.rotation.z, s2 = j2.rotation.z;
+      j1.rotation.z = goalAt[0]; j2.rotation.z = goalAt[1]; PR.robot.updateMatrixWorld(true);
+      grip.localToWorld(_g.set(0, 0.22, 0)); PR.goal.position.copy(_g);
+      j1.rotation.z = s1; j2.rotation.z = s2; PR.robot.updateMatrixWorld(true);
+      PR.goal.quaternion.copy(camera.quaternion);
+      goalMat.color.setHex(goalAt[2] ? 0x2f9e44 : (Math.sin(now / 90) > 0 ? 0xe5484d : 0xff8a8a));
+    }
     if (garaFly >= 0) root.updateMatrixWorld();
     rankSparks.forEach((sp, j) => {                              // rank j+1 flies from its dot to its module
       sp.visible = garaFly >= 0 && garaD.on.includes(j + 1) && !st.sleeping;
@@ -1599,6 +1706,8 @@ function start() {
     if (PR.cape.visible) PR.cape.userData.m.rotation.x = -0.12 - 0.12 * Math.sin(now / 260) - st.amp * 0.3;   // the cape flutters
     placeKeypoints(dark > 0 && !st.sleeping);
     dimmer.classList.toggle('on', dark > 0 && !st.sleeping);
+    const lit = dark > 0 && !st.sleeping && st.hover && st.hover.matches('li') ? st.hover : null;   // the paper itself stays in the light
+    if (lit !== st.lit) { if (st.lit) st.lit.classList.remove('buddy-lit'); if (lit) lit.classList.add('buddy-lit'); st.lit = lit; }
     if (degrade > 0) { M.fur.color.copy(FUR).lerp(GREY, degrade * 0.75); M.coat.color.copy(st.outfit && st.outfit.coat != null ? _c.setHex(st.outfit.coat) : COAT).lerp(GREY, degrade * 0.75); M.light.color.copy(LIGHT).lerp(GREY, degrade * 0.75); }
     else M.light.color.lerp(LIGHT, Math.min(1, dt * 4));
     sparkles.forEach((sp, i) => {
@@ -1661,11 +1770,57 @@ function start() {
         f.position.copy(h).lerp(tgt, fogPull); f.scale.set(1.4 * (1 - 0.8 * fogPull), 0.7 * (1 - 0.8 * fogPull), 1 - 0.8 * fogPull);
       } else { f.position.copy(h); f.position.x += Math.sin(now / 1500 + i * 2) * 0.15; f.scale.set(1.4, 0.7, 1); }
     });
+    // little alive things: an ear twitches now and then; when it is happy (a pat, honey) the ears
+    // wiggle, the tail wags and the cheeks go pink; a pat squishes it like jelly and pops a heart
+    const happy = st.happyT ? Math.max(0, 1 - (now - st.happyT) / 1600) : 0;
+    if (now > (st.earNext || 0)) { st.earT = now; st.earSide = Math.floor(Math.random() * 2); st.earNext = now + 2500 + Math.random() * 4500; }
+    const et = (now - (st.earT || -1e9)) / 280;
+    P.ears.forEach((e, i) => { e.rotation.z = (i ? -1 : 1) * ((i === st.earSide && et < 1 ? Math.sin(et * Math.PI * 2) * 0.4 : 0) + happy * 0.25 * Math.sin(now / 45)); });
+    P.tail.position.x = happy * 0.14 * Math.sin(now / 40);
+    P.blush.forEach((b) => b.scale.set(1 + happy * 0.8, (1 + happy * 0.8) * 0.7, 0.4));
+    if (st.tapBear && now - st.tapBear < 800) {
+      const t = (now - st.tapBear) / 1000, j = Math.exp(-t * 6) * Math.cos(t * 28) * 0.24;
+      root.scale.set(1 + j * 0.6, 1 - j, 1 + j * 0.6);
+    }
+    patHeart.visible = !!st.happyT && now - st.happyT < 1300 && !st.sleeping;
+    if (patHeart.visible) {
+      const u = (now - st.happyT) / 1300;
+      patHeart.position.set(root.position.x + 0.75, 3.1 + u * 1.1, 0.6); patHeart.scale.setScalar(0.6 * Math.min(1, u * 6)); patHeart.material.opacity = 1 - u * u;
+    }
+    // asleep: it sits down, legs out, and nods off; Zs drift up
+    if (st.sleeping) {
+      P.legL.rotation.x = P.legR.rotation.x = -1.35; root.position.y = -0.28; P.body.rotation.x = -0.1;
+      P.armL.rotation.x = P.armR.rotation.x = -0.35; P.head.rotation.x = 0.32 + 0.12 * Math.sin(now / 950);
+    }
+    zees.forEach((z, i) => {
+      z.visible = st.sleeping && now - st.sleepT > 600;
+      if (!z.visible) return;
+      const u = (now / 2600 + i / 3) % 1;
+      z.position.set(root.position.x + 0.6 + u * 0.7 + 0.08 * Math.sin(u * 9), 2.9 + u * 1.4, 0.4); z.scale.setScalar(0.28 + u * 0.4); z.material.opacity = Math.sin(u * Math.PI);
+    });
+    // woken up: a big yawn and a stretch
+    const yawn = st.wakeT && now - st.wakeT < 1400 ? Math.sin((now - st.wakeT) / 1400 * Math.PI) : 0;
+    if (yawn > 0) {
+      P.armL.rotation.z = -0.2 - 2.5 * yawn; P.armR.rotation.z = 0.2 + 2.5 * yawn; P.armL.rotation.x = P.armR.rotation.x = -0.2 * yawn;
+      P.head.rotation.x = -0.3 * yawn; root.scale.y *= 1 + 0.07 * yawn;
+    }
+    P.mouth.visible = yawn > 0.25; P.smile.visible = !P.mouth.visible;
+    // the comic mark: ! when it finds something, ? when puzzled
+    const mk = markCh || (st.mark && now - st.mark.t0 < st.mark.dur ? st.mark.ch : null);
+    if (mk !== st.markOn) { st.markOn = mk; st.markSince = now; }
+    mark.visible = !!mk && !st.sleeping;
+    if (mark.visible) {
+      mark.material.map = glyph(mk, mk === '?' ? '#3b6fd8' : '#e8590c');
+      const a = (now - st.markSince) / 180;
+      mark.position.set(root.position.x + 1.0, 3.05 + 0.04 * Math.sin(now / 120), 0.4);
+      mark.scale.setScalar(0.85 * (a < 1 ? Math.sin(a * Math.PI / 2) * (1 + 0.35 * Math.sin(a * Math.PI)) : 1));
+    }
     // blink, or keep the eyes shut while asleep
     let ey = 1;
     if (st.sleeping) ey = 0.12;
     else if (now > st.blinkT) { ey = 0.1; if (now > st.blinkT + 130) st.blinkT = now + 2400 + Math.random() * 2800; }
-    P.eyes.children.forEach((e, i) => (e.scale.y = wink && i === 0 && !st.sleeping ? 0.12 : ey));
+    if (yawn > 0.25) ey = 0.12;                                   // squeezed shut mid-yawn
+    P.eyes.children.forEach((e, i) => { e.scale.y = wink && i === 0 && !st.sleeping ? 0.12 : ey; const b = i === 1 ? 1 + 0.9 * eyeBig : 1; e.scale.x = e.scale.z = b; e.scale.y *= b; });
     // video corruptions: the frame itself degrades (blur, blocks, washed-out colours)
     if (vfx !== st.vfx) {
       st.vfx = vfx;
@@ -1680,6 +1835,8 @@ function start() {
     ground.material.opacity = (1 - sink) * (light < 0.5 ? 0.15 : 0.46);
     renderer.shadowMap.needsUpdate = true;                     // the shadow map, with every layer (props too)
     camera.layers.enableAll(); renderer.setRenderTarget(shadowRT); renderer.render(scene, camera); renderer.setRenderTarget(null);
+    if (st.forceYaw != null) root.rotation.y = st.forceYaw;     // ?buddydebug: hold a heading
+    facing(Math.cos(root.rotation.y) < 0.35);
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
     if (maskMat.opacity > 0.01) {                               // the mask: the whole bear, in one flat colour
