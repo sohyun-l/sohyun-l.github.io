@@ -261,8 +261,8 @@ function start() {
   camera.updateMatrixWorld();
   const { root, P } = makeBear();
   scene.add(root);
-  // shadows on the ground, drawn with the bear (so they sit over photos too): a dark one right
-  // under the feet, and a longer, softer one cast away from the sun (up and to the right)
+  // shadows on the ground, drawn with the bear (so they sit over photos too): a soft dark patch
+  // right under the feet, and a real shadow of whatever it is and holds, cast to the right
   const shTex = (() => {
     const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
     const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -272,9 +272,17 @@ function start() {
   })();
   const shMat = () => new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false });
   const contact = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 1.7), shMat()); contact.rotation.x = -Math.PI / 2; contact.position.y = 0.01;
-  const cast = new THREE.Group(); cast.rotation.y = 0.35;            // away from the sun on the left, mostly sideways so the body does not hide it
-  const castM = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.35), shMat()); castM.rotation.x = -Math.PI / 2; castM.position.set(1.75, 0.005, 0); cast.add(castM);
-  contact.renderOrder = cast.renderOrder = castM.renderOrder = -1; scene.add(contact, cast);
+  contact.renderOrder = -1; scene.add(contact);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;                          // drawn once a frame, with props and all (see the render)
+  const caster = new THREE.DirectionalLight(0xffffff, 0);         // lights nothing; only throws the shadow, low from the left
+  caster.position.set(-4, 8, 2.4); caster.castShadow = true; caster.layers.enableAll();
+  Object.assign(caster.shadow.camera, { left: -4.5, right: 4.5, top: 5, bottom: -3, near: 0.5, far: 20 });
+  caster.shadow.mapSize.set(1024, 1024); caster.shadow.bias = -0.001; caster.shadow.radius = 3;
+  scene.add(caster);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(16, 8), new THREE.ShadowMaterial({ color: 0x180e08, opacity: 0.4, depthWrite: false }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = 0.005; ground.receiveShadow = true; scene.add(ground);
+  const shadowRT = new THREE.WebGLRenderTarget(1, 1);            // the shadow pass draws here; only its shadow map is kept
 
   // props for the papers' acts
   const pmat = (c, r = 0.5, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0, ...o });
@@ -585,7 +593,7 @@ function start() {
   const modMat = pmat(0xffa63d, 0.25, { metalness: 0.45, emissive: 0x8a4a00, emissiveIntensity: 0.4 });
   const mods = [
     [P.head, new THREE.Mesh(new THREE.SphereGeometry(0.98, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), modMat), [0, 0.06, -0.02], null, [1, 1.08, 1]],   // helmet
-    [P.head, new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 8, 28, Math.PI), modMat), [0, 0.16, 0.12], [Math.PI / 2 - 0.15, 0, 0]],   // visor
+    [P.body, new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.09, 8, 32), modMat), [0, 2.0, 0.05], [Math.PI / 2 + 0.12, 0, 0]],          // neck guard
     [P.body, sphere(0.34, modMat, [1, 0.6, 1]), [-0.8, 1.8, 0.1]],                                                                        // shoulder L
     [P.body, sphere(0.34, modMat, [1, 0.6, 1]), [0.8, 1.8, 0.1]],                                                                         // shoulder R
     [P.body, new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.6, 0.12), modMat), [0, 1.42, 0.9], [-0.15, 0, 0]],                             // chest plate
@@ -593,6 +601,8 @@ function start() {
     [P.armL, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.28, 16), modMat), [0, -0.5, 0.12]],                                   // gauntlet L
     [P.armR, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.28, 16), modMat), [0, -0.5, 0.12]],                                   // gauntlet R
   ].map(([parent, m, p, r, sc]) => { m.position.set(...p); if (r) m.rotation.set(...r); m.userData.s = sc || [1, 1, 1]; m.userData.k = 0; m.visible = false; parent.add(m); return m; });
+  { const visor = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 8, 28, Math.PI), modMat);   // the visor is part of the helmet: never on by itself
+    visor.position.set(0, 0.09, 0.13); visor.rotation.set(Math.PI / 2 - 0.15, 0, 0); visor.scale.set(1, 1, 1 / 1.08); mods[0].add(visor); }
   PR.tophat = new THREE.Group(); PR.tophat.position.y = 0.78; P.head.add(PR.tophat);    // a ringmaster's top hat
   const thm = pmat(0x1a1a1f, 0.4);
   PR.tophat.add(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.05, 32), thm));
@@ -740,6 +750,8 @@ function start() {
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
   for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'].includes(k) ? 0 : 1));
+  root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  for (const k in PR) if (!['beach', 'wave', 'runway', 'rockies'].includes(k)) PR[k].traverse((o) => { if (o.isMesh) o.castShadow = true; });
   // the mask covers the bear's whole silhouette (its gear too) in one flat colour: drawn without depth, and
   // through the stencil so each pixel is tinted exactly once
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
@@ -1641,10 +1653,11 @@ function start() {
         summer: 'brightness(1.12) saturate(1.35)', unseen: 'hue-rotate(150deg) saturate(1.6) contrast(1.1)' }[vfx] || '';
     }
     const sh = Math.max(0.35, 1 - Math.max(0, root.position.y) * 0.4);   // shadows shrink and fade as it leaves the ground
-    contact.position.x = cast.position.x = root.position.x; contact.position.z = cast.position.z = root.position.z;
-    contact.scale.setScalar(sh); cast.scale.setScalar(sh);
-    contact.material.opacity = (1 - sink) * (0.55 + 0.45 * sh);
-    castM.material.opacity = (1 - sink) * sh * (light < 0.5 ? 0.25 : 0.8);
+    contact.position.x = root.position.x; contact.position.z = root.position.z; contact.scale.setScalar(sh);
+    contact.material.opacity = (1 - sink) * (0.4 + 0.4 * sh);
+    ground.material.opacity = (1 - sink) * (light < 0.5 ? 0.15 : 0.46);
+    renderer.shadowMap.needsUpdate = true;                     // the shadow map, with every layer (props too)
+    camera.layers.enableAll(); renderer.setRenderTarget(shadowRT); renderer.render(scene, camera); renderer.setRenderTarget(null);
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
     if (maskMat.opacity > 0.01) {                               // the mask: the whole bear, in one flat colour
