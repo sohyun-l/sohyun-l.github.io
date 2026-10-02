@@ -110,17 +110,17 @@ function start() {
     }
     P.tail = sphere(0.2, M.fur, [1, 1, 1], [0, 0.6, -0.95]); P.body.add(P.tail);   // stubby tail (it wags)
     // head: round, with a pale muzzle, puffy cheeks and the famous smile
-    P.head = new THREE.Group(); P.head.position.set(0, 2.27, 0.05); P.head.scale.setScalar(1.1); P.body.add(P.head);   // a big head: cuter
+    P.head = new THREE.Group(); P.head.position.set(0, 2.25, 0.05); P.body.add(P.head);
     P.head.add(sphere(0.8, M.fur, [1.04, 0.94, 1]));
-    P.head.add(sphere(0.29, M.light, [1.12, 0.74, 0.8], [0, -0.3, 0.64]));   // a small pale muzzle, low on the face
+    P.head.add(sphere(0.36, M.light, [1.15, 0.8, 0.85], [0, -0.22, 0.62]));   // pale teddy muzzle
     // the hood: a shell around the back of the head, open at the face
-    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 20, Math.PI / 2 + 1.2, Math.PI * 2 - 2.4, 0, Math.PI * 0.78), M.coat);
+    const hood = new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 20, Math.PI / 2 + 1.05, Math.PI * 2 - 2.1, 0, Math.PI * 0.78), M.coat);
     hood.position.set(0, 0.02, -0.06); P.head.add(hood); P.hood = hood;
     P.ears = []; P.blush = [];
     for (const s of [-1, 1]) {
       const ear = new THREE.Group(); ear.position.set(s * 0.52, 0.76, -0.08); P.head.add(ear); P.ears.push(ear);   // round ears, poking out of the hood (they twitch)
-      ear.add(sphere(0.29, M.fur, [1, 1, 0.6])); ear.add(sphere(0.18, M.ear, [1, 1, 0.4], [0, -0.01, 0.12]));   // pink inside
-      const b = sphere(0.13, M.pink, [1.1, 0.62, 0.35], [s * 0.5, -0.15, 0.6]); P.head.add(b); P.blush.push(b);   // wide, soft blush
+      ear.add(sphere(0.26, M.fur, [1, 1, 0.6])); ear.add(sphere(0.16, M.light, [1, 1, 0.4], [0, 0, 0.11]));
+      const b = sphere(0.1, M.pink, [1, 0.7, 0.4], [s * 0.52, -0.2, 0.62]); P.head.add(b); P.blush.push(b);   // blush
     }
     P.eyes = new THREE.Group(); P.head.add(P.eyes);
     for (const s of [-1, 1]) {
@@ -128,11 +128,10 @@ function start() {
       e.add(sphere(0.088, M.eye)); e.add(sphere(0.03, M.shine, [1, 1, 1], [0.03, 0.035, 0.07]));
       P.eyes.add(e);
     }
-    P.head.add(sphere(0.075, M.dark, [1.35, 0.95, 0.9], [0, -0.19, 0.86]));             // a little round nose, with a shine
-    P.head.add(sphere(0.022, M.shine, [1.4, 0.8, 0.6], [-0.03, -0.165, 0.92]));
-    const smile = new THREE.Group(); smile.position.set(0, -0.33, 0.865); smile.rotation.x = -0.3; P.head.add(smile); P.smile = smile;   // an ω mouth
-    for (const s of [-1, 1]) { const arc = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.016, 8, 16, Math.PI), M.dark); arc.rotation.z = Math.PI; arc.position.x = s * 0.055; smile.add(arc); }
-    P.mouth = sphere(0.07, M.dark, [1, 1.2, 0.45], [0, -0.37, 0.86]); P.mouth.visible = false; P.head.add(P.mouth);   // open, for a yawn
+    P.head.add(sphere(0.1, M.dark, [1.35, 0.9, 0.9], [0, -0.12, 0.93]));                // nose
+    const smile = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.024, 8, 24, Math.PI), M.dark);
+    smile.rotation.z = Math.PI; smile.rotation.x = -0.25; smile.position.set(0, -0.32, 0.88); P.head.add(smile); P.smile = smile;
+    P.mouth = sphere(0.085, M.dark, [1, 1.25, 0.45], [0, -0.36, 0.86]); P.mouth.visible = false; P.head.add(P.mouth);   // open, for a yawn
     return { root, P };
   }
 
@@ -1416,7 +1415,7 @@ function start() {
       case 'lens': {                                               // the lens up to its eye: drops land on it, the metalens filters them out
         const c = A % 3.0, f = c < 0.9 ? 0 : Math.min(1, (c - 0.9) / 0.7);
         P.armR.rotation.x = -1.75 * still; P.armR.rotation.z = 0.35 * still;
-        PR.lens.position.set(0.32, 2.42, 1.06); PR.lens.rotation.set(0, 0, 0);
+        PR.lens.position.set(0.3, 2.42, 1.02); PR.lens.rotation.set(0, 0, 0);
         hyT = 0; hx = 0; P.head.rotation.z = -0.06 * still;
         lensDrops.forEach((d) => { d.material.opacity = 0.85 * (1 - f); d.visible = f < 0.98; });
         eyeBig = 1;                                                 // its eye, huge behind the glass
