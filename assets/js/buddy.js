@@ -45,11 +45,12 @@ function start() {
     kang2022style: 'Keeps inventing novel styles in training, to generalize to new domains.',
   };
   // the section a hovered heading or block belongs to
-  const BLOCKS = '.hero-header, .hero-bio, .news, .experience, .education, .services, .honors, .mapmyvisitors-widget';
+  const BLOCKS = '.hero-header, .hero-bio, .news, .news-band, .experience, .education, .services, .honors, .mapmyvisitors-widget';
   function sectionOf(spot) {
     if (spot.matches('h2[id]')) return spot.id;
     if (spot.classList.contains('mapmyvisitors-widget')) return 'visitors';
     if (spot.classList.contains('hero-header') || spot.classList.contains('hero-bio')) return 'about';
+    if (spot.classList.contains('news-band')) return 'news';
     return ['news', 'experience', 'education', 'services', 'honors'].find((c) => spot.classList.contains(c)) || null;
   }
   function lineFor(spot, el) {
@@ -437,13 +438,54 @@ function start() {
   }
   const flat = (w, h, tex) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide }));
   // a newspaper (news)
-  PR.paper = flat(1.05, 0.72, cardTex(256, 176, (g, w, h) => {
-    g.fillStyle = '#f4efe6'; g.fillRect(0, 0, w, h); g.fillStyle = '#2b201b';
-    g.font = 'bold 34px serif'; g.textAlign = 'center'; g.fillText('NEWS', w / 2, 40);
-    g.fillRect(14, 52, w - 28, 3);
-    for (let i = 0; i < 6; i++) { g.fillRect(14, 70 + i * 16, 104, 6); g.fillRect(138, 70 + i * 16, 104, 6); }
-  }));
+  // the news, as it is on the page right now: in the paper it reads and on the TV it watches
+  const curNews = () => {
+    const band = document.querySelector('[data-news-band]');
+    return band ? [((band.querySelector('[data-date]') || {}).textContent || '').trim(), ((band.querySelector('[data-text]') || {}).textContent || '').trim()] : ['', ''];
+  };
+  const wrapText = (g, text, x, y, maxW, lh, lines) => {
+    const words = text.split(/\s+/); let line = '', n = 0;
+    for (let k = 0; k < words.length && n < lines; k++) {
+      const t = line ? line + ' ' + words[k] : words[k];
+      if (g.measureText(t).width > maxW && line) { g.fillText(n === lines - 1 ? line + '…' : line, x, y + n * lh); n++; line = words[k]; } else line = t;
+    }
+    if (n < lines && line) g.fillText(line, x, y + n * lh);
+  };
+  const paperCv = document.createElement('canvas'); paperCv.width = 320; paperCv.height = 220;
+  const paperTex = new THREE.CanvasTexture(paperCv); paperTex.colorSpace = THREE.SRGBColorSpace;
+  function drawPaper([date, text]) {
+    const g = paperCv.getContext('2d'), w = 320, h = 220;
+    g.fillStyle = '#f4efe6'; g.fillRect(0, 0, w, h); g.fillStyle = '#2b201b'; g.textAlign = 'center';
+    g.font = 'bold 30px serif'; g.fillText('The Daily Bear', w / 2, 34);
+    g.fillRect(14, 44, w - 28, 3); g.font = '12px serif'; g.fillText(date || 'today', w / 2, 60); g.fillRect(14, 66, w - 28, 1);
+    g.textAlign = 'left'; g.font = 'bold 19px serif'; wrapText(g, text || 'Fresh news!', 16, 90, w - 32, 22, 3);
+    g.fillStyle = '#9a9188'; for (let i = 0; i < 4; i++) { g.fillRect(16, 162 + i * 13, 130, 5); g.fillRect(174, 162 + i * 13, 130, 5); }
+    paperTex.needsUpdate = true;
+  }
+  PR.paper = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.86), new THREE.MeshStandardMaterial({ map: paperTex, roughness: 0.85, side: THREE.DoubleSide }));
   P.body.add(PR.paper);
+  // a little TV on legs beside it, the news on (headline, then a ticker running underneath)
+  PR.tv = new THREE.Group(); scene.add(PR.tv);
+  const tvCv = document.createElement('canvas'); tvCv.width = 320; tvCv.height = 220;
+  const tvTex = new THREE.CanvasTexture(tvCv); tvTex.colorSpace = THREE.SRGBColorSpace;
+  PR.tv.add(new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.3, 0.8), pmat(0x8a5a3a, 0.6)).translateY(1.15));                  // a wooden cabinet
+  PR.tv.add(new THREE.Mesh(new THREE.PlaneGeometry(1.45, 1.0), new THREE.MeshBasicMaterial({ map: tvTex })).translateY(1.15).translateZ(0.405));
+  for (const x of [-0.6, 0.6]) PR.tv.add(capsule(0.05, 0.4, M.dark, [x, 0.25, 0]));                                        // legs
+  for (const sg of [-1, 1]) { const a = capsule(0.02, 0.5, M.dark, [sg * 0.2, 2.05, 0]); a.rotation.z = -sg * 0.5; PR.tv.add(a); }   // rabbit ears
+  function drawTv([date, text], A) {
+    const g = tvCv.getContext('2d'), w = 320, h = 220;
+    g.fillStyle = '#16233f'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#c0392b'; g.fillRect(0, 0, w, 40); g.fillStyle = '#fff'; g.font = 'bold 24px sans-serif'; g.textAlign = 'left'; g.fillText('NEWS', 14, 29);
+    if (Math.sin(A * 5) > 0) { g.fillStyle = '#ff5a4f'; g.beginPath(); g.arc(246, 20, 7, 0, 7); g.fill(); }
+    g.fillStyle = '#fff'; g.font = 'bold 14px sans-serif'; g.fillText('LIVE', 258, 26);
+    g.fillStyle = '#9fb4dd'; g.font = '13px sans-serif'; g.fillText(date, 14, 62);
+    g.fillStyle = '#fff'; g.font = 'bold 19px sans-serif'; wrapText(g, text || 'Fresh news!', 14, 90, w - 28, 24, 4);
+    g.fillStyle = '#f3c331'; g.fillRect(0, h - 30, w, 30); g.fillStyle = '#16233f'; g.font = 'bold 15px sans-serif';
+    const tick = (text || '') + '   •   ', tw = g.measureText(tick).width, off = (A * 60) % tw;
+    for (let x = -off; x < w; x += tw) g.fillText(tick, x, h - 10);
+    for (let y = 0; y < h; y += 4) { g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(0, y, w, 1); }   // scanlines
+    tvTex.needsUpdate = true;
+  }
   // a globe on a little stand (experience)
   PR.globe = new THREE.Group(); P.body.add(PR.globe);
   const ball = new THREE.Group(); PR.globe.add(ball);
@@ -851,7 +893,7 @@ function start() {
     stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilZPass: THREE.ReplaceStencilOp, stencilFail: THREE.KeepStencilOp });
   hemi.layers.enableAll(); sun.layers.enableAll(); rim.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
-  Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
+  Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.tv.userData, { s: 1.25 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
   const ACTPROP = { hearts: 'hearts', trumpet: 'trumpet', sunbed: 'beach', runway: 'runway', surf: 'surf', ski: 'skis', flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', me: 'robohand', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
     news: 'paper', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
@@ -1628,11 +1670,22 @@ function start() {
         P.armR.rotation.x = (-1.15 + 0.12 * Math.max(0, Math.sin(A * 16 + 2))) * still;
         hx = 0.35;
         break;
-      case 'news':                                                 // reads the paper, eyes left to right
-        P.armL.rotation.x = P.armR.rotation.x = -1.4 * still;
-        front(PR.paper, 2.0, 1.3);
-        hyT = 0.35 * Math.sin(A * 2.2); hx = 0.25;
+      case 'news': {                                               // the news: on the TV, then in the paper (whatever is in the news band now)
+        const N = curNews(), c = A % 9, sd = compact() ? -1 : 1;
+        if (N[1] !== st.newsDrawn) { st.newsDrawn = N[1]; drawPaper(N); }
+        if (c < 4.5) {                                              // watching TV, turned toward it, a nod now and then
+          want = 'tv'; drawTv(N, A);
+          PR.tv.position.set(sd * 2.45, 0, 0.4); PR.tv.rotation.y = -sd * 0.55;
+          root.rotation.y = st.yaw + (sd * 0.95 - st.yaw) * Math.min(1, c * 3);
+          hx = 0.05 + 0.08 * Math.max(0, Math.sin(A * 3)); P.armL.rotation.x = P.armR.rotation.x = -0.3 * still;
+          if (c > 3.4 && c < 3.8) root.position.y += Math.sin((c - 3.4) / 0.4 * Math.PI) * 0.12 * still;   // oh!
+        } else {                                                    // reading the paper, eyes left to right
+          P.armL.rotation.x = P.armR.rotation.x = -1.4 * still;
+          front(PR.paper, 2.0, 1.35);
+          hyT = 0.35 * Math.sin(A * 2.2); hx = 0.25;
+        }
         break;
+      }
       case 'globe':                                                // spins the globe
         P.armL.rotation.x = P.armR.rotation.x = -1.2 * still;
         front(PR.globe, 1.85, 1.35, 0); ball.rotation.y = A * 2.2; ball.rotation.z = 0.4;
