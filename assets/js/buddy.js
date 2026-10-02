@@ -124,8 +124,8 @@ function start() {
     }
     P.eyes = new THREE.Group(); P.head.add(P.eyes);
     for (const s of [-1, 1]) {
-      const e = new THREE.Group(); e.position.set(s * 0.31, 0.05, 0.71);                    // big glossy eyes, set low and wide
-      e.add(sphere(0.12, M.eye, [1, 1.12, 0.62])); e.add(sphere(0.042, M.shine, [1, 1, 0.6], [0.04, 0.05, 0.07])); e.add(sphere(0.02, M.shine, [1, 1, 0.6], [-0.04, -0.045, 0.075]));
+      const e = new THREE.Group(); e.position.set(s * 0.29, 0.13, 0.72);
+      e.add(sphere(0.088, M.eye)); e.add(sphere(0.03, M.shine, [1, 1, 1], [0.03, 0.035, 0.07]));
       P.eyes.add(e);
     }
     P.head.add(sphere(0.075, M.dark, [1.35, 0.95, 0.9], [0, -0.19, 0.86]));             // a little round nose, with a shine
@@ -753,7 +753,7 @@ function start() {
   PR.poleL = new THREE.Group(); PR.poleL.position.set(0, -0.6, 0.12); P.armL.add(PR.poleL);
   PR.poleR = new THREE.Group(); PR.poleR.position.set(0, -0.6, 0.12); P.armR.add(PR.poleR);
   for (const pg of [PR.poleL, PR.poleR]) { pg.add(capsule(0.025, 1.3, pmat(0x2b2b33, 0.4), [0, -0.55, 0.2]).rotateX(0.25)); }
-  PR.goggles = new THREE.Group(); PR.goggles.position.set(0, 0.08, 0.74); P.head.add(PR.goggles);
+  PR.goggles = new THREE.Group(); PR.goggles.position.set(0, 0.16, 0.74); P.head.add(PR.goggles);
   PR.goggles.add(sphere(0.34, pmat(0x2b2b33, 0.5), [1.3, 0.56, 0.3]));
   PR.goggles.add(sphere(0.3, pmat(0xff8a1f, 0.12, { metalness: 0.4 }), [1.25, 0.48, 0.3], [0, 0, 0.03]));
   PR.rockies = new THREE.Group(); PR.rockies.position.set(0, 0, -3.2); scene.add(PR.rockies);
@@ -781,14 +781,14 @@ function start() {
     const cupH = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.24, 24), pmat(0xd64545, 0.4)); cupH.rotation.z = Math.PI / 2; cupH.position.set(sg * 1.0, 0.0, 0.05); PR.phones.add(cupH);
     const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 20), pmat(0x2b2b33, 0.6)); pad.rotation.z = Math.PI / 2; pad.position.set(sg * 1.14, 0.0, 0.05); PR.phones.add(pad);
   }
-  PR.glasses = new THREE.Group(); PR.glasses.position.set(0, 0.05, 0.8); P.head.add(PR.glasses);   // round researcher glasses
+  PR.glasses = new THREE.Group(); PR.glasses.position.set(0, 0.13, 0.8); P.head.add(PR.glasses);   // round researcher glasses
   for (const sg of [-1, 1]) {
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.022, 8, 28), M.dark); rim.position.x = sg * 0.31; PR.glasses.add(rim);
-    const lensG = new THREE.Mesh(new THREE.CircleGeometry(0.17, 24), pmat(0xd8ecff, 0.05, { transparent: true, opacity: 0.25 })); lensG.position.x = sg * 0.31; PR.glasses.add(lensG);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.022, 8, 28), M.dark); rim.position.x = sg * 0.29; PR.glasses.add(rim);
+    const lensG = new THREE.Mesh(new THREE.CircleGeometry(0.16, 24), pmat(0xd8ecff, 0.05, { transparent: true, opacity: 0.25 })); lensG.position.x = sg * 0.29; PR.glasses.add(lensG);
   }
   const gBridge = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.018, 6, 12, Math.PI), M.dark); gBridge.position.y = 0.02; PR.glasses.add(gBridge);
-  PR.shades = new THREE.Group(); PR.shades.position.set(0, 0.05, 0.78); P.head.add(PR.shades);
-  for (const sg of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.04, 20), pmat(0x111111, 0.15)); l.rotation.x = Math.PI / 2; l.position.x = sg * 0.31; PR.shades.add(l); }
+  PR.shades = new THREE.Group(); PR.shades.position.set(0, 0.13, 0.78); P.head.add(PR.shades);
+  for (const sg of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 20), pmat(0x111111, 0.15)); l.rotation.x = Math.PI / 2; l.position.x = sg * 0.29; PR.shades.add(l); }
   const bridge = capsule(0.02, 0.2, M.dark, [0, 0.03, 0]); bridge.rotation.z = Math.PI / 2; PR.shades.add(bridge);
   // TestDG: the stream of test domains above its head; the ones it has adapted to stay lit (nothing forgotten)
   const domTex = (ch) => cardTex(64, 64, (g) => { g.fillStyle = '#fffaf2'; g.beginPath(); g.arc(32, 32, 30, 0, 7); g.fill(); g.strokeStyle = '#2b201b'; g.lineWidth = 3; g.stroke(); g.font = '34px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 32, 35); });
@@ -1416,7 +1416,7 @@ function start() {
       case 'lens': {                                               // the lens up to its eye: drops land on it, the metalens filters them out
         const c = A % 3.0, f = c < 0.9 ? 0 : Math.min(1, (c - 0.9) / 0.7);
         P.armR.rotation.x = -1.75 * still; P.armR.rotation.z = 0.35 * still;
-        PR.lens.position.set(0.34, 2.34, 1.06); PR.lens.rotation.set(0, 0, 0);
+        PR.lens.position.set(0.32, 2.42, 1.06); PR.lens.rotation.set(0, 0, 0);
         hyT = 0; hx = 0; P.head.rotation.z = -0.06 * still;
         lensDrops.forEach((d) => { d.material.opacity = 0.85 * (1 - f); d.visible = f < 0.98; });
         eyeBig = 1;                                                 // its eye, huge behind the glass
