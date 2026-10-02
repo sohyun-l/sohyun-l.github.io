@@ -224,7 +224,6 @@ function start() {
   canvas.className = 'buddy';
   canvas.setAttribute('role', 'img');
   canvas.setAttribute('aria-label', 'A bear guide');
-  const shadow = document.createElement('div'); shadow.className = 'buddy-shadow';
   // everything that is placed in page coordinates sits in a layer that clips sideways, so the
   // canvas reaching past the page edge never makes the page wider
   const layer = document.createElement('div'); layer.className = 'buddy-layer'; document.body.appendChild(layer);
@@ -241,11 +240,11 @@ function start() {
   fitLayer(); setInterval(fitLayer, 600); addEventListener('resize', fitLayer);
   const hole = document.createElement('div'); hole.className = 'buddy-hole'; layer.appendChild(hole);
   const bubble = document.createElement('div'); bubble.className = 'buddy-bubble'; bubble.setAttribute('aria-live', 'polite');
-  layer.append(shadow, canvas); document.body.append(bubble);
+  layer.append(canvas); document.body.append(bubble);
 
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, stencil: true }); }
-  catch (e) { canvas.remove(); shadow.remove(); bubble.remove(); return; }
+  catch (e) { canvas.remove(); bubble.remove(); return; }
   const dpr = Math.min(devicePixelRatio || 1, 2);
   renderer.setPixelRatio(dpr);
   renderer.autoClear = false;
@@ -254,6 +253,7 @@ function start() {
   const scene = new THREE.Scene();
   const hemi = new THREE.HemisphereLight(0xffffff, 0xd9c8bd, 1.25); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(-3, 6, 5); scene.add(sun);
+  const rim = new THREE.DirectionalLight(0xfff1dc, 0.9); rim.position.set(4, 4, -6); scene.add(rim);   // a rim from behind: rounder, more solid
   const EL = 0.42, D = 8.2, PX = 34;                 // elevation (rad), distance, px per unit
   const camera = new THREE.PerspectiveCamera(2 * Math.atan(CH / (2 * D * PX)) * 180 / Math.PI, CW / CH, 0.1, 100);
   camera.position.set(0, 2.3 + D * Math.sin(EL), D * Math.cos(EL));
@@ -261,6 +261,20 @@ function start() {
   camera.updateMatrixWorld();
   const { root, P } = makeBear();
   scene.add(root);
+  // shadows on the ground, drawn with the bear (so they sit over photos too): a dark one right
+  // under the feet, and a longer, softer one cast away from the sun (up and to the right)
+  const shTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(24,14,8,1)'); gr.addColorStop(0.5, 'rgba(24,14,8,0.75)'); gr.addColorStop(1, 'rgba(24,14,8,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const shMat = () => new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false });
+  const contact = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), shMat()); contact.rotation.x = -Math.PI / 2; contact.position.y = 0.01;
+  const cast = new THREE.Group(); cast.rotation.y = 0.35;            // away from the sun on the left, mostly sideways so the body does not hide it
+  const castM = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.1), shMat()); castM.rotation.x = -Math.PI / 2; castM.position.set(1.35, 0.005, 0); cast.add(castM);
+  contact.renderOrder = cast.renderOrder = castM.renderOrder = -1; scene.add(contact, cast);
 
   // props for the papers' acts
   const pmat = (c, r = 0.5, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0, ...o });
@@ -730,7 +744,7 @@ function start() {
   // through the stencil so each pixel is tinted exactly once
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
     stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilZPass: THREE.ReplaceStencilOp, stencilFail: THREE.KeepStencilOp });
-  hemi.layers.enableAll(); sun.layers.enableAll(); glow.layers.enableAll();
+  hemi.layers.enableAll(); sun.layers.enableAll(); rim.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
@@ -1626,6 +1640,11 @@ function start() {
       canvas.style.filter = { motion: 'blur(1.6px)', defocus: 'blur(3px)', contrast: 'contrast(0.45) saturate(0.5) brightness(1.15)', flash: 'brightness(1.7)',
         summer: 'brightness(1.12) saturate(1.35)', unseen: 'hue-rotate(150deg) saturate(1.6) contrast(1.1)' }[vfx] || '';
     }
+    const sh = Math.max(0.35, 1 - Math.max(0, root.position.y) * 0.4);   // shadows shrink and fade as it leaves the ground
+    contact.position.x = cast.position.x = root.position.x; contact.position.z = cast.position.z = root.position.z;
+    contact.scale.setScalar(sh); cast.scale.setScalar(sh);
+    contact.material.opacity = (1 - sink) * (0.5 + 0.45 * sh);
+    castM.material.opacity = (1 - sink) * sh * (light < 0.5 ? 0.2 : 0.6);
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
     if (maskMat.opacity > 0.01) {                               // the mask: the whole bear, in one flat colour
@@ -1640,14 +1659,14 @@ function start() {
     let left, top, pos;
     if (fixed) {
       const f = document.querySelector('footer.fixed-bottom'), fh = f ? f.getBoundingClientRect().height : 0;
-      canvas.style.position = shadow.style.position = bubble.style.position = 'fixed';
+      canvas.style.position = bubble.style.position = 'fixed';
       const vw = document.documentElement.clientWidth;
       if (st.fx == null) st.fx = vw - 60;
       st.fx = Math.max(50, Math.min(vw - 50, st.fx));
       left = st.fx - FX; top = innerHeight - fh - CH + (CH - FY) - 2;
       pos = [st.fx, top + FY];
     } else {
-      canvas.style.position = shadow.style.position = bubble.style.position = 'absolute';
+      canvas.style.position = bubble.style.position = 'absolute';
       if (!st.pos) { canvas.style.opacity = '0'; return; }
       pos = st.pos; left = pos[0] - FX; top = pos[1] - FY;
     }
@@ -1657,8 +1676,6 @@ function start() {
     canvas.style.opacity = String(pop);
     const jx = st.vfx === 'motion' ? Math.sin(now / 18) * 5 : 0;                    // motion blur: a fast shake
     canvas.style.transform = `translate(${left + jx}px, ${top}px) scale(${(0.6 + 0.4 * pop) * k})`;
-    shadow.style.transform = `translate(${pos[0] - 32}px, ${pos[1] - 7}px) scale(${Math.max(0.35, 1 - lift * 0.4) * k})`;
-    shadow.style.opacity = String(pop * 0.9 * (1 - sink));
     if (holeK > 0.01 && holeAt && !fixed) {
       hole.style.display = 'block';
       hole.style.transform = `translate(${holeAt[0]}px, ${holeAt[1]}px) scale(${holeK})`;

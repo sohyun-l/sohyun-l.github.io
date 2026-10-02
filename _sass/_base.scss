@@ -1626,20 +1626,7 @@ html.transition *:after {
   opacity: 0;
   -webkit-tap-highlight-color: transparent;
 }
-.buddy-shadow {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 64px;
-  height: 14px;
-  z-index: 1499;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.18), transparent);
-  pointer-events: none;
-  opacity: 0;
-}
-html[data-theme="dark"] .buddy-shadow { background: radial-gradient(closest-side, rgba(0, 0, 0, 0.5), transparent); }
-@media print { .buddy, .buddy-shadow { display: none; } }
+@media print { .buddy { display: none; } }
 
 // Footprints the bear leaves behind; they fade on their own.
 .buddy-print {                    // a bear's paw: a pad and four toes, toes forward
