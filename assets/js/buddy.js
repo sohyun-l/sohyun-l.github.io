@@ -202,6 +202,7 @@ function start() {
     tta: { coat: 0x3b8bd6, boots: 0x2b2b33, wear: [] },                                      // TestDG: a coat that adapts its colour
     suit: { coat: 0x2f3e5c, boots: 0x2b2b33, wear: ['shirt', 'tie'] },                       // a blazer and tie
     casual: { coat: 0xb5835a, boots: 0x7a5536, wear: ['shirt', 'glasses'] },                 // a cardigan and glasses
+    sohyun: { coat: 0x1d2747, boots: 0x2b2b33, wear: ['specs', 'hair', 'logo'], plain: true },            // as in Sohyun's photo
   };
   // the about and publications pages: dressed for each section and paper (weather papers keep the raincoat)
   const SPOTOUTFIT = {
@@ -789,6 +790,29 @@ function start() {
   PR.shades = new THREE.Group(); PR.shades.position.set(0, 0.13, 0.78); P.head.add(PR.shades);
   for (const sg of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 20), pmat(0x111111, 0.15)); l.rotation.x = Math.PI / 2; l.position.x = sg * 0.29; PR.shades.add(l); }
   const bridge = capsule(0.02, 0.2, M.dark, [0, 0.03, 0]); bridge.rotation.z = Math.PI / 2; PR.shades.add(bridge);
+  // Sohyun, as in the photo: thin round metal glasses, long dark hair with bangs, a navy cable-knit
+  // sweater with a little red logo, and a black robot hand held up
+  PR.specs = new THREE.Group(); PR.specs.position.set(0, 0.13, 0.8); P.head.add(PR.specs);
+  const specM = pmat(0xc9b48a, 0.25, { metalness: 0.7 });
+  for (const sg of [-1, 1]) {
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.012, 8, 32), specM); rim.position.x = sg * 0.29; PR.specs.add(rim);
+    const g2 = new THREE.Mesh(new THREE.CircleGeometry(0.18, 24), pmat(0xe6f2ff, 0.05, { transparent: true, opacity: 0.18 })); g2.position.x = sg * 0.29; PR.specs.add(g2);
+  }
+  const sBridge = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 6, 12, Math.PI), specM); sBridge.position.y = 0.03; PR.specs.add(sBridge);
+  const hairM = pmat(0x3a2820, 0.6, { side: THREE.DoubleSide });
+  PR.hair = new THREE.Group(); P.head.add(PR.hair);
+  PR.hair.add(new THREE.Mesh(new THREE.SphereGeometry(0.84, 32, 10, 0, Math.PI * 2, 0, 1.0), hairM));                                                // the crown
+  PR.hair.add(new THREE.Mesh(new THREE.SphereGeometry(0.84, 32, 10, Math.PI / 2 + 0.85, Math.PI * 2 - 1.7, 0.95, 1.0), hairM));                    // sides and back
+  const bangs = new THREE.Mesh(new THREE.SphereGeometry(0.86, 24, 6, Math.PI / 2 - 0.85, 1.7, 0.9, 0.34), hairM); bangs.scale.set(1.04, 0.95, 1.02); PR.hair.add(bangs);   // a fringe down to the glasses
+  const locks = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 1.04, 1.0, 28, 1, true, 0.95, Math.PI * 2 - 1.9), hairM); locks.position.y = -0.7; PR.hair.add(locks);   // long, down to the chest   // long, down to the chest
+  PR.logo = new THREE.Group(); PR.logo.position.set(0.36, 1.42, 0.95); PR.logo.rotation.set(-0.15, 0.35, 0); P.body.add(PR.logo);
+  PR.logo.add(sphere(0.07, pmat(0xc0392b, 0.5), [1.3, 0.8, 0.25]));
+  PR.robohand = new THREE.Group(); PR.robohand.position.set(0, -0.62, 0.14); PR.robohand.rotation.x = Math.PI / 2; P.armL.add(PR.robohand);
+  const rhM = pmat(0x1c1d21, 0.45), rhSteel = pmat(0xb9c0c8, 0.3, { metalness: 0.6 });
+  PR.robohand.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.16, 20), rhSteel));                                 // the steel wrist
+  PR.robohand.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.13), rhM).translateY(0.22));                               // the palm
+  const roboFingers = [-0.105, -0.035, 0.035, 0.105].map((x, i) => { const f = new THREE.Group(); f.position.set(x, 0.37, 0); f.add(capsule(0.03, i === 1 || i === 2 ? 0.2 : 0.16, rhM, [0, 0.12, 0])); PR.robohand.add(f); return f; });
+  const roboThumb = new THREE.Group(); roboThumb.position.set(0.17, 0.2, 0.02); roboThumb.rotation.z = -0.9; roboThumb.add(capsule(0.035, 0.14, rhM, [0, 0.1, 0])); PR.robohand.add(roboThumb);
   // TestDG: the stream of test domains above its head; the ones it has adapted to stay lit (nothing forgotten)
   const domTex = (ch) => cardTex(64, 64, (g) => { g.fillStyle = '#fffaf2'; g.beginPath(); g.arc(32, 32, 30, 0, 7); g.fill(); g.strokeStyle = '#2b201b'; g.lineWidth = 3; g.stroke(); g.font = '34px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 32, 35); });
   const stream = new THREE.Group(); stream.position.y = 3.85; stream.visible = false; scene.add(stream);
@@ -809,7 +833,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  const INPLACE = ['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'];
+  const INPLACE = ['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap', 'hair', 'logo'];
   const FRONT = Object.keys(PR).filter((k) => !INPLACE.includes(k));
   for (const k in PR) PR[k].traverse((o) => o.layers.set(INPLACE.includes(k) ? 0 : 1));
   // ...but only while it faces us: turned away, glasses, phones and what it holds go behind its head and body
@@ -827,7 +851,7 @@ function start() {
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
   Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
-  const ACTPROP = { hearts: 'hearts', trumpet: 'trumpet', sunbed: 'beach', runway: 'runway', surf: 'surf', ski: 'skis', flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
+  const ACTPROP = { hearts: 'hearts', trumpet: 'trumpet', sunbed: 'beach', runway: 'runway', surf: 'surf', ski: 'skis', flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', me: 'robohand', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
     news: 'paper', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
   // weather props: a little cloud with rain or snow, and fog
   const cloud = new THREE.Group(); cloud.position.y = 4.65; scene.add(cloud);
@@ -1160,13 +1184,12 @@ function start() {
     if (!ph || !st.pos) return;
     wake();
     const spot = spotOf(ph) || ph, tok = st.introTok = performance.now();
-    st.hover = spot; st.outfit = OUTFIT[SPOTOUTFIT['sec:about']] || null;
-    st.act = 'greet'; st.actT = 0; st.mark = { ch: '!', t0: performance.now(), dur: 1100 }; st.happyT = performance.now();
+    st.hover = spot; st.outfit = OUTFIT.sohyun;                  // dressed like Sohyun in the photo
+    st.act = 'me'; st.actT = 0; st.mark = { ch: '!', t0: performance.now(), dur: 1100 }; st.happyT = performance.now();
     if (!compact()) goTo(...besideOf(ph));
     INTRO.forEach((line, i) => setTimeout(() => {
       if (st.introTok !== tok) return;
-      if (i === 1 && !compact()) { st.act = 'point'; st.actT = 0; }   // points at the photo while it talks (phones: it keeps waving)
-      if (i === INTRO.length - 1) { st.act = 'greet'; st.actT = 0; st.happyT = performance.now(); }
+      if (i === INTRO.length - 1) st.happyT = performance.now();
       say(line, 2700);
     }, i * 2700));
   });
@@ -1329,7 +1352,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let eyeBig = 0, goalAt = null, markCh = null, ttaNow = -1, ttaSeen = 0, garaOn = null, garaD = null, garaFly = -1, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
+    let laugh = 0, eyeBig = 0, goalAt = null, markCh = null, ttaNow = -1, ttaSeen = 0, garaOn = null, garaD = null, garaFly = -1, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -1520,6 +1543,14 @@ function start() {
         wx.snow = 0.6;
         break;
       }
+      case 'me': {                                                 // Sohyun's photo: the robot hand up by its cheek, a big laugh
+        P.armL.rotation.x = -1.5 * still; P.armL.rotation.z = -0.5 * still;
+        P.head.rotation.z = 0.12 * still; laugh = 1; hx = -0.05;
+        if (A < 1.4) { P.armR.rotation.z = 0.2 + 2.3 * still; P.armR.rotation.x = Math.sin(A * 9) * 0.35 * still; }   // a wave first
+        roboFingers.forEach((f, i) => (f.rotation.x = 0.25 + 0.25 * Math.sin(A * 4 + i * 0.7)));                       // its fingers flex
+        if ((A % 2.4) < 0.3) root.position.y += Math.sin((A % 2.4) / 0.3 * Math.PI) * 0.1 * still;
+        break;
+      }
       case 'greet':                                                // hello! a big wave and a little hop
         P.armR.rotation.z = 0.2 + 2.3 * still; P.armR.rotation.x = Math.sin(A * 9) * 0.35 * still;
         P.head.rotation.z = -0.12 * still;
@@ -1662,7 +1693,7 @@ function start() {
       M.boot.color.lerp(of ? (of.boots === 'fur' ? FUR : _c2.setHex(of.boots)) : BOOTC, Math.min(1, dt * 6));
       M.trim.color.lerp(of && of.coat != null ? _c3.setHex(of.coat).multiplyScalar(0.82) : TRIMC, Math.min(1, dt * 6));   // the hem matches the outfit
       P.hood.visible = !of;
-      P.shell.forEach((o) => (o.visible = !of || of.coat != null));
+      P.shell.forEach((o, i) => (o.visible = (!of || of.coat != null) && !(i > 2 && of && of.plain)));   // a sweater has no buttons
     }
     const robo = st.act && st.outfit && st.outfit.robot ? 1 : 0;
     st.robo = (st.robo || 0) + (robo - (st.robo || 0)) * Math.min(1, dt * 5);
@@ -1804,7 +1835,8 @@ function start() {
       P.armL.rotation.z = -0.2 - 2.5 * yawn; P.armR.rotation.z = 0.2 + 2.5 * yawn; P.armL.rotation.x = P.armR.rotation.x = -0.2 * yawn;
       P.head.rotation.x = -0.3 * yawn; root.scale.y *= 1 + 0.07 * yawn;
     }
-    P.mouth.visible = yawn > 0.25; P.smile.visible = !P.mouth.visible;
+    P.mouth.visible = yawn > 0.25 || laugh > 0; P.smile.visible = !P.mouth.visible;
+    P.mouth.scale.set(laugh ? 1.35 : 1, laugh ? 1.1 : 1.25, 0.45);                  // a big open laugh
     // the comic mark: ! when it finds something, ? when puzzled
     const mk = markCh || (st.mark && now - st.mark.t0 < st.mark.dur ? st.mark.ch : null);
     if (mk !== st.markOn) { st.markOn = mk; st.markSince = now; }
