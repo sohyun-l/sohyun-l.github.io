@@ -202,7 +202,7 @@ function start() {
     tta: { coat: 0x3b8bd6, boots: 0x2b2b33, wear: [] },                                      // TestDG: a coat that adapts its colour
     suit: { coat: 0x2f3e5c, boots: 0x2b2b33, wear: ['shirt', 'tie'] },                       // a blazer and tie
     casual: { coat: 0xb5835a, boots: 0x7a5536, wear: ['shirt', 'glasses'] },                 // a cardigan and glasses
-    sohyun: { coat: 0x1d2747, boots: 0x2b2b33, wear: ['specs', 'hair', 'logo'], plain: true },            // as in Sohyun's photo
+    sohyun: { coat: 0x1d2747, boots: 0x2b2b33, wear: ['specs', 'logo'], plain: true },            // as in Sohyun's photo
   };
   // the about and publications pages: dressed for each section and paper (weather papers keep the raincoat)
   const SPOTOUTFIT = {
@@ -790,8 +790,8 @@ function start() {
   PR.shades = new THREE.Group(); PR.shades.position.set(0, 0.13, 0.78); P.head.add(PR.shades);
   for (const sg of [-1, 1]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 20), pmat(0x111111, 0.15)); l.rotation.x = Math.PI / 2; l.position.x = sg * 0.29; PR.shades.add(l); }
   const bridge = capsule(0.02, 0.2, M.dark, [0, 0.03, 0]); bridge.rotation.z = Math.PI / 2; PR.shades.add(bridge);
-  // Sohyun, as in the photo: thin round metal glasses, long dark hair with bangs, a navy cable-knit
-  // sweater with a little red logo, and a black robot hand held up
+  // Sohyun, as in the photo: thin round metal glasses, a navy cable-knit sweater with a little red
+  // logo, and a black robot hand held up
   PR.specs = new THREE.Group(); PR.specs.position.set(0, 0.13, 0.8); P.head.add(PR.specs);
   const specM = pmat(0xc9b48a, 0.25, { metalness: 0.7 });
   for (const sg of [-1, 1]) {
@@ -799,12 +799,7 @@ function start() {
     const g2 = new THREE.Mesh(new THREE.CircleGeometry(0.18, 24), pmat(0xe6f2ff, 0.05, { transparent: true, opacity: 0.18 })); g2.position.x = sg * 0.29; PR.specs.add(g2);
   }
   const sBridge = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.01, 6, 12, Math.PI), specM); sBridge.position.y = 0.03; PR.specs.add(sBridge);
-  const hairM = pmat(0x3a2820, 0.6, { side: THREE.DoubleSide });
-  PR.hair = new THREE.Group(); P.head.add(PR.hair);
-  PR.hair.add(new THREE.Mesh(new THREE.SphereGeometry(0.84, 32, 10, 0, Math.PI * 2, 0, 1.0), hairM));                                                // the crown
-  PR.hair.add(new THREE.Mesh(new THREE.SphereGeometry(0.84, 32, 10, Math.PI / 2 + 0.85, Math.PI * 2 - 1.7, 0.95, 1.0), hairM));                    // sides and back
-  const bangs = new THREE.Mesh(new THREE.SphereGeometry(0.86, 24, 6, Math.PI / 2 - 0.85, 1.7, 0.9, 0.34), hairM); bangs.scale.set(1.04, 0.95, 1.02); PR.hair.add(bangs);   // a fringe down to the glasses
-  const locks = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 1.04, 1.0, 28, 1, true, 0.95, Math.PI * 2 - 1.9), hairM); locks.position.y = -0.7; PR.hair.add(locks);   // long, down to the chest   // long, down to the chest
+  // long, down to the chest   // long, down to the chest
   PR.logo = new THREE.Group(); PR.logo.position.set(0.36, 1.42, 0.95); PR.logo.rotation.set(-0.15, 0.35, 0); P.body.add(PR.logo);
   PR.logo.add(sphere(0.07, pmat(0xc0392b, 0.5), [1.3, 0.8, 0.25]));
   PR.robohand = new THREE.Group(); PR.robohand.position.set(0, -0.62, 0.14); PR.robohand.rotation.x = Math.PI / 2; P.armL.add(PR.robohand);
@@ -840,7 +835,7 @@ function start() {
   for (const k in PR) { PR[k].visible = false; PR[k].userData.k = 0; }
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
-  const INPLACE = ['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap', 'hair', 'logo'];
+  const INPLACE = ['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap', 'logo'];
   const FRONT = Object.keys(PR).filter((k) => !INPLACE.includes(k));
   for (const k in PR) PR[k].traverse((o) => o.layers.set(INPLACE.includes(k) ? 0 : 1));
   // ...but only while it faces us: turned away, glasses, phones and what it holds go behind its head and body
