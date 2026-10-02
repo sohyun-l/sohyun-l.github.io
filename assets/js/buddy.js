@@ -271,9 +271,9 @@ function start() {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
   })();
   const shMat = () => new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false });
-  const contact = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), shMat()); contact.rotation.x = -Math.PI / 2; contact.position.y = 0.01;
+  const contact = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 1.7), shMat()); contact.rotation.x = -Math.PI / 2; contact.position.y = 0.01;
   const cast = new THREE.Group(); cast.rotation.y = 0.35;            // away from the sun on the left, mostly sideways so the body does not hide it
-  const castM = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.1), shMat()); castM.rotation.x = -Math.PI / 2; castM.position.set(1.35, 0.005, 0); cast.add(castM);
+  const castM = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.35), shMat()); castM.rotation.x = -Math.PI / 2; castM.position.set(1.75, 0.005, 0); cast.add(castM);
   contact.renderOrder = cast.renderOrder = castM.renderOrder = -1; scene.add(contact, cast);
 
   // props for the papers' acts
@@ -1643,8 +1643,8 @@ function start() {
     const sh = Math.max(0.35, 1 - Math.max(0, root.position.y) * 0.4);   // shadows shrink and fade as it leaves the ground
     contact.position.x = cast.position.x = root.position.x; contact.position.z = cast.position.z = root.position.z;
     contact.scale.setScalar(sh); cast.scale.setScalar(sh);
-    contact.material.opacity = (1 - sink) * (0.5 + 0.45 * sh);
-    castM.material.opacity = (1 - sink) * sh * (light < 0.5 ? 0.2 : 0.6);
+    contact.material.opacity = (1 - sink) * (0.55 + 0.45 * sh);
+    castM.material.opacity = (1 - sink) * sh * (light < 0.5 ? 0.25 : 0.8);
     renderer.clear();
     camera.layers.set(0); renderer.render(scene, camera);
     if (maskMat.opacity > 0.01) {                               // the mask: the whole bear, in one flat colour
