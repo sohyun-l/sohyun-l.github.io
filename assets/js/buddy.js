@@ -1101,7 +1101,10 @@ function start() {
     st.photoExtra = key.startsWith('gal:') ? PHOTOEXTRA[key.slice(4)] || [] : [];
     st.outfit = null;
     const act = (st.venue && VACT[st.venue] && ['point', 'cheese', 'speech', 'tada'].includes(ACT[key]) ? VACT[st.venue] : ACT[key]) || null;
-    if (act !== st.act) { st.act = act; st.actT = 0; st.mark = { ch: '!', t0: performance.now(), dur: 1100 }; }
+    if (act !== st.act) {
+      st.act = act; st.actT = 0;
+      if (st.venue !== 'hanoi') st.mark = { ch: '!', t0: performance.now(), dur: 1100 };   // (not under the nón lá's brim)
+    }
     if (key.startsWith('gal:')) st.outfit = outfitFor(key.slice(4), act, st.venue);
     else st.outfit = OUTFIT[SPOTOUTFIT[key]] || null;                 // sections and papers (null: the raincoat)
     say(lineFor(spot, el) + (st.venue ? ` · ${VNAME[st.venue]}` : ''), 3800);
