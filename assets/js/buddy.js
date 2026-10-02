@@ -1245,7 +1245,7 @@ function start() {
         ttaNow = n % TTA.length; ttaSeen = Math.min(TTA.length, n + (c >= 0.6 ? 1 : 0));
         if (c < 0.6) { hyT = Math.sin(c * 28) * 0.35; P.head.rotation.z = 0.2 * still; }    // huh? a new domain
         else {                                                                            // adapted, at test time: a nod and a sparkle
-          if (D !== st.ttaSaid) { st.ttaSaid = D; say(`Domain ${n + 1}: ${D.name} → adapted ✓`, 1700); }
+          if (D !== st.ttaSaid) { st.ttaSaid = D; say(`Continual TTA · ${D.name} → adapted, nothing forgotten ✓`, 1900); }
           if (D.gear === 'snowman') { snowy = 1; want = 'snowman'; }                       // except in the snow: it becomes a snowman
           if (c < 0.9) { root.position.y += Math.sin((c - 0.6) / 0.3 * Math.PI) * 0.12 * still; sparkle = 1; }
           hx = c < 1.1 ? 0.25 * Math.sin((c - 0.6) / 0.5 * Math.PI) : 0;
