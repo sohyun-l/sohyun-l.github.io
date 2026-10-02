@@ -750,8 +750,10 @@ function start() {
   // props live on layer 1 and are drawn after the bear, over it: always in front, never sunk into it
   root.traverse((o) => o.layers.enable(2));                     // the bear itself, for the segmentation mask pass
   for (const k in PR) PR[k].traverse((o) => o.layers.set(['beach', 'wave', 'runway', 'rockies', 'surf', 'skis', 'swim', 'wet', 'beanie', 'fedora', 'bucket', 'backpack', 'aodai', 'pearls', 'nightcap', 'tophat', 'cape', 'mcap', 'deerstalker', 'beret', 'antenna', 'mocapcap'].includes(k) ? 0 : 1));
-  root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  for (const k in PR) if (!['beach', 'wave', 'runway', 'rockies'].includes(k)) PR[k].traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  // open shells (helmet, hood, hats) cast from both faces, or their shadow is only a thin arc
+  const casts = (o) => { if (!o.isMesh) return; o.castShadow = true; [].concat(o.material).forEach((m) => { m.shadowSide = THREE.DoubleSide; }); };
+  root.traverse(casts);
+  for (const k in PR) if (!['beach', 'wave', 'runway', 'rockies'].includes(k)) PR[k].traverse(casts);
   // the mask covers the bear's whole silhouette (its gear too) in one flat colour: drawn without depth, and
   // through the stencil so each pixel is tinted exactly once
   const maskMat = new THREE.MeshBasicMaterial({ color: 0x2f7bff, transparent: true, opacity: 0, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
