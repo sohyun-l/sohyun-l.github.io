@@ -589,7 +589,8 @@ function start() {
   const brushTip = pmat(0xd64f8f, 0.5); PR.brush.add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 10), brushTip).rotateX(Math.PI).translateY(0.66));
   PR.mocapcap = new THREE.Group(); PR.mocapcap.position.set(0, 0.42, 0); P.head.add(PR.mocapcap);
   PR.mocapcap.add(new THREE.Mesh(new THREE.SphereGeometry(0.85, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), pmat(0x15161a, 0.8)));
-  // GaRA-SAM: eight armour modules, one per rank-1 component; the gate decides which go on for each input
+  // GaRA-SAM: a helmet (SAM itself, always on) and seven armour modules, one per rank-1 component;
+  // the gate decides which of those go on for each input
   const modMat = pmat(0xffa63d, 0.25, { metalness: 0.45, emissive: 0x8a4a00, emissiveIntensity: 0.4 });
   const mods = [
     [P.head, new THREE.Mesh(new THREE.SphereGeometry(0.98, 24, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), modMat), [0, 0.06, -0.02], null, [1, 1.08, 1]],   // helmet
@@ -737,9 +738,9 @@ function start() {
     m.position.x = (i - 2.5) * 0.47; m.layers.set(1); stream.add(m); return m;
   });
   const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.14, 3), new THREE.MeshBasicMaterial({ color: 0x2b201b })); arrow.rotation.z = Math.PI; arrow.layers.set(1); stream.add(arrow);
-  const GARA = [                                                  // components lit per input (fog 2, noise 5, unseen 3)
-    { w: 'rain', on: [0, 5, 6] }, { w: 'fog', on: [1, 4] }, { w: 'noise', on: [0, 2, 3, 5, 7] },
-    { w: 'snow', on: [1, 3, 6, 7] }, { w: 'night', on: [0, 2, 4, 6] }, { w: 'dust', on: [1, 3, 4], unseen: true },
+  const GARA = [                                                  // rank-1 components lit per input (modules 1-7; the helmet is SAM itself, always on)
+    { w: 'rain', name: 'Rain', on: [1, 5, 6] }, { w: 'fog', name: 'Fog', on: [1, 4] }, { w: 'noise', name: 'Noise', on: [2, 3, 5, 7] },
+    { w: 'snow', name: 'Snow', on: [1, 3, 6, 7] }, { w: 'night', name: 'Dark', on: [2, 4, 6] }, { w: 'dust', name: 'Dust (unseen)', on: [1, 3, 4], unseen: true },
   ];
   const TTA = [
     { w: 'rain', name: 'Rain', gear: 'umbrella', col: 0x3b8bd6 }, { w: 'snow', name: 'Snow', gear: 'snowman', col: 0xf3f5f8 },
@@ -799,10 +800,14 @@ function start() {
   // sparkles while it restores itself
   const sparkles = Array.from({ length: 10 }, () => { const sp = sphere(0.05, pmat(0xffe27a, 0.3, { emissive: 0xffd34d, emissiveIntensity: 1 })); sp.visible = false; scene.add(sp); return sp; });
   // GaRA-SAM: rank-1 components above its head; the input decides how many light up
-  const rankOn = pmat(0x3b6fd8, 0.3, { emissive: 0x3b6fd8, emissiveIntensity: 0.4 }), rankOff = pmat(0xd8d2ca, 0.6);
+  const rankOn = pmat(0xffa63d, 0.25, { emissive: 0xff8a00, emissiveIntensity: 0.7 }), rankOff = pmat(0xd8d2ca, 0.6);   // lit = the armour's orange
   const rankDots = new THREE.Group(); rankDots.position.y = 3.55; scene.add(rankDots);
-  for (let i = 0; i < 8; i++) rankDots.add(sphere(0.07, rankOff, [1, 1, 1], [(i - 3.5) * 0.19, 0, 0]));
+  for (let i = 0; i < 7; i++) rankDots.add(sphere(0.07, rankOff, [1, 1, 1], [(i - 3) * 0.19, 0, 0]));   // one per rank-1 component (modules 1-7)
   rankDots.visible = false;
+  // a spark flies from each lit rank down to the module it fits on
+  const sparkMat = pmat(0xffc061, 0.2, { emissive: 0xff9a1f, emissiveIntensity: 1.4 });
+  const rankSparks = Array.from({ length: 7 }, () => { const m = sphere(0.12, sparkMat); m.visible = false; m.layers.set(1); scene.add(m); return m; });
+  const _a = new THREE.Vector3(), _b = new THREE.Vector3();
   // gaussian noise: static that flickers around it
   const NN = 90, noiseGeo = new THREE.BufferGeometry();
   noiseGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NN * 3), 3));
@@ -1232,7 +1237,7 @@ function start() {
     P.legL.rotation.z = P.legR.rotation.z = 0;
     P.armL.rotation.z = -0.2; if (st.waveT < 0) P.armR.rotation.z = 0.2;
     rankDots.visible = false;
-    let ttaNow = -1, ttaSeen = 0, garaOn = null, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
+    let ttaNow = -1, ttaSeen = 0, garaOn = null, garaD = null, garaFly = -1, ttaCol = null, vfx = null, dark = 0, maskK = 0, wink = 0, fogPull = 0, snowy = 0, degrade = 0, sparkle = 0, want = ACTPROP[st.act], hyT = 0, hx = 0, light = 1, wx = { rain: st.onFig && !st.act ? 1 : 0, snow: 0, fog: 0, noise: 0, dust: 0, petals: 0, leaves: 0 };
     const still = 1 - st.amp, T = st.idleT, A = st.actT;
     switch (st.idle) {
       case 'look': hyT = T < 1 ? -0.8 : T < 2 ? 0.8 : 0; if (T > 2.8) st.idle = null; break;
@@ -1274,7 +1279,8 @@ function start() {
         if (c < 0.6) { hyT = Math.sin(c * 28) * 0.35; P.head.rotation.z = 0.2 * still; }    // huh? a new domain
         else {                                                                            // adapted, at test time: a nod and a sparkle
           if (D !== st.ttaSaid) { st.ttaSaid = D; say(`Continual TTA · ${D.name} → adapted, nothing forgotten ✓`, 1900); }
-          if (D.gear === 'snowman') { snowy = 1; want = 'snowman'; }                       // except in the snow: it becomes a snowman
+          if (D.gear === 'snowman') { snowy = 1; want = 'snowman'; }                       // in the snow it becomes a snowman,
+          else if (D.gear === 'lantern' || D.gear === 'phones') want = D.gear;             // in the dark it holds a lantern, in the noise wears headphones
           if (c < 0.9) { root.position.y += Math.sin((c - 0.6) / 0.3 * Math.PI) * 0.12 * still; sparkle = 1; }
           hx = c < 1.1 ? 0.25 * Math.sin((c - 0.6) / 0.5 * Math.PI) : 0;
         }
@@ -1284,12 +1290,17 @@ function start() {
         const D = GARA[Math.floor(A / 2.2) % GARA.length], c = A % 2.2;
         if (D.w === 'night') light = 0.45; else wx[D.w] = D.w === 'fog' || D.w === 'dust' ? 0.6 : 1;
         rankDots.visible = true;
-        rankDots.children.forEach((d, i) => (d.material = D.on.includes(i) ? rankOn : rankOff));
-        garaOn = D.on;                                                                    // the same components, worn as armour
+        rankDots.children.forEach((d, i) => (d.material = D.on.includes(i + 1) && c > 0.1 ? rankOn : rankOff));
+        // the gate lights this input's ranks; each flies down and snaps on as its armour piece
+        garaD = D; garaFly = c > 0.15 && c < 0.55 ? (c - 0.15) / 0.4 : -1;
+        garaOn = c >= 0.55 ? D.on : [];
+        if (st.garaSaid !== A - c && c > 0.15) {
+          st.garaSaid = A - c;
+          say(`${D.name} → gate opens ranks ${D.on.join(', ')}${D.unseen ? ' · still segmented ✓' : ''}`, 1700);
+        }
         // three point prompts land on it, one by one, then the mask covers it
         promptPts.forEach((g, i) => g.scale.setScalar(Math.max(0.001, Math.min(1, (c - 0.15 - i * 0.22) * 6))));
         maskK = c < 0.85 ? 0 : Math.min(1, (c - 0.85) * 4);
-        if (D.unseen && st.garaSaid !== A - c && c > 0.9) { st.garaSaid = A - c; say('Never seen this one… still segmented ✓', 1400); }
         break;
       }
       case 'restore': {                                            // a condition degrades it; it polishes itself back
@@ -1569,8 +1580,17 @@ function start() {
       m.scale.setScalar(cur ? 1.2 + 0.06 * Math.sin(now / 150) : 1);
       if (cur) arrow.position.set(m.position.x, -0.32, 0);
     });
+    if (garaFly >= 0) root.updateMatrixWorld();
+    rankSparks.forEach((sp, j) => {                              // rank j+1 flies from its dot to its module
+      sp.visible = garaFly >= 0 && garaD.on.includes(j + 1) && !st.sleeping;
+      if (!sp.visible) return;
+      const t = garaFly * garaFly * (3 - 2 * garaFly);
+      rankDots.children[j].getWorldPosition(_a); mods[j + 1].getWorldPosition(_b);
+      sp.position.lerpVectors(_a, _b, t); sp.position.y += Math.sin(t * Math.PI) * 0.35;
+      sp.scale.setScalar(1 + 0.4 * Math.sin(t * Math.PI));
+    });
     mods.forEach((m, i) => {                                     // modules snap on and off with a little pop
-      const on = garaOn && garaOn.includes(i) && !st.sleeping ? 1 : 0;
+      const on = garaOn && (i === 0 || garaOn.includes(i)) && !st.sleeping ? 1 : 0;   // the helmet (SAM) stays; the gate picks the rest
       m.userData.k += (on - m.userData.k) * Math.min(1, dt * 12);
       m.visible = m.userData.k > 0.02;
       const k = m.userData.k * (1 + 0.25 * Math.sin(m.userData.k * Math.PI)), sc = m.userData.s;
