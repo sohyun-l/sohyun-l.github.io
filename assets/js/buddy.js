@@ -814,7 +814,14 @@ function start() {
   const roboFingers = [-0.105, -0.035, 0.035, 0.105].map((x, i) => { const f = new THREE.Group(); f.position.set(x, 0.37, 0); f.add(capsule(0.03, i === 1 || i === 2 ? 0.2 : 0.16, rhM, [0, 0.12, 0])); PR.robohand.add(f); return f; });
   const roboThumb = new THREE.Group(); roboThumb.position.set(0.17, 0.2, 0.02); roboThumb.rotation.z = -0.9; roboThumb.add(capsule(0.035, 0.14, rhM, [0, 0.1, 0])); PR.robohand.add(roboThumb);
   // TestDG: the stream of test domains above its head; the ones it has adapted to stay lit (nothing forgotten)
-  const domTex = (ch) => cardTex(64, 64, (g) => { g.fillStyle = '#fffaf2'; g.beginPath(); g.arc(32, 32, 30, 0, 7); g.fill(); g.strokeStyle = '#2b201b'; g.lineWidth = 3; g.stroke(); g.font = '34px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 32, 35); });
+  const domTex = (ch) => cardTex(64, 64, (g) => {
+    g.fillStyle = '#fffaf2'; g.beginPath(); g.arc(32, 32, 30, 0, 7); g.fill(); g.strokeStyle = '#2b201b'; g.lineWidth = 3; g.stroke();
+    // emoji differ in where they sit in their box: measure what is drawn and put its middle in the circle's middle
+    let px = 32; g.font = `${px}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    let m = g.measureText(ch), w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+    if (Math.max(w, h) > 36) { px = Math.floor(px * 36 / Math.max(w, h)); g.font = g.font.replace(/^\d+px/, px + 'px'); m = g.measureText(ch); w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight; h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent; }
+    g.fillText(ch, 32 - w / 2 + m.actualBoundingBoxLeft, 32 + h / 2 - m.actualBoundingBoxDescent);
+  });
   const stream = new THREE.Group(); stream.position.y = 3.85; stream.visible = false; scene.add(stream);
   const streamIcons = ['☔', '❄️', '📺', '🌫️', '🌙', '☀️'].map((ch, i) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: domTex(ch), transparent: true, depthWrite: false }));
