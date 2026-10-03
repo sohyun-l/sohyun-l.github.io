@@ -438,7 +438,7 @@ function start() {
   }
   const flat = (w, h, tex) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide }));
   // a newspaper (news)
-  // the news, as it is on the page right now: in the paper it reads and on the TV it watches
+  // the news, as it is on the page right now, on the TV it watches
   const curNews = () => {
     const band = document.querySelector('[data-news-band]');
     return band ? [((band.querySelector('[data-date]') || {}).textContent || '').trim(), ((band.querySelector('[data-text]') || {}).textContent || '').trim()] : ['', ''];
@@ -451,19 +451,6 @@ function start() {
     }
     if (n < lines && line) g.fillText(line, x, y + n * lh);
   };
-  const paperCv = document.createElement('canvas'); paperCv.width = 320; paperCv.height = 220;
-  const paperTex = new THREE.CanvasTexture(paperCv); paperTex.colorSpace = THREE.SRGBColorSpace;
-  function drawPaper([date, text]) {
-    const g = paperCv.getContext('2d'), w = 320, h = 220;
-    g.fillStyle = '#f4efe6'; g.fillRect(0, 0, w, h); g.fillStyle = '#2b201b'; g.textAlign = 'center';
-    g.font = 'bold 30px serif'; g.fillText('The Daily Bear', w / 2, 34);
-    g.fillRect(14, 44, w - 28, 3); g.font = '12px serif'; g.fillText(date || 'today', w / 2, 60); g.fillRect(14, 66, w - 28, 1);
-    g.textAlign = 'left'; g.font = 'bold 19px serif'; wrapText(g, text || 'Fresh news!', 16, 90, w - 32, 22, 3);
-    g.fillStyle = '#9a9188'; for (let i = 0; i < 4; i++) { g.fillRect(16, 162 + i * 13, 130, 5); g.fillRect(174, 162 + i * 13, 130, 5); }
-    paperTex.needsUpdate = true;
-  }
-  PR.paper = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.86), new THREE.MeshStandardMaterial({ map: paperTex, roughness: 0.85, side: THREE.DoubleSide }));
-  P.body.add(PR.paper);
   // a little TV on legs beside it, the news on (headline, then a ticker running underneath)
   PR.tv = new THREE.Group(); scene.add(PR.tv);
   const tvCv = document.createElement('canvas'); tvCv.width = 320; tvCv.height = 220;
@@ -893,10 +880,10 @@ function start() {
     stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilZPass: THREE.ReplaceStencilOp, stencilFail: THREE.KeepStencilOp });
   hemi.layers.enableAll(); sun.layers.enableAll(); rim.layers.enableAll(); glow.layers.enableAll();
   Object.assign(PR.globe.userData, { s: 1.6 }); Object.assign(PR.trumpet.userData, { s: 1.6 }); Object.assign(PR.books.userData, { s: 1.5 }); Object.assign(PR.cap.userData, { s: 1.35 });
-  Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.paper.userData, { s: 1.2 }); Object.assign(PR.tv.userData, { s: 1.25 }); Object.assign(PR.clip.userData, { s: 1.6 });
+  Object.assign(PR.query.userData, { s: 1.3 }); Object.assign(PR.hist.userData, { s: 1.3 }); Object.assign(PR.tv.userData, { s: 1.25 }); Object.assign(PR.clip.userData, { s: 1.6 });
   Object.assign(PR.robot.userData, { s: 1.6 }); Object.assign(PR.trophy.userData, { s: 1.45 }); Object.assign(PR.lens.userData, { s: 1.3 }); Object.assign(PR.cam.userData, { s: 1.35 });
   const ACTPROP = { hearts: 'hearts', trumpet: 'trumpet', sunbed: 'beach', runway: 'runway', surf: 'surf', ski: 'skis', flagCH: 'flag', flagDE: 'flag', kickCH: 'flag', conditions: 'prompts', speech: 'mic', point: 'pointer', selfie: 'phone', type: 'laptop', tame: 'robot', me: 'robohand', lens: 'lens', film: 'cam', ask: 'query', balance: 'hist', fifo: 'funnel',
-    news: 'paper', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
+    news: 'tv', globe: 'globe', grad: 'cap', books: 'books', review: 'clip', trophy: 'trophy' };
   // weather props: a little cloud with rain or snow, and fog
   const cloud = new THREE.Group(); cloud.position.y = 4.65; scene.add(cloud);
   for (const [x, y, r] of [[-0.45, 0, 0.32], [0, 0.12, 0.42], [0.45, 0, 0.3], [0.2, -0.08, 0.3], [-0.2, -0.08, 0.3]]) cloud.add(sphere(r, M.cloud, [1, 0.8, 0.8], [x, y, 0]));
@@ -1145,7 +1132,6 @@ function start() {
     const act = (st.venue && VACT[st.venue] && ['point', 'cheese', 'speech', 'tada'].includes(ACT[key]) ? VACT[st.venue] : ACT[key]) || null;
     if (act !== st.act) {
       st.act = act; st.actT = 0;
-      if (st.venue !== 'hanoi') st.mark = { ch: '!', t0: performance.now(), dur: 1100 };   // (not under the nón lá's brim)
     }
     if (key.startsWith('gal:')) st.outfit = outfitFor(key.slice(4), act, st.venue);
     else st.outfit = OUTFIT[SPOTOUTFIT[key]] || null;                 // sections and papers (null: the raincoat)
@@ -1232,7 +1218,7 @@ function start() {
     wake();
     const spot = spotOf(ph) || ph, tok = st.introTok = performance.now();
     st.hover = spot; st.outfit = OUTFIT.sohyun;                  // dressed like Sohyun in the photo
-    st.act = 'me'; st.actT = 0; st.mark = { ch: '!', t0: performance.now(), dur: 1100 }; st.happyT = performance.now();
+    st.act = 'me'; st.actT = 0; st.happyT = performance.now();
     if (!compact()) goTo(...besideOf(ph));
     INTRO.forEach((line, i) => setTimeout(() => {
       if (st.introTok !== tok) return;
@@ -1670,20 +1656,13 @@ function start() {
         P.armR.rotation.x = (-1.15 + 0.12 * Math.max(0, Math.sin(A * 16 + 2))) * still;
         hx = 0.35;
         break;
-      case 'news': {                                               // the news: on the TV, then in the paper (whatever is in the news band now)
-        const N = curNews(), c = A % 9, sd = compact() ? -1 : 1;
-        if (N[1] !== st.newsDrawn) { st.newsDrawn = N[1]; drawPaper(N); }
-        if (c < 4.5) {                                              // watching TV, turned toward it, a nod now and then
-          want = 'tv'; drawTv(N, A);
-          PR.tv.position.set(sd * 2.45, 0, 0.4); PR.tv.rotation.y = -sd * 0.55;
-          root.rotation.y = st.yaw + (sd * 0.95 - st.yaw) * Math.min(1, c * 3);
-          hx = 0.05 + 0.08 * Math.max(0, Math.sin(A * 3)); P.armL.rotation.x = P.armR.rotation.x = -0.3 * still;
-          if (c > 3.4 && c < 3.8) root.position.y += Math.sin((c - 3.4) / 0.4 * Math.PI) * 0.12 * still;   // oh!
-        } else {                                                    // reading the paper, eyes left to right
-          P.armL.rotation.x = P.armR.rotation.x = -1.4 * still;
-          front(PR.paper, 2.0, 1.35);
-          hyT = 0.35 * Math.sin(A * 2.2); hx = 0.25;
-        }
+      case 'news': {                                               // the news on a little TV (whatever is in the news band now)
+        const N = curNews(), sd = compact() ? -1 : 1;
+        drawTv(N, A);
+        PR.tv.position.set(sd * 2.45, 0, 0.4); PR.tv.rotation.y = -sd * 0.55;
+        root.rotation.y = st.yaw + (sd * 0.95 - st.yaw) * Math.min(1, A * 3);   // turned toward it, a nod now and then
+        hx = 0.05 + 0.08 * Math.max(0, Math.sin(A * 3)); P.armL.rotation.x = P.armR.rotation.x = -0.3 * still;
+        if (A % 4.5 > 3.4 && A % 4.5 < 3.8) root.position.y += Math.sin((A % 4.5 - 3.4) / 0.4 * Math.PI) * 0.12 * still;   // oh!
         break;
       }
       case 'globe':                                                // spins the globe
